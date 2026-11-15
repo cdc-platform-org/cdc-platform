@@ -644,6 +644,23 @@ export default function ToolsPage() {
 
   const allCards: CatalogCardData[] = ([
     {
+      key: 'design-studio',
+      icon: Sparkles,
+      accent: 'cyan',
+      title: catLang === 'ka' ? 'Ps + Ai დიზაინის სტუდია (2-in-1)' : 'Ps + Ai Design Studio (2-in-1)',
+      badge: catLang === 'ka' ? '29 ₾ / თვე · სტუდენტებისთვის უფასო' : '29 GEL / mo · Free for Students',
+      description: catLang === 'ka'
+        ? 'Photoshop-ისა და Illustrator-ის სიმულაციური სამუშაო გარემო ბრაუზერში — მრავალფენიანი სისტემა, ფილტრები, ვექტორული Artboard, ტიპოგრაფია და PNG/SVG ექსპორტი.'
+        : 'Photoshop & Illustrator simulation workspace in your browser — multi-layer system, filters, vector Artboard, typography & PNG/SVG export.',
+      features: [
+        { icon: Sparkles, label: catLang === 'ka' ? 'Photoshop რასტრული რეჟიმი და ფილტრები' : 'Photoshop raster mode & filters' },
+        { icon: Code2, label: catLang === 'ka' ? 'Illustrator ვექტორული Artboard & Pen Tool' : 'Illustrator vector Artboard & Pen Tool' },
+        { icon: BarChart3, label: catLang === 'ka' ? 'მრავალფენიანი სისტემა (Layers) & History' : 'Multi-layer system & History' },
+        { icon: BookOpen, label: catLang === 'ka' ? 'PNG და SVG მაღალი ხარისხის ექსპორტი' : 'High-res PNG & SVG export' },
+      ],
+      cta: aiCta(catLang === 'ka' ? 'სტუდიის გახსნა' : 'Open Design Studio', '/dashboard/tools/design-studio'),
+    },
+    {
       key: 'enterprise-ai',
       icon: Bot,
       accent: 'indigo',

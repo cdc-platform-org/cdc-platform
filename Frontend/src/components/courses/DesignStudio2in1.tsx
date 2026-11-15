@@ -65,7 +65,9 @@ const SWATCHES = [
   '#10b981', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899',
 ];
 
-export default function DesignStudio2in1({ lang = 'ka' }: { lang?: string }) {
+export default function DesignStudio2in1({ lang = 'ka', onSubmitWork }: { lang?: string; onSubmitWork?: (file: File) => Promise<void> }) {
+  const [submittingWork, setSubmittingWork] = useState(false);
+  const [submitDone, setSubmitDone] = useState(false);
   const isKa = lang === 'ka';
   const [appMode, setAppMode] = useState<AppMode>('illustrator');
   const [activeTool, setActiveTool] = useState<ToolId>('select');
@@ -387,6 +389,42 @@ export default function DesignStudio2in1({ lang = 'ka' }: { lang?: string }) {
       clone.splice(target, 0, item);
       return clone;
     });
+  };
+
+  const submitCurrentArtboard = () => {
+    if (!onSubmitWork || !svgRef.current) return;
+    setSubmittingWork(true);
+    setSubmitDone(false);
+    const serializer = new XMLSerializer();
+    const rawSvg = serializer.serializeToString(svgRef.current);
+    const svgBlob = new Blob([rawSvg], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = artboard.w * 2;
+      canvas.height = artboard.h * 2;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(async (blob) => {
+          URL.revokeObjectURL(url);
+          if (!blob) { setSubmittingWork(false); return; }
+          try {
+            const file = new File([blob], studio-assignment-.png, { type: 'image/png' });
+            await onSubmitWork(file);
+            setSubmitDone(true);
+            setTimeout(() => setSubmitDone(false), 4000);
+          } finally {
+            setSubmittingWork(false);
+          }
+        }, 'image/png');
+      } else {
+        URL.revokeObjectURL(url);
+        setSubmittingWork(false);
+      }
+    };
+    img.src = url;
   };
 
   const exportFile = (format: 'svg' | 'png') => {

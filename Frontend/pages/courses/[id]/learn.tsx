@@ -180,6 +180,7 @@ function LearnContent() {
   const [sections, setSections] = useState<LmsSection[]>([]);
   const [progress, setProgress] = useState<CourseProgressSummary | null>(null);
   const [examStatus, setExamStatus] = useState<ExamStatus | null>(null);
+  const [submittedLessonIds, setSubmittedLessonIds] = useState<Set<string>>(new Set());
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [expandedSectionIds, setExpandedSectionIds] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'overview' | 'studio' | 'conspectus' | 'resources' | 'assignment' | 'discussion'>('overview');
@@ -218,6 +219,22 @@ function LearnContent() {
       setSections(curriculumData);
       setProgress(progressData);
       setExamStatus(examStatusData);
+      const assignmentLessons = curriculumData.flatMap((s) => s.lessons ?? []).filter((l) => !!l.assignmentPrompt);
+      if (assignmentLessons.length > 0) {
+        const checks = await Promise.all(
+          assignmentLessons.map(async (l) => {
+            try {
+              const sub = await getMySubmission(l.id);
+              return sub && sub.status !== 'NEEDS_REVISION' ? l.id : null;
+            } catch {
+              return null;
+            }
+          })
+        );
+        setSubmittedLessonIds(new Set(checks.filter((id): id is string => Boolean(id))));
+      } else {
+        setSubmittedLessonIds(new Set());
+      }
       setExpandedSectionIds(new Set(curriculumData.map((s) => s.id)));
       // Every lesson's own array is guaranteed present by the curriculum
       // endpoint (an empty array, never missing) — `?.[0]` still guards the
@@ -374,7 +391,24 @@ function LearnContent() {
 
           <div className="py-6 text-sm leading-relaxed text-cdc-muted">
             {activeTab === 'overview' && <p>{course.description}</p>}
-            {activeTab === 'studio' && <DesignStudio2in1 lang={lang} />}
+            {activeTab === 'studio' && (
+              <div className="space-y-3">
+                {activeLesson?.assignmentPrompt && (
+                  <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3.5 text-xs text-slate-200 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <span className="font-bold text-cyan-300 uppercase tracking-wider mr-2">{lang === 'ka' ? 'პრაქტიკული დავალება:' : 'Studio Task:'}</span>
+                      <span>{activeLesson.assignmentPrompt}</span>
+                    </div>
+                    {submittedLessonIds.has(activeLesson.id) && (
+                      <span className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300">
+                        {lang === 'ka' ? '✓ ჩაბარებულია' : '✓ Submitted'}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <DesignStudio2in1 lang={lang} onSubmitWork={activeLesson ? handleStudioSubmitWork : undefined} />
+              </div>
+            )}
             {activeTab === 'conspectus' &&
               (conspectusText ? (
                 <>
@@ -440,7 +474,24 @@ function LearnContent() {
             </div>
           </div>
 
-          {progress && progress.percent === 100 && examStatus?.configured && !examStatus.passed && (
+          {progress && progress.percent === 100 && !allAssignmentsDone && (
+            <div className="mb-5 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-xs space-y-2">
+              <p className="font-bold text-amber-300">
+                {lang === 'ka' ? '⚠️ გამოცდაზე გასასვლელად დაასრულე ყველა პრაქტიკული დავალება:' : '⚠️ Complete all required assignments to unlock the exam:'}
+              </p>
+              <ul className="space-y-1 text-slate-300">
+                {missingAssignmentLessons.map((ml) => (
+                  <li key={ml.id}>
+                    <button type="button" onClick={() => { setActiveLessonId(ml.id); setActiveTab('studio'); }} className="text-left text-cyan-300 hover:underline bg-transparent border-none cursor-pointer p-0">
+                      → {ml.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {progress && progress.percent === 100 && allAssignmentsDone && examStatus?.configured && !examStatus.passed && (
             <Link
               href={`/courses/${courseId}/exam`}
               className="w-full mb-5 block text-center rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-white font-bold text-sm py-3 shadow-lg hover:shadow-xl transition-all"
@@ -460,7 +511,7 @@ function LearnContent() {
             </button>
           )}
 
-          {progress && progress.percent === 100 && examStatus && !examStatus.configured && (
+          {progress && progress.percent === 100 && allAssignmentsDone && examStatus && !examStatus.configured && (
             <button
               type="button"
               onClick={() => setShowDownloadConfirm(true)}
