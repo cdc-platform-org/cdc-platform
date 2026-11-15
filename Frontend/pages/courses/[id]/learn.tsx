@@ -41,6 +41,7 @@ import { resolveLocale } from '@/src/utils/locale';
 // server bundle entirely; the panel itself is UI (a chat drawer) with
 // nothing that needs to exist in the server-rendered HTML anyway.
 const CourseTutorPanel = dynamic(() => import('../../../src/components/courses/CourseTutorPanel'), { ssr: false });
+const DesignStudio2in1 = dynamic(() => import('../../../src/components/courses/DesignStudio2in1'), { ssr: false });
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -181,7 +182,7 @@ function LearnContent() {
   const [examStatus, setExamStatus] = useState<ExamStatus | null>(null);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [expandedSectionIds, setExpandedSectionIds] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'overview' | 'conspectus' | 'resources' | 'assignment' | 'discussion'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'studio' | 'conspectus' | 'resources' | 'assignment' | 'discussion'>('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloadingCert, setDownloadingCert] = useState(false);
@@ -357,7 +358,7 @@ function LearnContent() {
           <h1 className="blog-heading-safe text-xl font-bold mt-6">{activeLesson?.title ?? course.title}</h1>
 
           <div className="flex gap-2 overflow-x-auto mt-6 border-b border-cdc-border">
-            {(['overview', 'conspectus', 'resources', 'assignment', 'discussion'] as const).map((tab) => (
+            {(['overview', 'studio', 'conspectus', 'resources', 'assignment', 'discussion'] as const).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -366,13 +367,14 @@ function LearnContent() {
                   activeTab === tab ? 'border-cdc-primary text-cdc-primary-ink' : 'border-transparent text-cdc-muted hover:text-cdc-ink'
                 }`}
               >
-                {t(tab)}
+                {tab === 'studio' ? (lang === 'ka' ? '🎨 დიზაინის სტუდია (Ps / Ai)' : '🎨 Design Studio (Ps / Ai)') : t(tab)}
               </button>
             ))}
           </div>
 
           <div className="py-6 text-sm leading-relaxed text-cdc-muted">
             {activeTab === 'overview' && <p>{course.description}</p>}
+            {activeTab === 'studio' && <DesignStudio2in1 lang={lang} />}
             {activeTab === 'conspectus' &&
               (conspectusText ? (
                 <>
