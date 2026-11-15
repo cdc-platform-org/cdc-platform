@@ -45,7 +45,7 @@ export async function getStudentDigitalPassport(userId: string) {
       },
       orderBy: { enrolledAt: 'desc' },
     }),
-    prisma.certificate.findMany({
+    prisma.courseCertificate.findMany({
       where: { userId },
       include: { course: { select: { title: true, titleEn: true, skillsTaught: true } } },
       orderBy: { issuedAt: 'desc' },
@@ -105,7 +105,7 @@ export async function getStudentDigitalPassport(userId: string) {
     })),
     certificates: certificates.map((c) => ({
       id: c.id,
-      code: c.certificateNumber,
+      code: c.verificationCode,
       courseTitle: c.course.title,
       issuedAt: c.issuedAt,
     })),

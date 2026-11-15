@@ -15,6 +15,7 @@ import {
   getStudentDigitalPassport,
   getPublicDigitalPassportByCode,
 } from '../services/digitalPassportService';
+import { resolveStudentWorkspaceAccess } from '../services/workspaceAccessService';
 
 const router = Router();
 

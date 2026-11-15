@@ -48,7 +48,7 @@ export async function getOrSyncCourseReadiness(
       where: { id: courseId },
       select: { id: true, title: true, titleEn: true, category: true, skillsTaught: true },
     }),
-    prisma.courseLesson.findMany({
+    prisma.lesson.findMany({
       where: { section: { courseId } },
       select: { id: true, assignmentPrompt: true },
     }),

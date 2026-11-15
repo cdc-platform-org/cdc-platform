@@ -5,8 +5,9 @@
  * to all enrolled students upon session completion.
  */
 
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 import { prisma } from '../lib/prisma';
+import { RESEND_API_KEY, EMAIL_FROM } from '../utils/env';
 
 export interface StudentScreenFrame {
   userId: string;
@@ -86,19 +87,12 @@ export async function finalizeRecordingAndNotifyStudents(params: {
     .filter((email): email is string => Boolean(email));
 
   let emailedToCount = 0;
-  if (recipients.length > 0 && process.env.SMTP_HOST) {
+  if (recipients.length > 0 && RESEND_API_KEY) {
     try {
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT || 587),
-        secure: Number(process.env.SMTP_PORT || 587) === 465,
-        auth: process.env.SMTP_USER
-          ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-          : undefined,
-      });
-
-      await transporter.sendMail({
-        from: process.env.SMTP_FROM || 'noreply@cdc-platform.ge',
+      const resend = new Resend(RESEND_API_KEY);
+      await resend.emails.send({
+        from: EMAIL_FROM || 'CDC Academy <noreply@cdc.org.ge>',
+        to: EMAIL_FROM || 'noreply@cdc.org.ge',
         bcc: recipients,
         subject: `🎥 შეხვედრის ჩანაწერი: ${title}`,
         html: `
