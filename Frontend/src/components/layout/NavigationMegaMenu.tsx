@@ -22,7 +22,7 @@ export default function NavigationMegaMenu({ entry, locale, active, triggerClass
     <button ref={trigger} type="button" aria-expanded={open} aria-controls={id} aria-current={active ? 'true' : undefined} className={`${triggerClass} border-none cursor-pointer`} onClick={() => setOpen(value => !value)} onKeyDown={event => {
       if (event.key === 'ArrowDown') { event.preventDefault(); setOpen(true); requestAnimationFrame(() => root.current?.querySelector<HTMLAnchorElement>('a')?.focus()); }
     }}>{nav.groups[entry.key]}<ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} /></button>
-    {open && <div id={id} className="absolute top-full left-0 pt-4 z-[60] w-[34rem] max-w-[calc(100vw-3rem)]">
+    {open && <div id={id} className={`absolute top-full ${entry.key === 'about' ? 'right-0' : 'left-0'} pt-4 z-[60] w-[34rem] max-w-[calc(100vw-3rem)]`}>
       <div className="overflow-hidden rounded-2xl border border-cdc-border bg-cdc-surface shadow-[0_20px_60px_-15px_rgba(0,0,0,0.22)]">
         <div className="grid grid-cols-2 p-4">{[entry.items.slice(0, Math.ceil(entry.items.length / 2)), entry.items.slice(Math.ceil(entry.items.length / 2))].map((items, index) => <div key={index} className={index ? 'border-l border-cdc-border pl-3' : 'pr-3'}>{items.map(item => {
           const Icon = item.icon;

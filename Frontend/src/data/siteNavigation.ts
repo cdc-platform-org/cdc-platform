@@ -10,11 +10,11 @@ import {
   Users,
   Building2,
   Info,
-  UserSquare2,
-  UsersRound,
   GalleryHorizontal,
-  Mail,
   Wand2,
+  FolderKanban,
+  Award,
+  Handshake,
   type LucideIcon,
 } from 'lucide-react';
 import type { SupportedLocale } from '../utils/locale';
@@ -32,7 +32,8 @@ export type NavItemKey =
   | 'courses' | 'liveTrainings' | 'careerTest' | 'tutorials'
   | 'ebooks' | 'designAssets' | 'allProducts' | 'aiToolsLink'
   | 'jobs' | 'mentors' | 'studio' | 'forum'
-  | 'aboutCenter' | 'trainers' | 'team' | 'gallery' | 'contact' | 'terms' | 'blog';
+  | 'aboutCenter' | 'trainers' | 'team' | 'gallery' | 'contact' | 'terms' | 'blog'
+  | 'projects' | 'successStories' | 'partners';
 
 export type NavGroupKey = 'learn' | 'shop' | 'career' | 'about';
 
@@ -104,11 +105,10 @@ export function getSiteNavigation(locale: SupportedLocale): NavEntry[] {
       href: '/about',
       items: [
         { key: 'aboutCenter', href: '/about', icon: Info },
-        { key: 'trainers', href: '/trainers', icon: UserSquare2 },
-        { key: 'team', href: '/about#team', icon: UsersRound },
-        { key: 'gallery', href: '/gallery', icon: GalleryHorizontal },
-        { key: 'contact', href: '/contact', icon: Mail },
-        { key: 'blog', href: '/blog', icon: BookOpen },
+        { key: 'gallery', href: '/about/gallery', icon: GalleryHorizontal },
+        { key: 'projects', href: '/about/projects', icon: FolderKanban },
+        { key: 'successStories', href: '/about/success-stories', icon: Award },
+        { key: 'partners', href: '/about/partners', icon: Handshake },
         { key: 'terms', href: '/terms', icon: Info },
       ],
     },
@@ -126,6 +126,9 @@ const ka: NavDict = {
   groups: { learn: 'ციფრული კოლეჯი', shop: 'ციფრული მარკეტი', career: 'დასაქმება', about: 'ჩვენ შესახებ' },
   links: { forum: 'ფორუმი', aiTools: 'AI ხელსაწყოები', blog: 'ბლოგი' },
   items: {
+    projects: { title: 'პროექტები', desc: 'საგანმანათლებლო და საგრანტო ინიციატივები' },
+    successStories: { title: 'წარმატებული ქეისები', desc: 'სტუდენტების კარიერული გზა და მიღწევები' },
+    partners: { title: 'პარტნიორები და დონორები', desc: 'ორგანიზაციები, რომლებიც მხარს გვიჭერენ' },
     terms: { title: 'გამოყენების წესები და პირობები', desc: 'პლატფორმის გამოყენებისა და წვდომის პირობები' },
     blog: { title: 'ბლოგი', desc: 'სტატიები და სიახლეები' },
     courses: { title: 'კურსები', desc: 'ონლაინ კურსები სერტიფიკატით' },
@@ -140,7 +143,7 @@ const ka: NavDict = {
     mentors: { title: 'მენტორები', desc: 'ინდივიდუალური კონსულტაცია' },
     studio: { title: 'CDC სტუდიო', desc: 'ციფრული სერვისები ბიზნესისთვის' },
     forum: { title: 'ფორუმი', desc: 'კითხვები და განხილვები' },
-    aboutCenter: { title: 'ცენტრის შესახებ', desc: 'ჩვენი მისია და ისტორია' },
+    aboutCenter: { title: 'ცენტრის შესახებ', desc: 'მისია, ხედვა, გუნდი და ჩვენი ეკოსისტემა' },
     trainers: { title: 'ტრენერები', desc: 'ვინ გასწავლის' },
     team: { title: 'გუნდი', desc: 'ადამიანები CDC-ის უკან' },
     gallery: { title: 'გალერეა', desc: 'ფოტოები ღონისძიებებიდან' },
@@ -152,6 +155,9 @@ const en: NavDict = {
   groups: { learn: 'Digital College', shop: 'Digital Market', career: 'Employment', about: 'About' },
   links: { forum: 'Forum', aiTools: 'AI Tools', blog: 'Blog' },
   items: {
+    projects: { title: 'Projects', desc: 'Educational, regional and grant initiatives' },
+    successStories: { title: 'Success stories', desc: 'Student journeys and career milestones' },
+    partners: { title: 'Partners & donors', desc: 'The organisations supporting our work' },
     terms: { title: 'Terms & Conditions', desc: 'Platform usage and access conditions' },
     blog: { title: 'Blog', desc: 'Articles and news' },
     courses: { title: 'Courses', desc: 'Online courses with certificates' },
@@ -166,7 +172,7 @@ const en: NavDict = {
     mentors: { title: 'Mentors', desc: 'One-on-one guidance' },
     studio: { title: 'CDC Studio', desc: 'Digital services for business' },
     forum: { title: 'Forum', desc: 'Questions and discussions' },
-    aboutCenter: { title: 'About the center', desc: 'Our mission and story' },
+    aboutCenter: { title: 'About the center', desc: 'Mission, vision, team and our ecosystem' },
     trainers: { title: 'Trainers', desc: 'Who teaches you' },
     team: { title: 'Team', desc: 'The people behind CDC' },
     gallery: { title: 'Gallery', desc: 'Photos from our events' },
@@ -178,6 +184,9 @@ const de: NavDict = {
   groups: { learn: 'Digitales College', shop: 'Digitaler Markt', career: 'Beschäftigung', about: 'Über uns' },
   links: { forum: 'Forum', aiTools: 'KI-Tools', blog: 'Blog' },
   items: {
+    projects: { title: 'Projects', desc: 'Educational, regional and grant initiatives' },
+    successStories: { title: 'Success stories', desc: 'Student journeys and career milestones' },
+    partners: { title: 'Partners & donors', desc: 'The organisations supporting our work' },
     terms: { title: 'Nutzungsbedingungen', desc: 'Bedingungen für Nutzung und Zugang' },
     blog: { title: 'Blog', desc: 'Artikel und Neuigkeiten' },
     courses: { title: 'Kurse', desc: 'Online-Kurse mit Zertifikat' },
@@ -204,6 +213,9 @@ const es: NavDict = {
   groups: { learn: 'Colegio Digital', shop: 'Mercado Digital', career: 'Empleo', about: 'Nosotros' },
   links: { forum: 'Foro', aiTools: 'Herramientas IA', blog: 'Blog' },
   items: {
+    projects: { title: 'Projects', desc: 'Educational, regional and grant initiatives' },
+    successStories: { title: 'Success stories', desc: 'Student journeys and career milestones' },
+    partners: { title: 'Partners & donors', desc: 'The organisations supporting our work' },
     terms: { title: 'Términos y condiciones', desc: 'Condiciones de uso y acceso' },
     blog: { title: 'Blog', desc: 'Artículos y noticias' },
     courses: { title: 'Cursos', desc: 'Cursos en línea con certificado' },
@@ -230,6 +242,9 @@ const fr: NavDict = {
   groups: { learn: 'Collège numérique', shop: 'Marché numérique', career: 'Emploi', about: 'À propos' },
   links: { forum: 'Forum', aiTools: 'Outils IA', blog: 'Blog' },
   items: {
+    projects: { title: 'Projects', desc: 'Educational, regional and grant initiatives' },
+    successStories: { title: 'Success stories', desc: 'Student journeys and career milestones' },
+    partners: { title: 'Partners & donors', desc: 'The organisations supporting our work' },
     terms: { title: 'Conditions d’utilisation', desc: 'Conditions d’utilisation et d’accès' },
     blog: { title: 'Blog', desc: 'Articles et actualités' },
     courses: { title: 'Cours', desc: 'Cours en ligne avec certificat' },
@@ -256,6 +271,9 @@ const uk: NavDict = {
   groups: { learn: 'Цифровий коледж', shop: 'Цифровий маркет', career: "Кар'єра", about: 'Про нас' },
   links: { forum: 'Форум', aiTools: 'AI-інструменти', blog: 'Блог' },
   items: {
+    projects: { title: 'Projects', desc: 'Educational, regional and grant initiatives' },
+    successStories: { title: 'Success stories', desc: 'Student journeys and career milestones' },
+    partners: { title: 'Partners & donors', desc: 'The organisations supporting our work' },
     terms: { title: 'Умови використання', desc: 'Умови використання платформи та доступу' },
     blog: { title: 'Блог', desc: 'Статті та новини' },
     courses: { title: 'Курси', desc: 'Онлайн-курси з сертифікатом' },

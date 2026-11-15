@@ -11,6 +11,7 @@ import { authenticate, requireAdminRole } from '../../middleware/auth';
 import { logAdminAction } from '../../services/account/auditLogService';
 import { invalidateToolVisibilityCache } from '../../middleware/toolVisibility';
 import { extractBunnyStorageUrls, deleteBunnyStorageUrlIfManaged } from '../../services/integrations/bunnyStorage';
+import { aboutHubSchema } from '../../services/cms/aboutHubSchema';
 
 const router = Router();
 router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
@@ -29,6 +30,11 @@ router.get('/:page', async (req: Request, res: Response) => {
 router.put('/:page', async (req: Request, res: Response) => {
   const result = updateContentSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
+  if (req.params.page === 'about') {
+    const about = aboutHubSchema.safeParse(result.data.content);
+    if (!about.success) return res.status(400).json({ errors: about.error.errors });
+    result.data.content = about.data;
+  }
 
   // CMS content is unstructured JSON (each page owns its own shape), so
   // there's no page-specific "old imageUrl" field to compare — instead,
