@@ -77,6 +77,7 @@ function isInternalCatalogProduct(product: DigitalProduct): boolean {
 }
 
 function marketplaceProductCategory(product: DigitalProduct, lang: 'ka' | 'en'): string {
+  if (product.category === 'Design & Graphics / Vector Logos') return MARKETPLACE_CATEGORIES[2].value[lang];
   const content = `${product.category} ${productTitle(product, lang)} ${productDescription(product, lang)}`;
   const isAiUtility = AI_SIGNAL_MARKER.test(content) && AI_UTILITY_TYPE_MARKER.test(content);
   if (

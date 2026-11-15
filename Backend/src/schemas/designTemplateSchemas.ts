@@ -170,3 +170,9 @@ export const saveDesignSchema = z.object({
   title: z.string().trim().min(1).max(120).optional(),
   data: designTemplateSchema,
 });
+
+export const exportDesignSvgSchema = z.object({
+  data: designTemplateSchema,
+  pageIndex: z.number().int().min(0).max(MAX_PAGES - 1),
+  transparent: z.boolean().default(false),
+});

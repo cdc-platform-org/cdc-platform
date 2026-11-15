@@ -191,7 +191,10 @@ const TIER_BADGE: Record<string, string> = {
   MODERATOR: 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white',
 };
 
-function AdminLayoutInner({ children }: { children: ReactNode }) {
+interface AdminLayoutProps { children: ReactNode; responsive?: boolean }
+
+function AdminLayoutInner({ children, responsive = false }: AdminLayoutProps) {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const router = useRouter();
   const { user, logout } = useAuth();
   const { lang, toggleLang } = useAdminLang();
@@ -265,12 +268,13 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <div className="min-h-screen flex bg-gray-50 dark:bg-[#0b0f19] transition-colors">
+    <div className={`min-h-screen flex ${responsive ? 'flex-col lg:flex-row' : ''} bg-gray-50 dark:bg-[#0b0f19] transition-colors`}>
       {/* SIDEBAR — sticky + independently scrolling so navigating (or a long
           nav list) never yanks the whole page's scroll position back to top. */}
       <aside
         ref={sidebarRef}
-        className="w-64 shrink-0 h-screen sticky top-0 overflow-y-auto bg-gradient-to-b from-slate-950 to-slate-900 text-slate-200 flex flex-col"
+        id={responsive ? 'admin-navigation' : undefined}
+        className={`${responsive ? `${mobileNavOpen ? 'flex' : 'hidden lg:flex'} w-full lg:w-64 max-h-[60vh] lg:max-h-none lg:h-screen lg:sticky` : 'flex w-64 h-screen sticky'} shrink-0 top-0 overflow-y-auto bg-gradient-to-b from-slate-950 to-slate-900 text-slate-200 flex-col`}
       >
         <div className="px-6 py-6 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
@@ -379,7 +383,8 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
       {/* MAIN CONTENT */}
       <div className="flex-1 min-w-0 flex flex-col">
         {/* TOPBAR */}
-        <header className="h-14 shrink-0 sticky top-0 z-10 border-b border-gray-200 dark:border-slate-800 bg-white/80 dark:bg-[#0e1422]/80 backdrop-blur-md flex items-center justify-end px-6 transition-colors">
+        <header className={`h-14 shrink-0 sticky top-0 z-10 border-b border-gray-200 dark:border-slate-800 bg-white/80 dark:bg-[#0e1422]/80 backdrop-blur-md flex items-center ${responsive ? 'justify-between lg:justify-end' : 'justify-end'} px-6 transition-colors`}>
+          {responsive && <button type="button" className="lg:hidden rounded border border-gray-300 dark:border-slate-700 px-3 py-1.5 text-xs" aria-expanded={mobileNavOpen} aria-controls="admin-navigation" onClick={() => setMobileNavOpen(open => !open)}>{lang === 'ka' ? 'მენიუ' : 'Menu'}</button>}
           <div className="flex items-center rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden text-xs font-bold">
             <button
               type="button"
@@ -402,16 +407,16 @@ function AdminLayoutInner({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 min-w-0 px-8 py-8">{children}</main>
+        <main className={`flex-1 min-w-0 ${responsive ? 'px-3 py-4 sm:px-8 sm:py-8' : 'px-8 py-8'}`}>{children}</main>
       </div>
     </div>
   );
 }
 
-export default function AdminLayout({ children }: { children: ReactNode }) {
+export default function AdminLayout({ children, responsive = false }: AdminLayoutProps) {
   return (
     <AdminLangProvider>
-      <AdminLayoutInner>{children}</AdminLayoutInner>
+      <AdminLayoutInner responsive={responsive}>{children}</AdminLayoutInner>
     </AdminLangProvider>
   );
 }

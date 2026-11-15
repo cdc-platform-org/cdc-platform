@@ -42,6 +42,11 @@ export async function saveDesign(id: string, design: DesignTemplate, title?: str
   return data.data;
 }
 
+export async function exportDesignSvg(id: string, data: DesignTemplate, pageIndex: number, transparent: boolean): Promise<Blob> {
+  const response = await apiClient.post(`/designs/${id}/export-svg`, {data, pageIndex, transparent}, {responseType:'blob'});
+  return response.data;
+}
+
 export async function resetDesign(id: string): Promise<DesignTemplate> {
   const { data } = await apiClient.post(`/designs/${id}/reset`);
   return data.data.data;

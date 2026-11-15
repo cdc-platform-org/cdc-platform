@@ -11,6 +11,7 @@ import { generateCvTemplates } from './cvTemplates';
 import { generateBusinessTemplates } from './businessTemplates';
 import { generateInvitations } from './invitations';
 import { generateExamPrep } from './examPrep';
+import { generateVectorLogos } from './vectorLogos';
 
 export const GENERATORS: Record<AgentCategoryKey, Generator> = {
   PRINTS: generatePrints,
@@ -20,4 +21,5 @@ export const GENERATORS: Record<AgentCategoryKey, Generator> = {
   BUSINESS_TEMPLATES: generateBusinessTemplates,
   INVITATIONS: generateInvitations,
   EXAM_PREP: generateExamPrep,
+  VECTOR_LOGOS: generateVectorLogos,
 };

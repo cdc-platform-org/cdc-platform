@@ -7,6 +7,7 @@
  *   GET    /:id                   load a design
  *   PUT    /:id                   save a design (full document)
  *   POST   /:id/reset             start over from the product's current template
+ *   POST   /:id/export-svg        download current text/vector page as SVG
  *   DELETE /:id                   delete a design
  *   POST   /:id/assets            upload a photo/logo (multipart field "image")
  *   GET    /:id/assets?ref=…      stream an image used by the design
@@ -16,11 +17,12 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { authenticate, requireApproved } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { imageUpload, multerErrorHandler } from '../middleware/productUploads';
-import { createDesignSchema, saveDesignSchema } from '../schemas/designTemplateSchemas';
+import { createDesignSchema, saveDesignSchema, exportDesignSvgSchema } from '../schemas/designTemplateSchemas';
 import {
-  listEditableProducts, createDesignFromTemplate, getOwnedDesign, saveDesign, deleteDesign, resetDesign,
+  listEditableProducts, createDesignFromTemplate, getOwnedDesign, saveDesign, deleteDesign, resetDesign, assertDesignSize,
 } from '../services/designs/designService';
 import { storeDesignUpload, loadDesignAsset } from '../services/designs/designAssets';
+import { isVectorPage, renderVectorSvg } from '../services/designs/vectorSvg';
 
 const router = Router();
 router.use(authenticate, requireApproved);
@@ -64,6 +66,22 @@ router.put('/:id', saveRateLimit, async (req: Request, res: Response) => {
 router.post('/:id/reset', async (req: Request, res: Response) => {
   const design = await resetDesign(req.user!.id, req.params.id);
   res.json({ data: { id: design.id, data: design.data, templateVersion: design.templateVersion } });
+});
+
+// Export the current document, including edits not yet autosaved. Ownership
+// and completed purchase are rechecked; no new design or AI call is created.
+router.post('/:id/export-svg', saveRateLimit, async (req: Request, res: Response) => {
+  await getOwnedDesign(req.user!.id, req.params.id);
+  const parsed = exportDesignSvgSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({message:'Invalid design', details:parsed.error.issues.slice(0,10)});
+  const {data, pageIndex, transparent} = parsed.data;
+  assertDesignSize(data);
+  if (!isVectorPage(data,pageIndex)) return res.status(400).json({message:'SVG export requires a page containing only text and vector shapes.'});
+  res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="design.svg"');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.send(renderVectorSvg(data,pageIndex,transparent));
 });
 
 router.delete('/:id', async (req: Request, res: Response) => {
