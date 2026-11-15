@@ -510,7 +510,8 @@ function LearnContent() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={ounded-full px-3 py-1 text-sm font-black }>
+                  <span className={`rounded-full px-3 py-1 text-sm font-black ${readinessData.record.totalScore >= 90 ? "bg-emerald-500/20 text-emerald-300" : "bg-amber-500/20 text-amber-300"}`}>
+
                     {lang === 'ka' ? 'ჯამი:' : 'Total:'} {readinessData.record.totalScore}%
                   </span>
                   <Link href="/dashboard/passport" className="rounded-lg bg-cyan-600/20 border border-cyan-500/40 px-2.5 py-1 font-bold text-cyan-300 hover:bg-cyan-600/30">

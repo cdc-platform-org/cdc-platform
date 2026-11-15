@@ -248,7 +248,7 @@ function CertificatesContent() {
       <SiteHeader />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 w-full">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><BackButton fallbackHref="/dashboard" className="dark:text-slate-400 dark:hover:text-slate-100" /><Link href="/dashboard/passport" className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-xs font-bold text-white">🪪 ციფრული პასპორტი & QR კოდი</Link>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2"><BackButton fallbackHref="/dashboard" className="dark:text-slate-400 dark:hover:text-slate-100" /><Link href="/dashboard/passport" className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 px-4 py-2 text-xs font-bold text-white">🪪 ციფრული პასპორტი & QR კოდი</Link></div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
