@@ -34,7 +34,7 @@ export default function DesignStudioToolPage() {
           toolIcon={Palette}
           accent="cyan"
         >
-          <ToolShell accent="cyan">
+          <ToolShell>
             <ToolPageHeader
               icon={Palette}
               accent="cyan"
