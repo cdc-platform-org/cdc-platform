@@ -1,10 +1,11 @@
-/** Editorial academy hero with CMS copy and a rail of real courses. */
+/** Editorial academy hero with CMS copy, CDC photo cover and featured courses. */
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import FeaturedCourseRail from '../courses/FeaturedCourseRail';
 import type { Course } from '../../types/lms';
 import { ArrowRight, Play, Sparkles } from 'lucide-react';
+import HeroSlideshow from './HeroSlideshow';
 import { HomepageContent } from '../../types/siteContent';
 import { Tutorial } from '../../types/tutorial';
 import type { TFunction } from 'i18next';
@@ -68,6 +69,13 @@ export default function HeroSection({ courses, coursesLoading, t, cms, translate
         </div>
       </div>
 
+      {/* Cover: auto-advancing photo slideshow of CDC events, framed as a
+          big rounded card (see HeroSlideshow for loading/motion rules). */}
+      <div className="max-w-6xl mx-auto mt-10 sm:mt-16 rounded-[28px] border border-cdc-border bg-cdc-surface p-2 sm:p-3 shadow-card-hover">
+        <div className="relative overflow-hidden rounded-[22px] aspect-[4/3] sm:aspect-video bg-slate-900">
+          <HeroSlideshow alt={locale === 'ka' ? 'CDC — სტუდენტები და ტრენინგები' : 'CDC — students and trainings'} />
+        </div>
+      </div>
       <FeaturedCourseRail courses={courses} loading={coursesLoading} lang={locale === 'ka' ? 'ka' : 'en'} />
     </section>
   );
