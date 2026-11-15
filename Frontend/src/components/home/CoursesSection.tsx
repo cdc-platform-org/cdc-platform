@@ -27,32 +27,32 @@ export default function CoursesSection({ t, coursesLoading, courses, contentLang
             rendered regardless of the catalog's loading/empty state. */}
         <Link
           href="/dashboard/english-tutor"
-          className="relative overflow-hidden rounded-card p-6 sm:p-8 flex flex-col justify-between no-underline text-white bg-gradient-to-br from-violet-700 via-indigo-700 to-cyan-700 shadow-card-hover transition-transform duration-300 hover:-translate-y-0.5"
+          className="relative overflow-hidden rounded-xl border border-cdc-border p-6 sm:p-8 flex flex-col justify-between no-underline text-cdc-ink bg-cdc-surface shadow-sm"
         >
-          <span className="absolute top-4 right-4 text-[11px] font-bold px-2.5 py-1 rounded-lg bg-white/15 backdrop-blur">
+          <span className="absolute top-4 right-4 text-[11px] font-semibold px-2.5 py-1 rounded bg-cdc-primary-soft text-cdc-primary-ink">
             {t('imiakoBadgeFreeTrial')}
           </span>
           <div>
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-white/15">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded bg-cdc-bg text-cdc-muted">
               <Bot className="w-3.5 h-3.5" aria-hidden="true" />
               {t('imiakoBadgeAiCourse')}
             </span>
             <h3 className="text-xl font-extrabold mt-5 mb-4 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-amber-300 shrink-0" aria-hidden="true" />
+              <Sparkles className="w-5 h-5 text-cdc-primary-ink shrink-0" aria-hidden="true" />
               {t('imiakoCardTitle')}
             </h3>
-            <ul className="text-sm leading-relaxed text-white/85 mb-6 space-y-2 list-none pl-0">
+            <ul className="text-sm leading-relaxed text-cdc-muted mb-6 space-y-2 list-none pl-0">
               {(['imiakoFeature1', 'imiakoFeature2', 'imiakoFeature3'] as const).map((key) => (
                 <li key={key} className="flex gap-2">
-                  <Check className="w-4 h-4 mt-0.5 shrink-0 text-cyan-200" aria-hidden="true" />
+                  <Check className="w-4 h-4 mt-0.5 shrink-0 text-cdc-primary-ink" aria-hidden="true" />
                   {t(key)}
                 </li>
               ))}
             </ul>
           </div>
           <div>
-            <p className="text-sm font-bold mb-4 text-white/90">{t('imiakoPricing')}</p>
-            <span className="block text-center py-3 rounded-xl font-bold text-sm bg-white text-violet-800">{t('imiakoCta')}</span>
+            <p className="text-sm font-semibold mb-4 text-cdc-ink">{t('imiakoPricing')}</p>
+            <span className="block text-center py-3 rounded-lg font-semibold text-sm bg-cdc-ink text-cdc-surface">{t('imiakoCta')}</span>
           </div>
         </Link>
 

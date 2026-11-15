@@ -11,30 +11,30 @@
    toggled in SiteHeader) swaps the same tokens for dark mode.
    ============================================================ */
 :root {
-  --cdc-bg: 245 245 249;          /* #F5F5F9 page background */
+  --cdc-bg: 247 246 242;          /* warm neutral canvas */
   --cdc-surface: 255 255 255;     /* cards / header */
-  --cdc-border: 232 232 240;      /* #E8E8F0 hairlines */
-  --cdc-ink: 21 19 43;            /* #15132B text */
-  --cdc-muted: 108 106 130;       /* #6C6A82 secondary text */
-  --cdc-primary: 109 40 217;      /* #6D28D9 violet CTA (white text ≈ 7:1) */
-  --cdc-primary-hover: 91 33 182; /* #5B21B6 */
-  --cdc-primary-soft: 243 238 255;/* #F3EEFF chips, selected rows */
-  --cdc-primary-ink: 109 40 217;  /* violet used as TEXT colour */
-  --cdc-accent: 8 145 178;        /* #0891B2 cyan, readable on white */
-  --cdc-accent-soft: 230 249 252; /* #E6F9FC */
+  --cdc-border: 225 224 219;
+  --cdc-ink: 31 33 36;
+  --cdc-muted: 103 105 107;
+  --cdc-primary: 94 74 127;      /* restrained CDC violet */
+  --cdc-primary-hover: 73 55 102;
+  --cdc-primary-soft: 240 236 245;
+  --cdc-primary-ink: 94 74 127;
+  --cdc-accent: 94 74 127;
+  --cdc-accent-soft: 240 236 245;
 }
 .dark {
-  --cdc-bg: 11 10 28;             /* #0B0A1C violet-navy, like the logo */
-  --cdc-surface: 21 19 43;        /* #15132B */
-  --cdc-border: 45 42 72;         /* #2D2A48 */
-  --cdc-ink: 240 239 248;
-  --cdc-muted: 160 158 184;
-  --cdc-primary: 124 58 237;      /* #7C3AED: white text still ≥ 5:1 */
-  --cdc-primary-hover: 139 92 246;
-  --cdc-primary-soft: 46 30 92;
-  --cdc-primary-ink: 196 181 253; /* #C4B5FD readable on dark surfaces */
-  --cdc-accent: 34 211 238;       /* #22D3EE */
-  --cdc-accent-soft: 14 48 64;
+  --cdc-bg: 19 21 24;
+  --cdc-surface: 27 30 33;
+  --cdc-border: 49 53 57;
+  --cdc-ink: 240 241 238;
+  --cdc-muted: 168 174 178;
+  --cdc-primary: 114 91 150;
+  --cdc-primary-hover: 127 103 165;
+  --cdc-primary-soft: 43 37 53;
+  --cdc-primary-ink: 202 189 222;
+  --cdc-accent: 202 189 222;
+  --cdc-accent-soft: 43 37 53;
 }
 
 body {
@@ -66,6 +66,8 @@ body {
    which sits above that div in the DOM. */
 .app-shell {
   font-family: var(--font-georgian-safe), 'Noto Sans Georgian', var(--font-fallback), 'Inter', sans-serif;
+  line-height: 1.65;
+  letter-spacing: 0;
 }
 
 /* Headings: BPG ExtraSquare Mtavruli (next/font/local, --font-heading)
@@ -149,7 +151,7 @@ html, body {
   .vip-btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl border-none px-5 py-2.5 text-sm font-bold text-white transition-all duration-200;
     @apply bg-cdc-primary hover:bg-cdc-primary-hover;
-    @apply hover:-translate-y-0.5 hover:shadow-lg hover:shadow-cdc-primary/25 active:translate-y-0;
+    @apply hover:shadow-sm;
   }
 
   /* Secondary — white/surface with hairline border. */
@@ -206,7 +208,7 @@ html {
   height: 4px;
   margin-top: 14px;
   border-radius: 9999px;
-  background: linear-gradient(90deg, #06b6d4, #8b5cf6);
+  background: rgb(var(--cdc-primary));
 }
 .section-title.text-center::after {
   margin-left: auto;
@@ -223,8 +225,8 @@ html {
 
 
 /* Editorial learning surfaces. Keep global admin/product themes unchanged. */
-.learning-surface { --cdc-bg: 250 250 250; --cdc-surface: 255 255 255; --cdc-ink: 17 17 17; --cdc-border: 230 230 230; --cdc-muted: 100 100 106; }
-.dark .learning-surface { --cdc-bg: 11 10 28; --cdc-surface: 21 19 43; --cdc-ink: 240 239 248; --cdc-border: 45 42 72; --cdc-muted: 160 158 184; }
+.learning-surface { --cdc-bg: 247 246 242; --cdc-surface: 255 255 255; --cdc-ink: 31 33 36; --cdc-border: 225 224 219; --cdc-muted: 103 105 107; }
+.dark .learning-surface { --cdc-bg: 19 21 24; --cdc-surface: 27 30 33; --cdc-ink: 240 241 238; --cdc-border: 49 53 57; --cdc-muted: 168 174 178; }
 .learning-primary { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 2.75rem; padding: .65rem .85rem; border-radius: .375rem; background: rgb(var(--cdc-primary)); color: white; font-size: .8125rem; font-weight: 700; transition: background-color .18s ease, box-shadow .18s ease; }
 .learning-primary:hover { background: rgb(var(--cdc-primary-hover)); }
 .learning-primary:focus-visible { outline: 2px solid rgb(var(--cdc-primary)); outline-offset: 3px; }

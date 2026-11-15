@@ -13,17 +13,17 @@
 // Shades keep roughly the same lightness as the Tailwind defaults so text
 // contrast stays where it was (500 on white ≈ 5:1).
 const neutral = {
-  50: '#FAFAFC',
-  100: '#F5F5F9',
-  200: '#E8E8F0',
-  300: '#D3D2DF',
-  400: '#9C9AB0',
-  500: '#6C6A82',
-  600: '#514F68',
-  700: '#3A3852',
-  800: '#23213B',
-  900: '#15132B',
-  950: '#0B0A1C',
+  50: '#F9F9F7',
+  100: '#F2F3F0',
+  200: '#E1E3DF',
+  300: '#CED2CF',
+  400: '#9DA5A4',
+  500: '#697174',
+  600: '#4F585B',
+  700: '#3A4246',
+  800: '#282E32',
+  900: '#1B1E21',
+  950: '#131518',
 };
 
 // rgb(var(--x) / <alpha-value>) lets `bg-cdc-primary/10` etc. work.
@@ -84,7 +84,7 @@ module.exports = {
       // matters, so 'Fira GO' is the effective first choice here now.
       fontFamily: {
         heading: ['var(--font-heading)', 'var(--font-fallback)', 'sans-serif'],
-        sans: ['Fira GO', 'sans-serif'],
+        sans: ['var(--font-georgian-safe)', 'var(--font-fallback)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
       },
     },
   },

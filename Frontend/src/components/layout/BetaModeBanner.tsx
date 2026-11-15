@@ -25,11 +25,13 @@ const SUPPORT_EMAIL = 'contact@cdc.org.ge';
 // where an inline dictionary is the correct choice, not a shortcut.
 const COPY = {
   ka: {
-    message: '🚀 CDC პლატფორმა გაშვებულია სატესტო (Beta) რეჟიმში. რაიმე შეფერხების ან ხარვეზის აღმოჩენის შემთხვევაში, გთხოვთ მოგვწეროთ ელ-ფოსტაზე:',
+    message: 'პლატფორმა სატესტო რეჟიმშია. მხარდაჭერა:',
+    mobileMessage: 'სატესტო რეჟიმი ·',
     dismiss: 'დახურვა',
   },
   en: {
-    message: '🚀 CDC Platform is currently in Beta mode. If you encounter any issues or technical hiccups, please contact us at',
+    message: 'The platform is in beta. Support:',
+    mobileMessage: 'Beta ·',
     dismiss: 'Dismiss',
   },
 };
@@ -65,6 +67,7 @@ export default function BetaModeBanner() {
   return (
     <div
       role="status"
+      data-beta-banner
       // -mx-4 sm:-mx-6 cancels _app.tsx's app-shell px-4 sm:px-6 (the same
       // full-bleed technique SiteHeader.tsx's <nav> uses) — without it this
       // banner's background rendered inset from the real viewport edges by
@@ -74,14 +77,14 @@ export default function BetaModeBanner() {
       // shift the box left without actually widening it to reach the real
       // right edge too — confirmed live as a real, screenshot-visible bug on
       // a sibling full-bleed element, not just a theoretical concern.
-      className="relative z-40 -mx-4 sm:-mx-6 bg-cdc-primary"
+      className="relative z-40 -mx-4 sm:-mx-6 border-b border-cdc-border bg-cdc-bg text-cdc-muted"
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 flex items-start sm:items-center justify-center gap-2 sm:gap-4">
-        <p className="flex-1 text-center text-[11px] sm:text-xs font-medium text-white/90 leading-snug">
-          {t.message}{' '}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-1.5 flex items-center justify-center gap-2 sm:gap-4">
+        <p className="flex-1 text-center text-[10px] sm:text-[11px] font-normal leading-snug">
+          <span className="hidden sm:inline">{t.message}</span><span className="sm:hidden">{t.mobileMessage}</span>{' '}
           <a
             href={`mailto:${SUPPORT_EMAIL}`}
-            className="font-bold text-white hover:text-white/80 underline underline-offset-2 whitespace-nowrap"
+            className="font-medium text-cdc-ink hover:underline underline-offset-2 whitespace-nowrap"
           >
             {SUPPORT_EMAIL}
           </a>
@@ -90,7 +93,7 @@ export default function BetaModeBanner() {
           type="button"
           onClick={dismiss}
           aria-label={t.dismiss}
-          className="shrink-0 p-2.5 -m-1.5 sm:p-1 sm:m-0 rounded-lg border-none bg-transparent cursor-pointer text-white/70 hover:text-white transition-colors"
+          className="shrink-0 p-1 rounded border-none bg-transparent cursor-pointer text-cdc-muted hover:text-cdc-ink transition-colors"
         >
           <X className="w-3.5 h-3.5" />
         </button>

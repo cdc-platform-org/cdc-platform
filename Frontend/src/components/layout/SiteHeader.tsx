@@ -128,10 +128,10 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
         scrolled ? 'shadow-[0_8px_30px_-16px_rgba(21,19,43,0.22)]' : ''
       }`}
     >
-      <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-3 px-4 sm:px-6 h-16 sm:h-[72px]">
+      <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-3 px-4 sm:px-6 h-16">
         <div className="flex items-center shrink-0">
           <Link href="/" className="flex items-center gap-2.5 shrink-0 no-underline text-current" aria-label="CDC">
-            <Image src="/images/cdc-logo.png" alt="CDC" width={44} height={44} priority className="h-10 w-auto rounded-xl object-cover shadow-sm ring-1 ring-black/5 dark:ring-white/10" />
+            <Image src="/images/cdc-logo.png" alt="CDC" width={44} height={44} priority className="h-9 w-auto rounded-lg object-cover shadow-sm ring-1 ring-black/5 dark:ring-white/10" />
             <span className="hidden sm:inline font-black text-[15px] tracking-tight text-cdc-ink">CDC</span>
           </Link>
         </div>
@@ -173,7 +173,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
                 <button
                   type="button"
                   onClick={() => openAuthModal()}
-                  className="hidden sm:inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-sm font-bold border-none cursor-pointer text-white bg-cdc-primary hover:bg-cdc-primary-hover transition-colors shadow-sm"
+                  className="hidden sm:inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-semibold border-none cursor-pointer text-cdc-surface bg-cdc-ink hover:opacity-90 transition-opacity"
                 >
                   {t.login}
                   <ArrowRight className="w-4 h-4" />
@@ -184,7 +184,7 @@ export default function SiteHeader({ darkMode: controlledDark, onToggleDarkMode 
               <button
                 type="button"
                 onClick={() => openAuthModal()}
-                className="sm:hidden rounded-lg px-3.5 py-1.5 text-xs font-bold border-none cursor-pointer text-white bg-cdc-primary whitespace-nowrap"
+                className="sm:hidden rounded-lg px-3.5 py-1.5 text-xs font-semibold border-none cursor-pointer text-cdc-surface bg-cdc-ink whitespace-nowrap"
               >
                 {t.login}
               </button>

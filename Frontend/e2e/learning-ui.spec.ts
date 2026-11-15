@@ -100,14 +100,14 @@ test('Georgian mobile detail and dark mode remain readable', async ({ page }) =>
   expect(aside!.y).toBeGreaterThanOrEqual(preview!.y + preview!.height);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const color = await page.locator('.learning-surface').evaluate(element => getComputedStyle(element).backgroundColor);
-  expect(color).toBe('rgb(11, 10, 28)');
+  expect(color).toBe('rgb(19, 21, 24)');
 });
 
 
 test('homepage uses the shared featured rail and course cards', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/en');
-  await expect(page.getByRole('heading', { name: 'Make room for your next big idea.', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Build skills. Shape your career.', exact: true })).toBeVisible();
   await expect(page.locator('[data-course-card]').first()).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

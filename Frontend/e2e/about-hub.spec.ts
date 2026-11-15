@@ -28,7 +28,7 @@ for (const lang of ['ka', 'en'] as const) {
       for (const dark of [false, true]) {
         await page.evaluate(dark => document.documentElement.classList.toggle('dark', dark), dark);
         const surface = page.locator('[data-about-hub]');
-        await expect(surface).toHaveCSS('background-color', dark ? 'rgb(11, 10, 28)' : 'rgb(250, 250, 250)');
+        await expect(surface).toHaveCSS('background-color', dark ? 'rgb(19, 21, 24)' : 'rgb(247, 246, 242)');
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
         const broken = await main.locator('img').evaluateAll(images => images.filter(image => image instanceof HTMLImageElement && image.complete && image.naturalWidth === 0).length);
         expect(broken).toBe(0);
