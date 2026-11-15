@@ -6,6 +6,8 @@
  *   POST /analyze-pronunciation
  *   POST /summarize
  */
+import { authenticate, requireApproved } from '../middleware/auth';
+import { requireDigitalToolAccess } from '../services/marketplace/digitalToolAccessService';
 import { Router, Request, Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { callTextModel, callTextModelPlain, AiAgentError } from '../services/ai/aiAgentService';
@@ -20,6 +22,7 @@ import { callTextModel, callTextModelPlain, AiAgentError } from '../services/ai/
 // ============================================================
 
 const router = Router();
+router.use(authenticate, requireApproved, requireDigitalToolAccess('smart-reader'));
 
 function respondAiError(res: Response, err: unknown) {
   if (err instanceof AiAgentError) return res.status(err.status).json({ message: err.message });

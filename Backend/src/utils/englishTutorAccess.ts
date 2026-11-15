@@ -9,6 +9,7 @@ export interface EnglishTutorAccessUser {
   // The cardless 5-day trial window (User.tutorTrialStartDate/
   // tutorTrialEndDate) — null when the student has never started it.
   tutorTrialEndDate: Date | null;
+  tutorSubscriptionPeriodEnd?: Date | null;
 }
 
 // SuperAdmin always has PRO-equivalent access, same posture as
@@ -19,6 +20,6 @@ export interface EnglishTutorAccessUser {
 export function hasEnglishTutorProAccess(user: EnglishTutorAccessUser | null | undefined): boolean {
   if (!user) return false;
   if (user.role === 'SuperAdmin') return true;
-  if (user.tutorSubscriptionTier === 'PRO') return true;
+  if (user.tutorSubscriptionTier === 'PRO' && (!user.tutorSubscriptionPeriodEnd || user.tutorSubscriptionPeriodEnd.getTime() > Date.now())) return true;
   return !!user.tutorTrialEndDate && user.tutorTrialEndDate.getTime() > Date.now();
 }

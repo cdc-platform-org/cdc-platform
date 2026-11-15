@@ -143,7 +143,7 @@ function AiToolsContent() {
         </div>
 
         <RoleGate
-          allowedRoles={['Client', 'SuperAdmin']}
+          allowedRoles={['Student', 'Mentor', 'Client', 'SuperAdmin']}
           fallback={<p className="text-sm text-slate-500 dark:text-slate-400">{t.fallback}</p>}
         >
           <div className="grid sm:grid-cols-2 gap-4 mb-10">

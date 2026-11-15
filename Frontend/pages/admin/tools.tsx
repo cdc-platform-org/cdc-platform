@@ -223,7 +223,7 @@ function ToolEntryEditor({
       </div>
       <div className="grid md:grid-cols-2 gap-2">
         <div>
-          <label className={labelClass}>Badge (KA) — e.g. &quot;🎁 5-დღიანი უფასო პერიოდი&quot;, &quot;👑 VIP 50 ₾/თვე&quot;</label>
+          <label className={labelClass}>Badge (KA) — e.g. &quot;🎁 5-დღიანი უფასო პერიოდი&quot;, &quot;👑 VIP 29 ₾/თვე&quot;</label>
           <input value={entry.badgeKa ?? ''} onChange={(e) => onChange({ badgeKa: e.target.value })} className={inputClass} />
         </div>
         <div>
@@ -233,7 +233,7 @@ function ToolEntryEditor({
       </div>
       <div className="grid md:grid-cols-2 gap-2">
         <div>
-          <label className={labelClass}>Pricing label (KA) — e.g. &quot;50 ₾ / თვეში (5 დღე უფასოდ)&quot;</label>
+          <label className={labelClass}>Pricing label (KA) — e.g. &quot;29 ₾ / თვეში (5 დღე უფასოდ)&quot;</label>
           <input value={entry.pricingLabelKa ?? ''} onChange={(e) => onChange({ pricingLabelKa: e.target.value })} className={inputClass} />
         </div>
         <div>

@@ -9,7 +9,6 @@ import {
   Briefcase,
   Users,
   Building2,
-  MessagesSquare,
   Info,
   UserSquare2,
   UsersRound,
@@ -26,19 +25,14 @@ import { MARKETPLACE_CATEGORIES } from './marketplaceCategories';
 // identical everywhere instead of two hand-maintained link lists drifting
 // apart.
 //
-// Information architecture:
-//  - "AI tools" (/tools) = things you USE online on the platform.
-//  - "Shop" (/marketplace) = things you BUY and download (e-books, design
-//    assets...). The marketplace's own "Digital AI Tools" filter chip still
-//    exists on the listing page, but it is deliberately NOT repeated in the
-//    Shop dropdown: that duplicate is what made "Digital store" and "Digital
-//    tools" look like the same thing.
+// One platform: Digital College, Digital Market (including AI tools), Employment, Forum and About.
+// Existing routes stay on the same domain; terms are discoverable from About and the footer.
 
 export type NavItemKey =
   | 'courses' | 'liveTrainings' | 'careerTest' | 'tutorials'
   | 'ebooks' | 'designAssets' | 'allProducts' | 'aiToolsLink'
   | 'jobs' | 'mentors' | 'studio' | 'forum'
-  | 'aboutCenter' | 'trainers' | 'team' | 'gallery' | 'contact';
+  | 'aboutCenter' | 'trainers' | 'team' | 'gallery' | 'contact' | 'terms' | 'blog';
 
 export type NavGroupKey = 'learn' | 'shop' | 'career' | 'about';
 
@@ -57,7 +51,7 @@ export interface NavGroup {
 
 export interface NavLink {
   kind: 'link';
-  key: 'aiTools' | 'blog';
+  key: 'aiTools' | 'blog' | 'forum';
   href: string;
   highlight?: boolean;
 }
@@ -82,7 +76,6 @@ export function getSiteNavigation(locale: SupportedLocale): NavEntry[] {
         { key: 'tutorials', href: '/tutorials', icon: PlayCircle },
       ],
     },
-    { kind: 'link', key: 'aiTools', href: '/tools', highlight: true },
     {
       kind: 'group',
       key: 'shop',
@@ -91,7 +84,7 @@ export function getSiteNavigation(locale: SupportedLocale): NavEntry[] {
         { key: 'ebooks', href: cat(1, locale), icon: BookOpen },
         { key: 'designAssets', href: cat(2, locale), icon: Palette },
         { key: 'allProducts', href: '/marketplace', icon: ShoppingBag },
-        { key: 'aiToolsLink', href: '/tools', icon: Wand2 },
+        { key: 'aiToolsLink', href: cat(0, locale), icon: Wand2 },
       ],
     },
     {
@@ -102,10 +95,9 @@ export function getSiteNavigation(locale: SupportedLocale): NavEntry[] {
         { key: 'jobs', href: '/community', icon: Briefcase },
         { key: 'mentors', href: '/mentors', icon: Users },
         { key: 'studio', href: '/agency', icon: Building2 },
-        { key: 'forum', href: '/forum', icon: MessagesSquare },
       ],
     },
-    { kind: 'link', key: 'blog', href: '/blog' },
+    { kind: 'link', key: 'forum', href: '/forum' },
     {
       kind: 'group',
       key: 'about',
@@ -116,6 +108,8 @@ export function getSiteNavigation(locale: SupportedLocale): NavEntry[] {
         { key: 'team', href: '/about#team', icon: UsersRound },
         { key: 'gallery', href: '/gallery', icon: GalleryHorizontal },
         { key: 'contact', href: '/contact', icon: Mail },
+        { key: 'blog', href: '/blog', icon: BookOpen },
+        { key: 'terms', href: '/terms', icon: Info },
       ],
     },
   ];
@@ -129,9 +123,11 @@ export interface NavDict {
 }
 
 const ka: NavDict = {
-  groups: { learn: 'სწავლა', shop: 'მაღაზია', career: 'კარიერა', about: 'ჩვენ შესახებ' },
-  links: { aiTools: 'AI ხელსაწყოები', blog: 'ბლოგი' },
+  groups: { learn: 'ციფრული კოლეჯი', shop: 'ციფრული მარკეტი', career: 'დასაქმება', about: 'ჩვენ შესახებ' },
+  links: { forum: 'ფორუმი', aiTools: 'AI ხელსაწყოები', blog: 'ბლოგი' },
   items: {
+    terms: { title: 'გამოყენების წესები და პირობები', desc: 'პლატფორმის გამოყენებისა და წვდომის პირობები' },
+    blog: { title: 'ბლოგი', desc: 'სტატიები და სიახლეები' },
     courses: { title: 'კურსები', desc: 'ონლაინ კურსები სერტიფიკატით' },
     liveTrainings: { title: 'ლაივ ტრენინგები', desc: 'პირდაპირი სესიები ტრენერთან' },
     careerTest: { title: 'AI კარიერული ტესტი', desc: 'გაიგე, რომელი პროფესია გიხდება' },
@@ -153,9 +149,11 @@ const ka: NavDict = {
 };
 
 const en: NavDict = {
-  groups: { learn: 'Learn', shop: 'Shop', career: 'Career', about: 'About' },
-  links: { aiTools: 'AI Tools', blog: 'Blog' },
+  groups: { learn: 'Digital College', shop: 'Digital Market', career: 'Employment', about: 'About' },
+  links: { forum: 'Forum', aiTools: 'AI Tools', blog: 'Blog' },
   items: {
+    terms: { title: 'Terms & Conditions', desc: 'Platform usage and access conditions' },
+    blog: { title: 'Blog', desc: 'Articles and news' },
     courses: { title: 'Courses', desc: 'Online courses with certificates' },
     liveTrainings: { title: 'Live trainings', desc: 'Live sessions with a trainer' },
     careerTest: { title: 'AI Career Test', desc: 'Find the profession that fits you' },
@@ -177,9 +175,11 @@ const en: NavDict = {
 };
 
 const de: NavDict = {
-  groups: { learn: 'Lernen', shop: 'Shop', career: 'Karriere', about: 'Über uns' },
-  links: { aiTools: 'KI-Tools', blog: 'Blog' },
+  groups: { learn: 'Digitales College', shop: 'Digitaler Markt', career: 'Beschäftigung', about: 'Über uns' },
+  links: { forum: 'Forum', aiTools: 'KI-Tools', blog: 'Blog' },
   items: {
+    terms: { title: 'Nutzungsbedingungen', desc: 'Bedingungen für Nutzung und Zugang' },
+    blog: { title: 'Blog', desc: 'Artikel und Neuigkeiten' },
     courses: { title: 'Kurse', desc: 'Online-Kurse mit Zertifikat' },
     liveTrainings: { title: 'Live-Trainings', desc: 'Live-Sitzungen mit Trainer' },
     careerTest: { title: 'KI-Karrieretest', desc: 'Finde den Beruf, der zu dir passt' },
@@ -201,9 +201,11 @@ const de: NavDict = {
 };
 
 const es: NavDict = {
-  groups: { learn: 'Aprender', shop: 'Tienda', career: 'Carrera', about: 'Nosotros' },
-  links: { aiTools: 'Herramientas IA', blog: 'Blog' },
+  groups: { learn: 'Colegio Digital', shop: 'Mercado Digital', career: 'Empleo', about: 'Nosotros' },
+  links: { forum: 'Foro', aiTools: 'Herramientas IA', blog: 'Blog' },
   items: {
+    terms: { title: 'Términos y condiciones', desc: 'Condiciones de uso y acceso' },
+    blog: { title: 'Blog', desc: 'Artículos y noticias' },
     courses: { title: 'Cursos', desc: 'Cursos en línea con certificado' },
     liveTrainings: { title: 'Formaciones en vivo', desc: 'Sesiones en directo con un formador' },
     careerTest: { title: 'Test de carrera IA', desc: 'Descubre la profesión ideal para ti' },
@@ -225,9 +227,11 @@ const es: NavDict = {
 };
 
 const fr: NavDict = {
-  groups: { learn: 'Apprendre', shop: 'Boutique', career: 'Carrière', about: 'À propos' },
-  links: { aiTools: 'Outils IA', blog: 'Blog' },
+  groups: { learn: 'Collège numérique', shop: 'Marché numérique', career: 'Emploi', about: 'À propos' },
+  links: { forum: 'Forum', aiTools: 'Outils IA', blog: 'Blog' },
   items: {
+    terms: { title: 'Conditions d’utilisation', desc: 'Conditions d’utilisation et d’accès' },
+    blog: { title: 'Blog', desc: 'Articles et actualités' },
     courses: { title: 'Cours', desc: 'Cours en ligne avec certificat' },
     liveTrainings: { title: 'Formations en direct', desc: 'Sessions en direct avec un formateur' },
     careerTest: { title: 'Test de carrière IA', desc: 'Trouvez le métier qui vous correspond' },
@@ -249,9 +253,11 @@ const fr: NavDict = {
 };
 
 const uk: NavDict = {
-  groups: { learn: 'Навчання', shop: 'Магазин', career: "Кар'єра", about: 'Про нас' },
-  links: { aiTools: 'AI-інструменти', blog: 'Блог' },
+  groups: { learn: 'Цифровий коледж', shop: 'Цифровий маркет', career: "Кар'єра", about: 'Про нас' },
+  links: { forum: 'Форум', aiTools: 'AI-інструменти', blog: 'Блог' },
   items: {
+    terms: { title: 'Умови використання', desc: 'Умови використання платформи та доступу' },
+    blog: { title: 'Блог', desc: 'Статті та новини' },
     courses: { title: 'Курси', desc: 'Онлайн-курси з сертифікатом' },
     liveTrainings: { title: 'Живі тренінги', desc: 'Сесії наживо з тренером' },
     careerTest: { title: "AI тест кар'єри", desc: 'Дізнайся, яка професія тобі пасує' },

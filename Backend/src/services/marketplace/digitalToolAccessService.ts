@@ -1,3 +1,4 @@
+import { getSubscriptionState } from '../payments/subscriptionStateService';
 /**
  * Service (digital store & marketplace).
  * Exports: hasDigitalToolAccess, requireDigitalToolAccess.
@@ -5,18 +6,25 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../lib/prisma';
 import { digitalToolLinkedProductId, isDigitalToolKey } from '../../config/digitalTools';
+import { hasEducatorVipAccess } from '../../utils/educatorVipAccess';
+import { hasEnglishTutorProAccess } from '../../utils/englishTutorAccess';
+import { hasActiveCollegeAiAccess } from '../learning/collegeAiAccessService';
 import { hasAccessGrant } from '../account/accessGrantService';
 
-// Entitlement to a Digital Tool comes from either of two independent
-// sources — a completed purchase of the tool's linked DigitalProduct (the
-// same ProductPurchase.paymentStatus === 'COMPLETED' check routes/products.ts
-// uses to compute `purchased`), or an admin-issued AccessGrant (checked by
-// both userId and email, since a grant can be issued before the person
-// even registers — see AccessGrant.email's schema comment). Neither
-// existed before this feature: every /dashboard/tools/* page and its
-// backing route were reachable by any authenticated user regardless of
-// purchase — this is the first real entitlement gate for them.
+// An unfinished enrolled college course grants temporary access. Existing completed
+// purchases and explicit admin grants remain independent access sources.
+// The college check is live, so finishing the final exam removes only that benefit.
 export async function hasDigitalToolAccess(userId: string, email: string, toolKey: string): Promise<boolean> {
+  if (!isDigitalToolKey(toolKey)) return false;
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, adminRole: true, educatorVipActive: true, educatorVipTrialEndDate: true, educatorVipPaidUntil: true, tutorSubscriptionTier: true, tutorTrialEndDate: true, tutorSubscriptionPeriodEnd: true } });
+  if (!user) return false;
+  if (user.adminRole || user.role === 'SuperAdmin') return true;
+  if (await hasActiveCollegeAiAccess(userId)) return true;
+  if (toolKey === 'educator-hub' && hasEducatorVipAccess(user)) return true;
+  if (toolKey === 'english-tutor' && hasEnglishTutorProAccess(user)) return true;
+  if (toolKey === 'ai-agents' && (await getSubscriptionState(userId)).hasAccess) return true;
+  if (toolKey === 'chatbot-builder' && await prisma.agent.findFirst({ where: { businessId: userId, status: { in: ['ACTIVE', 'PAUSED'] }, paidUntil: { gt: new Date() } }, select: { id: true } })) return true;
+  if (toolKey === 'coloring-pages' && (await prisma.coloringAccount.findUnique({ where: { userId }, select: { balance: true } }))?.balance) return true;
   const linkedProductId = digitalToolLinkedProductId(toolKey);
   if (linkedProductId) {
     const purchase = await prisma.productPurchase.findUnique({

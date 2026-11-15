@@ -7,6 +7,7 @@
  * single-file router.
  */
 import { Router } from 'express';
+import aiToolCheckoutRoutes from './aiToolCheckout';
 import learningCheckoutRoutes from './learningCheckout';
 import subscriptionCheckoutRoutes from './subscriptionCheckout';
 import mentorshipCheckoutRoutes from './mentorshipCheckout';
@@ -19,6 +20,7 @@ import paymentHistoryRoutes from './paymentHistory';
 
 const router = Router();
 
+router.use(aiToolCheckoutRoutes);
 router.use(learningCheckoutRoutes);
 router.use(subscriptionCheckoutRoutes);
 router.use(mentorshipCheckoutRoutes);

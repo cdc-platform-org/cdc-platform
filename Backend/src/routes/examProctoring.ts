@@ -23,6 +23,7 @@ import multer from 'multer';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
+import { requireDigitalToolAccess } from '../services/marketplace/digitalToolAccessService';
 import { authenticate, requireApproved } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { multerErrorHandler } from '../middleware/productUploads';
@@ -537,7 +538,7 @@ router.get('/submissions/:submissionToken/results', candidateRateLimit, async (r
 // only platform feature gated by tier. Every session below is still scoped
 // to its own creator via loadOwnedSession's businessId check, not a role
 // gate.
-router.use(authenticate, requireApproved);
+router.use(authenticate, requireApproved, requireDigitalToolAccess('proctoring'));
 
 // Parses an optional PDF/DOCX exam-source upload (job description, existing
 // test bank, etc.) into plain text — returned to the client, then passed

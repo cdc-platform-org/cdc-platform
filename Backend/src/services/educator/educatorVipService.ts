@@ -1,3 +1,4 @@
+import { AI_TOOL_MONTHLY_PRICE_MINOR } from '../../config/aiToolSubscriptions';
 /**
  * Service (Educator Hub & English tutor).
  * Exports: EDUCATOR_TRIAL_DAYS, EDUCATOR_VIP_PRICE_GEL, EDUCATOR_VIP_PERIOD_DAYS,
@@ -16,7 +17,7 @@ import crypto from 'crypto';
 // ============================================================
 
 export const EDUCATOR_TRIAL_DAYS = 5;
-export const EDUCATOR_VIP_PRICE_GEL = 5000; // 50.00 GEL, minor units (tetri)
+export const EDUCATOR_VIP_PRICE_GEL = AI_TOOL_MONTHLY_PRICE_MINOR;
 export const EDUCATOR_VIP_PERIOD_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 

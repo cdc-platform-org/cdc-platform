@@ -18,6 +18,7 @@ export interface ColoringPageItem {
 }
 
 export interface ColoringState {
+  includedAccess?: boolean;
   balance: number;
   freeAvailable: boolean;
   packs: ColoringPack[];

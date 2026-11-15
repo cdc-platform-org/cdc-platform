@@ -7,6 +7,7 @@ import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { ShoppingBag, CheckCircle2, Tag, Star, Plus, Crown, Mic, ShieldCheck, Search, SlidersHorizontal, X, ChevronDown, BookOpen, Sparkles } from 'lucide-react';
+import AiToolSubscriptionActions from '../../src/components/tools/AiToolSubscriptionActions';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
@@ -33,9 +34,13 @@ import { resolveBlogImageUrl } from '../../src/services/blogService';
 // (its only existing text lives in tools.tsx's own 6-locale inline dict),
 // so that one gets new keys directly in marketplace.json instead.
 const SAAS_TOOLS = [
+  { id: 'ai-agents', href: '/dashboard/ai-tools', icon: Sparkles, accent: 'from-violet-500 to-cyan-600' },
+  { id: 'chatbot-builder', href: '/dashboard/tools/chatbot-builder', icon: Sparkles, accent: 'from-indigo-500 to-purple-600' },
+  { id: 'coloring-pages', href: '/dashboard/tools/coloring-pages', icon: Sparkles, accent: 'from-emerald-500 to-cyan-600' },
+  { id: 'english-tutor', href: '/dashboard/english-tutor', icon: BookOpen, accent: 'from-purple-500 to-cyan-600' },
   { id: 'educator-hub', href: '/dashboard/tools/educator-hub', icon: Crown, accent: 'from-amber-500 to-purple-600' },
   { id: 'media-studio', href: '/dashboard/tools/media-studio', icon: Mic, accent: 'from-cyan-500 to-purple-600' },
-  { id: 'smart-reader', href: '/#ai-tools', icon: BookOpen, accent: 'from-cyan-500 to-emerald-600' },
+  { id: 'smart-reader', href: '/dashboard/tools/smart-reader', icon: BookOpen, accent: 'from-cyan-500 to-emerald-600' },
   // Self-service practice version — distinct from the Business-gated
   // candidate-screening system at /dashboard/ai-tools (tools.tsx's Card 2).
   { id: 'proctoring', href: '/dashboard/tools/proctored-exam', icon: ShieldCheck, accent: 'from-cyan-500 to-purple-600' },
@@ -266,12 +271,14 @@ function MarketplaceContent() {
     });
   }, [products, debouncedSearch, priceFilter, minPriceInput, maxPriceInput, sortBy, lang, collatorLocale]);
 
-  // Shown only under the dedicated Digital AI Tools filter, not under
-  // "All" — utilities stay grouped with AI products without duplicating
-  // them into the downloadable-product results.
-  const showSaasTools = categoryParam === AI_TOOLS_CATEGORY.ka || categoryParam === AI_TOOLS_CATEGORY.en;
+  // AI services belong to the unified Digital Market and its AI category.
+  const showSaasTools = !categoryParam || categoryParam === AI_TOOLS_CATEGORY.ka || categoryParam === AI_TOOLS_CATEGORY.en;
 
   const saasToolDefaults: Record<(typeof SAAS_TOOLS)[number]['id'], { title: string; desc: string; badge: string; cta: string; features?: string[] }> = {
+    'ai-agents': { title: lang === 'ka' ? 'AI აგენტები' : 'AI Agents', desc: lang === 'ka' ? 'კონტენტი, ანალიზი და AI ასისტენტი' : 'Content, analysis and AI assistance', badge: 'AI', cta: t('saasLaunchCta') },
+    'chatbot-builder': { title: lang === 'ka' ? 'AI ჩატბოტის კონსტრუქტორი' : 'AI Chatbot Builder', desc: lang === 'ka' ? 'შექმენი და მართე საკუთარი ჩატბოტი' : 'Build and manage your own chatbot', badge: 'AI', cta: t('saasLaunchCta') },
+    'coloring-pages': { title: lang === 'ka' ? 'AI გასაფერადებელი გვერდები' : 'AI Coloring Pages', desc: lang === 'ka' ? 'შექმენი დასაბეჭდი გასაფერადებელი გვერდები' : 'Create printable coloring pages', badge: 'AI', cta: t('saasLaunchCta') },
+    'english-tutor': { title: th('imiakoCardTitle'), desc: th('imiakoFeature1'), badge: th('imiakoBadgeFreeTrial'), cta: t('saasLaunchCta') },
     'educator-hub': { title: tEdu('pageTitle'), desc: tEdu('pageSubtitle'), badge: tEdu('vipBadge'), cta: tEdu('trialCta') },
     'media-studio': { title: tm('catalogTitle'), desc: tm('catalogDesc'), badge: tm('catalogTag'), cta: t('saasLaunchCta') },
     'smart-reader': {
@@ -289,8 +296,8 @@ function MarketplaceContent() {
       badge: tCB('cardBadge'),
       cta: lang === 'ka' ? 'შექმენი წიგნი' : 'Create your book',
       features: lang === 'ka'
-        ? ['5–20 გვერდი', '1 გვერდი = 1 ₾', 'პერსონალური გმირი', 'ილუსტრირებული ისტორია', 'PDF ვერსია', 'მოსასმენი ვერსია სურვილისამებრ +5 ₾']
-        : ['5–20 pages', '1 page = 1 GEL', 'Personalized main character', 'Illustrated story', 'PDF version', 'Optional audio story +5 GEL'],
+        ? ['5–20 გვერდი', 'პერსონალური გმირი', 'ილუსტრირებული ისტორია', 'PDF ვერსია', 'აქტიური წვდომით წიგნის გენერირება შედის']
+        : ['5–20 pages', 'Personalized main character', 'Illustrated story', 'PDF version', 'Book generation included with active access'],
     },
   };
 
@@ -302,7 +309,7 @@ function MarketplaceContent() {
   // tool.
   const saasToolCopy = SAAS_TOOLS.reduce((acc, { id }) => {
     const fallback = saasToolDefaults[id];
-    const cms = findToolEntry(toolCatalog?.tools, id);
+    const cms = findToolEntry(toolCatalog?.tools, id === 'chatbot-builder' || id === 'ai-agents' ? 'enterprise-ai' : id);
     acc[id] = {
       title: overrideText(fallback.title, lang === 'ka' ? cms?.titleKa : cms?.titleEn),
       desc: overrideText(fallback.desc, lang === 'ka' ? cms?.descriptionKa : cms?.descriptionEn),
@@ -333,13 +340,7 @@ function MarketplaceContent() {
   // ProtectedRoute's own redirect-to-/auth/login dance on the destination
   // page. Kept as its own handler (not goToUpload) since the destination
   // varies per card.
-  const goToSaasTool = (href: string) => {
-    if (!isAuthenticated) {
-      openAuthModal({ onSuccess: () => router.push(href) });
-      return;
-    }
-    router.push(href);
-  };
+
 
   return (
     <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
@@ -413,15 +414,7 @@ function MarketplaceContent() {
                 return (
                   <div
                     key={id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => !comingSoon && goToSaasTool(href)}
-                    onKeyDown={(e) => {
-                      if (!comingSoon && (e.key === 'Enter' || e.key === ' ')) {
-                        e.preventDefault();
-                        goToSaasTool(href);
-                      }
-                    }}
+                    data-ai-tool={id}
                     className={`group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 overflow-hidden p-5 flex flex-wrap gap-4 items-start ${
                       comingSoon ? 'opacity-80' : 'cursor-pointer hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10'
                     }`}
@@ -446,7 +439,7 @@ function MarketplaceContent() {
                       </span>
                       <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-2">{copy.desc}</p>
                       {copy.features && copy.features.length > 0 && <ul className="mb-3 grid gap-1 text-xs text-slate-600 dark:text-slate-300">{copy.features.map((feature) => <li key={feature}>• {feature}</li>)}</ul>}
-                      {!comingSoon && <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{copy.cta} →</span>}
+                      {!comingSoon && <AiToolSubscriptionActions toolKey={id} href={href} lang={lang} />}
                     </div>
                   </div>
                 );

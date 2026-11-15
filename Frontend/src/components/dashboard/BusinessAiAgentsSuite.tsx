@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Lock, Clock, FileText, TrendingUp, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { hasAiAgentsSuiteAccess, aiTrialDaysRemaining, generateWithAiAgent, AiAgentSuiteTool } from '../../services/aiAgentsSuiteService';
+import { getAiAgentsSuiteState, aiTrialDaysRemaining, generateWithAiAgent, AiAgentSuiteTool } from '../../services/aiAgentsSuiteService';
 import { SupportedLocale } from '../../utils/locale';
 
 const dictBase = {
@@ -14,7 +14,7 @@ const dictBase = {
     verificationPending:
       'საჯარო რეესტრის ამონაწერი განხილვის პროცესშია. AI ინსტრუმენტები და 7-დღიანი საცდელი ვადა გააქტიურდება ადმინისტრაციის დადასტურებისთანავე.',
     unlimited: 'შეუზღუდავი წვდომა აქტიურია',
-    contactUs: 'დაგვიკავშირდით',
+    contactUs: 'AI ინსტრუმენტების მარკეტი',
     contentTitle: 'B2B კონტენტ გენერატორი',
     contentDesc: 'მარკეტინგული ტექსტები, სოციალური ქსელის პოსტები, პროდუქტის აღწერები.',
     contentPlaceholder: 'მაგ: დაწერე პოსტი Facebook-სთვის ჩვენი ახალი პროდუქტის შესახებ...',
@@ -159,7 +159,15 @@ function AiToolCard({
 export default function BusinessAiAgentsSuite({ lang }: { lang: SupportedLocale }) {
   const t = dict[lang];
   const { user } = useAuth();
-  const hasAccess = hasAiAgentsSuiteAccess(user);
+  const [accessState, setAccessState] = useState<{ hasAccess: boolean; source: string } | null>(null);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => { if (user) void getAiAgentsSuiteState().then(state => { if (active) setAccessState(state); }).catch(() => { if (active) setAccessState({ hasAccess: false, source: 'NONE' }); }); };
+    setAccessState(null); refresh(); window.addEventListener('focus', refresh);
+    return () => { active = false; window.removeEventListener('focus', refresh); };
+  }, [user?.id]);
+  const hasAccess = accessState?.hasAccess ?? false;
+  const collegeAccess = accessState?.source === 'COLLEGE_ENROLLMENT';
   const daysRemaining = user ? aiTrialDaysRemaining(user.aiTrialEndsAt) : 0;
   const unlimited = !!user?.aiSubscriptionActive || user?.role === 'SuperAdmin';
   // A Client who's never been verified (or is under review) hasn't "expired"
@@ -184,11 +192,11 @@ export default function BusinessAiAgentsSuite({ lang }: { lang: SupportedLocale 
       >
         <p className={`flex items-center gap-2 text-sm font-bold ${hasAccess ? 'text-cyan-700 dark:text-cyan-400' : 'text-amber-700 dark:text-amber-400'}`}>
           <Clock className="w-4 h-4 shrink-0" />
-          {unlimited ? t.unlimited : hasAccess ? t.trialActive(daysRemaining) : verificationPending ? t.verificationPending : t.trialExpired}
+          {collegeAccess ? (lang === 'ka' ? 'AI წვდომა ჩართულია სწავლის დასრულებამდე' : 'AI access is included until your studies are complete') : accessState?.source === 'TOOL_SUBSCRIPTION' ? (lang === 'ka' ? 'თვიური გამოწერა აქტიურია' : 'Monthly subscription active') : unlimited ? t.unlimited : hasAccess ? t.trialActive(daysRemaining) : verificationPending ? t.verificationPending : t.trialExpired}
         </p>
         {!hasAccess && !verificationPending && (
           <a
-            href="mailto:contact@cdc.org.ge"
+            href={`/marketplace?category=${encodeURIComponent(lang === 'ka' ? 'ციფრული AI ხელსაწყოები' : 'Digital AI Tools')}`}
             className="text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg no-underline"
           >
             {t.contactUs}

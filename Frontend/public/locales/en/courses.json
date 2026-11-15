@@ -154,8 +154,8 @@
     "trailerUnavailable": "Trailer coming soon",
     "students": "{{count}} students",
     "courseAccess": "Learn at your own pace",
-    "subscription": "All courses for 50 ₾ / month",
-    "subscribe": "Subscribe",
+    "subscription": "AI tools in the Digital Market",
+    "subscribe": "Explore AI tools",
     "learn": "What you’ll learn",
     "instructorSoon": "Instructor details coming soon",
     "reviews": "Student reviews",
@@ -219,7 +219,7 @@
     "seek": "Video position",
     "volume": "Volume",
     "trailer": "Course trailer",
-    "subscriptionNote": "Contact us to ask about subscription availability.",
+    "subscriptionNote": "Find available tools and their access options in one place.",
     "saleEndsIn": "Sale ends in",
     "daysShort": "d"
   }

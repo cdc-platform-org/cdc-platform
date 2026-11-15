@@ -11,6 +11,7 @@ import {
 const ESCROW_PURPOSES: CoursePaymentRow['purpose'][] = ['MENTORSHIP', 'HR_SUPPORT', 'GIG_ESCROW_FUNDING'];
 
 const ACCESS_LABEL: Record<CoursePaymentRow['purpose'], string> = {
+  AI_TOOL_SUBSCRIPTION: 'Revoke this paid AI tool subscription period',
   COURSE: 'Remove the student from the course',
   LIVE_TRAINING: 'Cancel the live training seat',
   PRODUCT: 'Remove download access to the product',

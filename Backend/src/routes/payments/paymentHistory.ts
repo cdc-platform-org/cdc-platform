@@ -1,3 +1,4 @@
+import { DIGITAL_TOOLS } from '../../config/digitalTools';
 /**
  * GET /my — the signed-in user's own payment history (dashboard wallet tab).
  */
@@ -72,6 +73,8 @@ router.get('/my', authenticate, async (req: Request, res: Response) => {
           ? courseTitleById.get(p.referenceId) ?? null
           : p.purpose === 'PRODUCT'
           ? productTitleById.get(p.referenceId) ?? null
+          : p.purpose === 'AI_TOOL_SUBSCRIPTION'
+          ? DIGITAL_TOOLS.find(tool => tool.key === p.referenceId)?.label ?? p.referenceId
           : p.purpose === 'HR_SUPPORT'
           ? hrRequestTitleById.get(p.referenceId) ?? null
           : null,

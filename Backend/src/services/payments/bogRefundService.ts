@@ -3,6 +3,7 @@
  * Exports: RefundError, RefundBogPaymentParams, AccessRevocationResult, RefundBogPaymentResult,
  * refundBogPayment.
  */
+import { revokeAiToolSubscriptionPayment } from './aiToolSubscriptionService';
 import * as Sentry from '@sentry/node';
 import { BogPayment, Prisma } from '@prisma/client';
 import { releaseGiftCardHold } from './giftCardService';
@@ -147,6 +148,7 @@ async function revokeAccess(tx: Tx, payment: BogPayment): Promise<AccessRevocati
       });
       return { revoked: r.count > 0, note: r.count > 0 ? 'Product purchase marked refunded (download access removed).' : 'No completed product purchase found.' };
     }
+    case 'AI_TOOL_SUBSCRIPTION': return revokeAiToolSubscriptionPayment(tx, payment.id);
     case 'ENGLISH_TUTOR_SUBSCRIPTION': {
       const user = await tx.user.findUnique({ where: { id: payment.userId }, select: { tutorSubscriptionPeriodEnd: true } });
       if (!user?.tutorSubscriptionPeriodEnd) return { revoked: false, note: 'No active tutor subscription found.' };

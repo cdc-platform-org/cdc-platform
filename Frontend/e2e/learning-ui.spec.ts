@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
     const course = courses.find(item => path.includes(item.id));
-    const data = path.endsWith('/syllabus') ? [{ id: 'section', title: 'Foundations', lessons: [{ id: 'lesson', title: 'First lesson', durationSeconds: 120, isFreePreview: true, embedUrl: courses[0].introVideoUrl }] }] : path.endsWith('/ratings') ? { averageRating: 4.8, reviewCount: 5, reviews: [], canReview: false, myReview: null } : path.endsWith('/courses') ? courses : course ? course : path.includes('/site-content/') ? null : [];
+    const data = path.endsWith('/digital-tools/catalog') ? ['english-tutor','educator-hub','media-studio','smart-reader','proctoring','childrens-book','coloring-pages','chatbot-builder','ai-agents'].map(key => ({ key, priceMinor: 2900, periodDays: 30 })) : path.includes('/digital-tools/') && path.endsWith('/access') ? { allowed: false, collegeAccess: false, subscriptionEndsAt: null, priceMinor: 2900, periodDays: 30 } : path.endsWith('/syllabus') ? [{ id: 'section', title: 'Foundations', lessons: [{ id: 'lesson', title: 'First lesson', durationSeconds: 120, isFreePreview: true, embedUrl: courses[0].introVideoUrl }] }] : path.endsWith('/ratings') ? { averageRating: 4.8, reviewCount: 5, reviews: [], canReview: false, myReview: null } : path.endsWith('/courses') ? courses : course ? course : path.includes('/site-content/') ? null : [];
     await route.fulfill({ json: { data } });
   });
 });
@@ -129,4 +129,40 @@ test('direct-file previews expose working play, mute and seek controls', async (
   await preview.getByRole('button', { name: 'Pause', exact: true }).click();
   await preview.getByRole('slider', { name: 'Video position', exact: true }).fill('1');
   await expect.poll(() => video.evaluate(element => Math.floor((element as HTMLVideoElement).currentTime))).toBe(1);
+});
+
+test('unified navigation leads to AI tools inside the Digital Market and exposes terms', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto('/en/courses');
+  const header = page.locator('nav').first();
+  await expect(header.getByRole('button', { name: 'Digital College', exact: true })).toBeVisible();
+  await expect(header.getByRole('button', { name: 'Employment', exact: true })).toBeVisible();
+  await expect(header.getByRole('link', { name: 'Forum', exact: true })).toBeVisible();
+  await header.getByRole('button', { name: 'Digital Market', exact: true }).click();
+  await page.locator('#navigation-shop').getByRole('link', { name: /AI Tools/ }).click();
+  await expect(page).toHaveURL(/marketplace\?category=Digital(%20|\+)AI(%20|\+)Tools/, { timeout: 15000 });
+  await expect(page.getByRole('heading', { name: 'Digital Market', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Digital AI Tools', exact: true })).toBeVisible();
+  await header.getByRole('button', { name: 'About', exact: true }).click();
+  await expect(page.locator('#navigation-about').getByRole('link', { name: /Terms & Conditions/ })).toHaveAttribute('href', '/en/terms');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+
+test('the market shows 29 GEL for each AI tool and uses its subscription checkout', async ({ page }) => {
+  const user = { id: 'test-subscriber', name: 'Test Subscriber', email: 'subscriber@example.test', termsAcceptedAt: '2026-01-01T00:00:00Z', role: 'Student', adminRole: null, verificationStatus: 'APPROVED', isBanned: false };
+  await page.addInitScript(data => { try { localStorage.setItem('cdc_access_token', 'test-ui-session'); localStorage.setItem('cdc_user', JSON.stringify(data)); } catch {} }, user);
+  await page.route('**/api/auth/me', route => route.fulfill({ json: { user } }));
+  let checkoutKey = '', checkoutBody: unknown;
+  await page.route('**/api/payments/checkout/ai-tool/*', async route => {
+    checkoutKey = new URL(route.request().url()).pathname.split('/').pop() || '';
+    checkoutBody = route.request().postDataJSON();
+    await route.fulfill({ json: { paymentId: 'test-payment', redirectUrl: '/en/marketplace?checkout=success' } });
+  });
+  await page.goto('/en/marketplace');
+  const card = page.locator('[data-ai-tool="media-studio"]');
+  await expect(card).toContainText('29.00 \u20be');
+  await card.getByRole('button', { name: 'Subscribe', exact: true }).click();
+  await expect(page).toHaveURL(/checkout=success/);
+  expect(checkoutKey).toBe('media-studio'); expect(checkoutBody).toEqual({ lang: 'en' });
 });

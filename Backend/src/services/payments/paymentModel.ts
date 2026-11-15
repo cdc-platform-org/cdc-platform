@@ -9,6 +9,7 @@ import { BogPaymentPurpose, PaymentModel } from '@prisma/client';
 // of re-deriving DIRECT/ESCROW itself, so the mapping can't drift between
 // the two gateways' checkout routes (payments.ts / stripePayments.ts).
 const PAYMENT_MODEL_BY_PURPOSE: Record<BogPaymentPurpose, PaymentModel> = {
+  AI_TOOL_SUBSCRIPTION: 'DIRECT',
   COURSE: 'DIRECT',
   PRODUCT: 'DIRECT',
   LIVE_TRAINING: 'DIRECT',

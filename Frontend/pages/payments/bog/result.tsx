@@ -1,3 +1,4 @@
+import { AI_TOOL_DESTINATIONS } from '../../../src/services/aiToolSubscriptionService';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -28,6 +29,7 @@ const dict = {
     book: 'საბავშვო წიგნი',
     educatorVip: 'მასწავლებლის VIP (30 დღე)',
     businessAi: 'ბიზნეს AI ჩატბოტი (30 დღე)',
+    aiTool: 'AI ინსტრუმენტის გამოწერა (30 დღე)',
     redirectingToTool: 'გადაგიყვანთ ხელსაწყოზე…',
     giftCard: 'სასაჩუქრე ბარათი',
     redirectingToGift: 'საჩუქარი მზადაა! გადაგიყვანთ თქვენს სასაჩუქრე ბარათებზე…',
@@ -62,6 +64,7 @@ const dict = {
     book: "Children's book",
     educatorVip: 'Educator VIP (30 days)',
     businessAi: 'Business AI chatbot (30 days)',
+    aiTool: 'AI tool subscription (30 days)',
     redirectingToTool: 'Taking you to the tool…',
     giftCard: 'Gift card',
     redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
@@ -96,6 +99,7 @@ const dict = {
     book: "Children's book",
     educatorVip: 'Educator VIP (30 days)',
     businessAi: 'Business AI chatbot (30 days)',
+    aiTool: 'AI tool subscription (30 days)',
     redirectingToTool: 'Taking you to the tool…',
     giftCard: 'Gift card',
     redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
@@ -130,6 +134,7 @@ const dict = {
     book: "Children's book",
     educatorVip: 'Educator VIP (30 days)',
     businessAi: 'Business AI chatbot (30 days)',
+    aiTool: 'AI tool subscription (30 days)',
     redirectingToTool: 'Taking you to the tool…',
     giftCard: 'Gift card',
     redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
@@ -164,6 +169,7 @@ const dict = {
     book: "Children's book",
     educatorVip: 'Educator VIP (30 days)',
     businessAi: 'Business AI chatbot (30 days)',
+    aiTool: 'AI tool subscription (30 days)',
     redirectingToTool: 'Taking you to the tool…',
     giftCard: 'Gift card',
     redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
@@ -198,6 +204,7 @@ const dict = {
     book: "Children's book",
     educatorVip: 'Educator VIP (30 days)',
     businessAi: 'Business AI chatbot (30 days)',
+    aiTool: 'AI tool subscription (30 days)',
     redirectingToTool: 'Taking you to the tool…',
     giftCard: 'Gift card',
     redirectingToGift: 'Your gift is ready! Taking you to your gift cards…',
@@ -215,6 +222,7 @@ const dict = {
 };
 
 const purposeKey: Record<string, keyof typeof dict.en> = {
+  AI_TOOL_SUBSCRIPTION: 'aiTool',
   COURSE: 'course',
   MENTORSHIP: 'mentorship',
   GIG_ESCROW_FUNDING: 'gig',
@@ -290,6 +298,10 @@ function BogResultContent() {
       }, 1800);
       return () => clearTimeout(redirect);
     }
+    if (status?.status === 'COMPLETED' && status.purpose === 'AI_TOOL_SUBSCRIPTION') {
+      const redirect = setTimeout(() => { router.push(AI_TOOL_DESTINATIONS[status.referenceId] || '/marketplace'); }, 1800);
+      return () => clearTimeout(redirect);
+    }
     if (status?.status === 'COMPLETED' && (status.purpose === 'EDUCATOR_VIP' || status.purpose === 'BUSINESS_AI_AGENT')) {
       const redirect = setTimeout(() => {
         router.push(status.purpose === 'EDUCATOR_VIP' ? '/dashboard/tools/educator-hub' : '/dashboard/tools/chatbot-builder');
@@ -363,7 +375,7 @@ function BogResultContent() {
             {status.status === 'COMPLETED' && status.purpose === 'GIFT_CARD' && (
               <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToGift}</p>
             )}
-            {status.status === 'COMPLETED' && (status.purpose === 'EDUCATOR_VIP' || status.purpose === 'BUSINESS_AI_AGENT') && (
+            {status.status === 'COMPLETED' && (status.purpose === 'EDUCATOR_VIP' || status.purpose === 'BUSINESS_AI_AGENT' || status.purpose === 'AI_TOOL_SUBSCRIPTION') && (
               <p className="text-xs text-gray-400 dark:text-slate-500">{t.redirectingToTool}</p>
             )}
             {status.status === 'COMPLETED' && status.purpose === 'PRODUCT' && (

@@ -1,3 +1,4 @@
+import DigitalToolAccessGate from '../../../src/components/tools/DigitalToolAccessGate';
 /**
  * /dashboard/tools/coloring-pages — AI coloring-page generator.
  * Type a topic -> backend checks it is kid-safe, draws it with Azure
@@ -34,7 +35,7 @@ function ColoringPagesTool() {
     load();
   }, [load]);
 
-  const canGenerate = !!state && (state.freeAvailable || state.balance > 0);
+  const canGenerate = !!state && (state.includedAccess || state.freeAvailable || state.balance > 0);
 
   const onGenerate = async () => {
     const clean = topic.trim();
@@ -75,8 +76,8 @@ function ColoringPagesTool() {
 
   const chips = state ? (
     <>
-      {state.freeAvailable && <ToolChip tone="success" icon={Gift}>{t.freeChip}</ToolChip>}
-      <ToolChip tone="brand" icon={Coins}>{t.creditsChip(state.balance)}</ToolChip>
+      {!state.includedAccess && state.freeAvailable && <ToolChip tone="success" icon={Gift}>{t.freeChip}</ToolChip>}
+      <ToolChip tone="brand" icon={Coins}>{state.includedAccess ? (router.locale === 'ka' ? 'წვდომა აქტიურია' : 'Access included') : t.creditsChip(state.balance)}</ToolChip>
     </>
   ) : null;
 
@@ -128,7 +129,7 @@ function ColoringPagesTool() {
         {error && <div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/40 dark:border-red-900 px-4 py-3 text-sm text-red-700 dark:text-red-300">{error}</div>}
       </section>
 
-      {state && (
+      {state && !state.includedAccess && (
         <section className="mt-6 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 md:p-6 shadow-sm">
           <h2 className="text-lg font-black text-slate-900 dark:text-white">{t.buyTitle}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t.buySubtitle}</p>
@@ -170,7 +171,7 @@ export default function ColoringPagesPage() {
   return (
     <ProtectedRoute>
       <ToolErrorBoundary>
-        <ColoringPagesTool />
+        <DigitalToolAccessGate toolKey="coloring-pages"><ColoringPagesTool /></DigitalToolAccessGate>
       </ToolErrorBoundary>
     </ProtectedRoute>
   );

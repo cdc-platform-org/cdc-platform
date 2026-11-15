@@ -48,7 +48,7 @@ export default function EducatorHubHeader({
             subtitle={t('pageSubtitle')}
             chips={
               <>
-                <ToolChip tone="vip" icon={Crown}>{t('vipBadge', 'VIP 50 ₾/თვე')}</ToolChip>
+                <ToolChip tone="vip" icon={Crown}>{t('vipBadge', 'VIP 29 ₾/თვე')}</ToolChip>
                 {hubState?.isVipActive && <ToolChip tone="success">{t('vipActiveLabel')}</ToolChip>}
                 {!hubState?.isVipActive && hubState?.trialActive && (
                   <ToolChip tone="brand">

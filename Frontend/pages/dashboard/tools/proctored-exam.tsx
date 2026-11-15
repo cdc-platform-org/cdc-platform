@@ -1,3 +1,4 @@
+import DigitalToolAccessGate from '../../../src/components/tools/DigitalToolAccessGate';
 import { useRouter } from 'next/router';
 import ToolGuideButton from '../../../src/components/tools/ToolGuideButton';
 import Head from 'next/head';
@@ -65,7 +66,7 @@ export default function ProctoredExamPage() {
   return (
     <ProtectedRoute>
       <ToolErrorBoundary>
-        <AdminOnlyToolGate slug="proctoring"><ProctoredExamContent /></AdminOnlyToolGate>
+        <AdminOnlyToolGate slug="proctoring"><DigitalToolAccessGate toolKey="proctoring"><ProctoredExamContent /></DigitalToolAccessGate></AdminOnlyToolGate>
       </ToolErrorBoundary>
     </ProtectedRoute>
   );

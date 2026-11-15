@@ -232,6 +232,8 @@ enum SubtitlesStatus {
 }
 
 enum BogPaymentPurpose {
+  // One 30-day entitlement to the AI tool identified by referenceId.
+  AI_TOOL_SUBSCRIPTION
   COURSE
   MENTORSHIP
   GIG_ESCROW_FUNDING

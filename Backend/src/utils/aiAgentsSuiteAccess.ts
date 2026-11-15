@@ -11,12 +11,11 @@ export interface AiAgentsSuiteAccessUser {
   aiSubscriptionActive: boolean;
 }
 
-// Every approved account has full access, regardless of role or
-// trial/subscription state — the Employment Forum (forum.ts's
-// isVerifiedGraduate gate) is the only tier-restricted feature on the
-// platform. aiTrialEndsAt/aiSubscriptionActive are kept on the schema (and
-// still shown in the UI where set) for historical/display purposes only;
-// they no longer gate anything here.
+// College access and per-tool paid grants are resolved by subscriptionStateService.
+// These legacy flags represent an explicit grant or an unexpired trial only.
 export function hasAiAgentsSuiteAccess(user: AiAgentsSuiteAccessUser | null | undefined): boolean {
-  return !!user;
+  if (!user) return false;
+  if (user.role === 'SuperAdmin') return true;
+  if (user.role !== 'Client') return false;
+  return user.aiSubscriptionActive || !!(user.aiTrialEndsAt && user.aiTrialEndsAt.getTime() > Date.now());
 }

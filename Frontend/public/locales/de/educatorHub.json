@@ -1,7 +1,7 @@
 {
   "pageTitle": "AI Educator VIP Hub",
   "pageSubtitle": "KI-Tools für Ihre zeitaufwändigsten wöchentlichen Aufgaben — Tests, Bewertungsraster und Hausaufgabenkorrektur, in Minuten.",
-  "vipBadge": "VIP 50 ₾/Monat",
+  "vipBadge": "VIP 29 ₾/Monat",
   "trialCta": "5 Tage kostenlos testen",
   "trialStarting": "Testphase wird gestartet…",
   "trialStartError": "Die Testphase konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
@@ -184,7 +184,7 @@
   "downloadCertificate": "Zertifikat Nr. {{index}} herunterladen",
   "certificatesTitle": "Zertifikat- und Diplom-Generator",
   "certificatesDescription": "Erstellen Sie druckbare Zertifikate und Diplome für Ihre Schüler in Sekunden.",
-  "vipTrialUsedDesc": "Your free trial has ended. To keep VIP, pay 50 GEL for 30 days. Have a promo code? Enter it below.",
+  "vipTrialUsedDesc": "Your free trial has ended. To keep VIP, pay 29 GEL for 30 days. Have a promo code? Enter it below.",
   "vipRequestCta": "Request VIP activation",
   "vipRequestSubject": "AI Educator VIP activation"
 }

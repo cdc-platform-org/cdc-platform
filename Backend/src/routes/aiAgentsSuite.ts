@@ -14,6 +14,10 @@ import { logAiGeneration } from '../services/ai/aiGenerationLogService';
 const router = Router();
 router.use(authenticate, requireApproved);
 
+router.get('/state', async (req: Request, res: Response) => {
+  res.json({ data: await getSubscriptionState(req.user!.id) });
+});
+
 // This was previously unrated-limited despite every call spending real
 // Gemini API quota — the active-subscription check gates who can call it,
 // not how often, so a subscribed user (or a compromised subscribed

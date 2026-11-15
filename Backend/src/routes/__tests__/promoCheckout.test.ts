@@ -194,7 +194,7 @@ describe('IMIAKO PRO (English Tutor) — promo codes', () => {
     expect(discounted.status).toBe(201);
 
     expect(createBogOrder).toHaveBeenCalledTimes(2);
-    expect(jest.mocked(createBogOrder).mock.calls[1][0].amount).toBe(4000);
+    expect(jest.mocked(createBogOrder).mock.calls[1][0].amount).toBe(2320);
 
     // Same code again (duplicate click) reuses the discounted order.
     const again = await request('/api/payments/checkout/english-tutor', user, 'POST', { promoCode: promo.code.toLowerCase() });

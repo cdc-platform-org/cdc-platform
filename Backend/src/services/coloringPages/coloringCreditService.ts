@@ -18,7 +18,7 @@ export class NoColoringCreditsError extends Error {
   }
 }
 
-export type CreditSource = 'FREE' | 'CREDIT';
+export type CreditSource = 'FREE' | 'CREDIT' | 'SUBSCRIPTION';
 
 export async function getColoringAccount(userId: string) {
   return prisma.coloringAccount.upsert({ where: { userId }, update: {}, create: { userId } });
@@ -36,6 +36,7 @@ export async function reserveCredit(tx: Prisma.TransactionClient, userId: string
 }
 
 export async function refundCredit(userId: string, source: CreditSource): Promise<void> {
+  if (source === 'SUBSCRIPTION') return;
   if (source === 'FREE') {
     await prisma.coloringAccount.update({ where: { userId }, data: { freeUsed: false } });
   } else {

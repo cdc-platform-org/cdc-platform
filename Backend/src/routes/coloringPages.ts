@@ -1,3 +1,5 @@
+import { requireDigitalToolAccess } from '../services/marketplace/digitalToolAccessService';
+import { hasIncludedAiToolAccess } from '../services/payments/aiToolSubscriptionService';
 /**
  * Express router mounted at `/api/coloring-pages` (see server.ts): the AI
  * coloring-page tool. Logic lives in services/coloringPages/; buying credit
@@ -35,6 +37,7 @@ const STATUS_BY_CODE: Record<ColoringGenerationError['code'], number> = {
 router.get('/me', authenticate, async (req: Request, res: Response) => {
   const [account, pages] = await Promise.all([getColoringAccount(req.user!.id), listColoringPages(req.user!.id)]);
   res.json({
+    includedAccess: await hasIncludedAiToolAccess(req.user!.id, 'coloring-pages'),
     balance: account.balance,
     freeAvailable: !account.freeUsed,
     packs: COLORING_PACKS,
@@ -45,7 +48,7 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
 
 const generateSchema = z.object({ topic: z.string().min(2).max(COLORING_LIMITS.topicMaxLength) });
 
-router.post('/generate', generateRateLimit, authenticate, requireApproved, async (req: Request, res: Response) => {
+router.post('/generate', generateRateLimit, authenticate, requireApproved, requireDigitalToolAccess('coloring-pages'), async (req: Request, res: Response) => {
   const parsed = generateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ code: 'INVALID_TOPIC', message: 'Invalid topic.' });
   try {

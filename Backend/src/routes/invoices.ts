@@ -58,6 +58,7 @@ export async function describePurchase(
   let platformFee: number | null = null;
   let netAmount: number | null = null;
 
+  if (purpose === 'AI_TOOL_SUBSCRIPTION') return { description: `CDC AI tool: ${referenceId} (30 days)`, platformFee: null, netAmount: null };
   if (purpose === 'COURSE') {
     const course = await prisma.course.findUnique({ where: { id: referenceId }, select: { title: true } });
     description = course ? `Course enrollment: ${course.title}` : 'Course enrollment';
