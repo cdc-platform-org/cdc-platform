@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
+import WorkspaceAccessCards from '../../src/components/dashboard/WorkspaceAccessCards';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import { useAuth } from '../../src/context/AuthContext';
@@ -708,6 +709,7 @@ function BusinessDashboardContent() {
       </Head>
 
       <SiteHeader />
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 pt-6"><WorkspaceAccessCards lang={router.locale || 'ka'} /></div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
         <div className="mb-4">

@@ -77,4 +77,9 @@ router.get('/passport/public/:code', async (req: Request, res: Response) => {
   return res.json(payload);
 });
 
+router.get('/workspace-access', authenticate, async (req: Request, res: Response) => {
+  const access = await resolveStudentWorkspaceAccess(req.user!.id);
+  return res.json(access);
+});
+
 export default router;
