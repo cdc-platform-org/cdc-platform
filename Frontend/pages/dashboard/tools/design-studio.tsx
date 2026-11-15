@@ -6,7 +6,7 @@ import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { Palette } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import ToolErrorBoundary from '../../../src/components/common/ToolErrorBoundary';
-import DigitalToolAccessGate from '../../../src/components/tools/DigitalToolAccessGate';
+import StudioWorkspaceGuard from '../../../src/components/tools/StudioWorkspaceGuard';
 import ToolShell, { ToolPageHeader } from '../../../src/components/tools/ToolShell';
 
 const DesignStudio2in1 = dynamic(() => import('../../../src/components/courses/DesignStudio2in1'), { ssr: false });
@@ -27,13 +27,12 @@ export default function DesignStudioToolPage() {
         <title>{`${title} | CDC Platform`}</title>
       </Head>
       <ToolErrorBoundary>
-        <DigitalToolAccessGate
+        <StudioWorkspaceGuard studio="design" lang={lang}><!--
           toolKey="design-studio"
           toolTitle={title}
           toolSubtitle={subtitle}
           toolIcon={Palette}
-          accent="cyan"
-        >
+          accent="cyan" -->
           <ToolShell>
             <ToolPageHeader
               icon={Palette}
@@ -43,7 +42,7 @@ export default function DesignStudioToolPage() {
             />
             <DesignStudio2in1 lang={lang} />
           </ToolShell>
-        </DigitalToolAccessGate>
+        </StudioWorkspaceGuard>
       </ToolErrorBoundary>
     </ProtectedRoute>
   );

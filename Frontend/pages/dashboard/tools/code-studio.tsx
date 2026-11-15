@@ -8,6 +8,7 @@ import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../../src/components/layout/SiteHeader';
 import SiteFooter from '../../../src/components/layout/SiteFooter';
 import CodeSqlStudio from '../../../src/components/courses/CodeSqlStudio';
+import StudioWorkspaceGuard from '../../../src/components/tools/StudioWorkspaceGuard';
 
 export default function CodeSqlStudioToolPage() {
   const router = useRouter();
@@ -30,7 +31,9 @@ export default function CodeSqlStudioToolPage() {
               {isKa ? 'SQL & Frontend კოდის სიმულაციური სტუდია' : 'SQL & Frontend Code Simulation Studio'}
             </h1>
           </div>
-          <CodeSqlStudio lang={lang} />
+          <StudioWorkspaceGuard studio="code" lang={lang}>
+            <CodeSqlStudio lang={lang} />
+          </StudioWorkspaceGuard>
         </main>
         <SiteFooter />
       </div>
