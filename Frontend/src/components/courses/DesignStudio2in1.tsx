@@ -411,7 +411,7 @@ export default function DesignStudio2in1({ lang = 'ka', onSubmitWork }: { lang?:
           URL.revokeObjectURL(url);
           if (!blob) { setSubmittingWork(false); return; }
           try {
-            const file = new File([blob], studio-assignment-.png, { type: 'image/png' });
+            const file = new File([blob], `studio-assignment-${Date.now()}.png`, { type: 'image/png' });
             await onSubmitWork(file);
             setSubmitDone(true);
             setTimeout(() => setSubmitDone(false), 4000);

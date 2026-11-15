@@ -225,7 +225,7 @@ function LearnContent() {
       setSections(curriculumData);
       setProgress(progressData);
       setExamStatus(examStatusData);
-      try { const rRes = await api.get(/readiness/${courseId}); setReadinessData(rRes.data); } catch {}
+      try { const rRes = await api.get(`/readiness/${courseId}`); setReadinessData(rRes.data); } catch {}
       const assignmentLessons = curriculumData.flatMap((s) => s.lessons ?? []).filter((l) => !!l.assignmentPrompt);
       if (assignmentLessons.length > 0) {
         const checks = await Promise.all(
