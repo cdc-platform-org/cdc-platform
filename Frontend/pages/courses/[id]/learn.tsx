@@ -19,7 +19,7 @@ import VIPAudioNarrator from '../../../src/components/ui/VIPAudioNarrator';
 import { useAuth } from '../../../src/context/AuthContext';
 import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
 import { LmsSection, LmsLesson, CourseProgressSummary, Course, ExamStatus, AssignmentSubmission } from '../../../src/types/lms';
-import api from '../../../src/services/api';
+import api from '../../../src/services/apiClient';
 import {
   getCourse,
   getCurriculum,
