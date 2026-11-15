@@ -185,8 +185,8 @@ function LearnContent() {
   const [progress, setProgress] = useState<CourseProgressSummary | null>(null);
   const [examStatus, setExamStatus] = useState<ExamStatus | null>(null);
   const [submittedLessonIds, setSubmittedLessonIds] = useState<Set<string>>(new Set());
-  const unsubmittedAssignmentLessons = sections.flatMap((s) => s.lessons ?? []).filter((l) => !!l.assignmentPrompt && !submittedLessonIds.has(l.id));
-  const allAssignmentsDone = unsubmittedAssignmentLessons.length === 0;
+  const missingAssignmentLessons = sections.flatMap((s) => s.lessons ?? []).filter((l) => !!l.assignmentPrompt && !submittedLessonIds.has(l.id));
+  const allAssignmentsDone = missingAssignmentLessons.length === 0;
   const [readinessData, setReadinessData] = useState<any>(null);
   const [aiCritiqueBanner, setAiCritiqueBanner] = useState<string | null>(null);
   const [cameraVerified, setCameraVerified] = useState(false);
