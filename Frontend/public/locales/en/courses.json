@@ -3,7 +3,6 @@
   "enroll": "Enroll Now →",
   "soldOut": "Sold Out",
   "back": "Back to course",
-
   "title": "Courses",
   "subtitle": "Pick a course and start building a digital career.",
   "listEnrolling": "Loading…",
@@ -36,7 +35,6 @@
   "showResultsPlural": "Show {{count}} results",
   "showResultsCombined": "Show {{count}} course / tool",
   "showResultsCombinedPlural": "Show {{count}} courses / tools",
-
   "notFound": "Course not found.",
   "enrollFree": "Start Learning For Free →",
   "detailEnrolling": "Redirecting…",
@@ -62,7 +60,6 @@
   "promoApplied": "Promo code applied",
   "promoRemove": "Remove",
   "promoInvalid": "Invalid or expired code",
-
   "overview": "Overview",
   "resources": "Resources",
   "assignment": "Assignment",
@@ -100,7 +97,6 @@
   "certLimitTitle": "Certificate Download Limit Reached",
   "certLimitSubtitle": "For security reasons, the maximum number of certificate downloads has been reached. If you need an extra copy or have a question, message our support chat.",
   "certLimitContactSupport": "Contact Support",
-
   "notConfigured": "This course does not have a certification exam yet.",
   "notComplete": "Complete every lesson in this course before taking the exam.",
   "goToLessons": "Back to lessons",
@@ -136,7 +132,6 @@
   "checkoutError": "Unable to start checkout. Please try again.",
   "saleOffSuffix": "OFF",
   "signInToEnroll": "Please sign in to enroll in a course",
-
   "tabAll": "All",
   "tabVideoCourses": "Video Courses",
   "tabLiveTrainings": "Live Trainings",
@@ -194,8 +189,8 @@
     "previous": "Previous courses",
     "next": "Next courses",
     "eyebrow": "CDC ACADEMY",
-    "headline": "Make room for your next big idea.",
-    "intro": "Learn from working professionals. Build practical skills. Create something of your own.",
+    "headline": "Build skills. Shape your career.",
+    "intro": "Learn practical skills, build a portfolio and prepare for your next step in a digital career.",
     "browse": "Explore courses",
     "allCategories": "All categories",
     "saved": "Saved on this device",
