@@ -1,16 +1,6 @@
-/**
- * Admin "Price & sale" panel for one store product (pages/admin/products.tsx).
- * Edits the regular price and an optional sale: sale price (or % off, which
- * fills the sale price), optional start and end dates. Saves through the
- * normal PUT /admin/products/:id (Backend adminProducts.ts), which re-checks
- * the same rules (productPricing.ts: max 80% off, minimum sale price, end
- * after start). The storefront shows the old price struck through only while
- * the sale is live (saleActive is computed on the server).
- */
 import { useMemo, useState } from 'react';
 import { DigitalProduct, UpdateProductPayload, validateProductDiscount } from '../../services/productService';
 
-// <input type="datetime-local"> wants local "YYYY-MM-DDTHH:mm"; the API wants ISO.
 function toLocalInput(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
@@ -51,7 +41,6 @@ export default function ProductPricingPanel({
     return null;
   }, [price, priceNum, salePrice, saleNum, startsAt, endsAt]);
 
-  // "% off" helper: typing a percent fills the sale price (rounded to tetri).
   const applyPercent = (value: string) => {
     const pct = Number(value);
     if (!value || !pct || priceNum <= 0) return setSalePrice('');
@@ -73,13 +62,19 @@ export default function ProductPricingPanel({
 
   const handleSave = () => {
     if (validation) return setError(validation);
-    if (!window.confirm(`შევინახო ახალი ფასი? ${salePrice ? `ფასდაკლება: ${price} → ${salePrice} ₾ (-${percentOff}%)` : `ფასი: ${price} ₾`}`)) return;
+    const label = priceNum === 0 ? 'უფასო (0 ₾)' : salePrice ? `ფასდაკლება: ${price} → ${salePrice} ₾ (-${percentOff}%)` : `ფასი: ${price} ₾`;
+    if (!window.confirm(`შევინახო ახალი ფასი? ${label}`)) return;
     save({
       price: priceNum,
-      discountedPrice: salePrice ? saleNum : null,
-      saleStartsAt: salePrice ? toIso(startsAt) : null,
-      saleEndsAt: salePrice ? toIso(endsAt) : null,
+      discountedPrice: priceNum === 0 ? null : (salePrice ? saleNum : null),
+      saleStartsAt: priceNum === 0 ? null : (salePrice ? toIso(startsAt) : null),
+      saleEndsAt: priceNum === 0 ? null : (salePrice ? toIso(endsAt) : null),
     });
+  };
+
+  const handleMakeFree = () => {
+    if (!window.confirm('მოვნიშნო ეს პროდუქტი უფასოდ (0 ₾)? მომხმარებლები გადახდის გარეშე შეძლებენ ჩამოტვირთვას.')) return;
+    save({ price: 0, discountedPrice: null, saleStartsAt: null, saleEndsAt: null });
   };
 
   const handleRemoveSale = () => {
@@ -90,10 +85,26 @@ export default function ProductPricingPanel({
   const input = 'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm';
   return (
     <div className="mt-2 rounded-xl border border-indigo-100 bg-indigo-50/40 p-3 space-y-3">
-      <p className="text-xs font-semibold text-gray-800">ფასი და ფასდაკლება</p>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <p className="text-xs font-semibold text-gray-800">ფასი და ფასდაკლება</p>
+        {p.price === 0 ? (
+          <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+            ✓ მონიშნულია როგორც უფასო (0 ₾)
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={handleMakeFree}
+            disabled={saving}
+            className="text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg hover:bg-emerald-100 disabled:opacity-60 cursor-pointer"
+          >
+            🎁 უფასოდ მონიშვნა (0 ₾)
+          </button>
+        )}
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <label className="text-xs text-gray-600">
-          ფასი (₾)
+          ფასი (₾ — 0 = უფასო)
           <input type="number" min="0" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} className={input} />
         </label>
         <label className="text-xs text-gray-600">
@@ -104,6 +115,7 @@ export default function ProductPricingPanel({
             step="0.01"
             value={salePrice}
             onChange={(e) => setSalePrice(e.target.value)}
+            disabled={priceNum === 0}
             placeholder="ცარიელი = ფასდაკლების გარეშე"
             className={input}
           />
@@ -117,6 +129,7 @@ export default function ProductPricingPanel({
             step="1"
             value={percentOff || ''}
             onChange={(e) => applyPercent(e.target.value)}
+            disabled={priceNum === 0}
             placeholder="მაგ. 20"
             className={input}
           />
@@ -125,14 +138,14 @@ export default function ProductPricingPanel({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="text-xs text-gray-600">
           იწყება (არასავალდებულო — ცარიელი = ახლავე)
-          <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} disabled={!salePrice} className={input} />
+          <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} disabled={!salePrice || priceNum === 0} className={input} />
         </label>
         <label className="text-xs text-gray-600">
           მთავრდება (არასავალდებულო — ცარიელი = ვადის გარეშე)
-          <input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} disabled={!salePrice} className={input} />
+          <input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} disabled={!salePrice || priceNum === 0} className={input} />
         </label>
       </div>
-      {salePrice && !validation && (
+      {salePrice && priceNum > 0 && !validation && (
         <p className="text-xs text-gray-600">
           საიტზე გამოჩნდება: <s className="text-gray-400">{price} ₾</s> <b>{salePrice} ₾</b>{' '}
           <span className="text-rose-600 font-semibold">-{percentOff}%</span>
