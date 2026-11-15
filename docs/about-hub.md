@@ -22,6 +22,8 @@ Equivalent package script: `db:seed:about`. The script validates the seed and cr
 
 `Frontend/playwright.about.config.ts` runs the dedicated browser suite without the global login setup. Set `PLAYWRIGHT_BASE_URL` to a local preview server; its default is port 3112. The suite covers all five routes in KA/EN on desktop/mobile and both themes, overflow, client hydration, gallery categories and keyboard lightbox, project sorting, empty/error states, navigation and the admin edit/upload/publish/delete flow. Provider calls are mocked; CMS persistence and authorization are tested separately against PostgreSQL in `Backend/src/routes/__tests__/aboutHubCms.test.ts`.
 
+The final integrated code passed 32 browser checks, 12 backend checks, Frontend typecheck and production build, and Backend TypeScript build. Homepage integration checks verify that the current `main` photo slideshow and this branch's featured course rail both remain visible after resolving `HeroSection.tsx`.
+
 ## Image sources
 
 The overview uses the repository's existing `/images/heks-eper.jpg`. Locally bundled example photographs under `/images/about/` are stock illustrations, marked as such with their sample entries. Source image IDs:

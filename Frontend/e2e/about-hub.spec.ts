@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import seed from '../src/data/aboutHubSeed.json';
+import courses from './fixtures/learning-courses.json';
 import { ABOUT_COPY, ABOUT_PATHS } from '../src/data/aboutHubCopy';
 import type { AboutSection } from '../src/types/aboutHub';
 
@@ -120,4 +121,13 @@ test('CMS edits, image uploads and removals persist and appear on the public pag
   await page.goto('/en/about/gallery');
   await expect(page.locator('[data-about-card]')).toHaveCount(5);
   await expect(page.getByRole('heading', { name: 'Reviewed UX/UI workshop', exact: true })).toHaveCount(0);
+});
+
+test('the integrated homepage preserves the photo slideshow and featured course rail', async ({ page }) => {
+  await page.route('**/api/courses**', route => route.fulfill({ json: { data: courses } }));
+  await page.goto('/en');
+  await expect(page.getByRole('img', { name: 'CDC — students and trainings', exact: true })).toBeVisible();
+  await expect(page.locator('picture img[src="/images/hero/cdc-hero-01.webp"]')).toBeVisible();
+  await expect(page.locator('[data-course-card]').first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
