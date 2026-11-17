@@ -26,6 +26,7 @@ import { onImageErrorFallback } from '../../src/utils/imageFallback';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../src/utils/imageUpload';
 import AITranslateButton from '../../src/components/admin/AITranslateButton';
 
+import { adminLocale, at } from '../../src/i18n/admin';
 const emptyForm: BlogPostPayload = {
   title: '',
   description: '',
@@ -379,7 +380,7 @@ function AdminBlogDashboard() {
                   onClick={() => setForm({ ...form, category: SUCCESS_STORIES_CATEGORY_KA })}
                   className="shrink-0 text-xs font-semibold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-2 rounded-lg whitespace-nowrap"
                 >
-                  🎓 Mark as Success Story
+                  {at("🎓 Mark as Success Story")}
                 </button>
               </div>
             </div>
@@ -397,7 +398,7 @@ function AdminBlogDashboard() {
                         : 'border-transparent text-gray-400 hover:text-gray-600'
                     }`}
                   >
-                    {tab === 'ka' ? '🇬🇪 ქართული' : '🇬🇧 English'}
+                    {tab === 'ka' ? '🇬🇪 ქართული' : at("🇬🇧 English")}
                   </button>
                 ))}
               </div>
@@ -434,32 +435,32 @@ function AdminBlogDashboard() {
             ) : (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Title (EN)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{at("Title (EN)")}</label>
                   <input
                     type="text"
                     value={form.titleEn ?? ''}
                     onChange={(e) => setForm({ ...form, titleEn: e.target.value })}
                     className={inputClass}
-                    placeholder="Article title — falls back to Georgian if left blank"
+                    placeholder={at("Article title — falls back to Georgian if left blank")}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Short description (EN)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{at("Short description (EN)")}</label>
                   <textarea
                     rows={2}
                     value={form.descriptionEn ?? ''}
                     onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })}
                     className={inputClass}
-                    placeholder="Shown in listings — falls back to Georgian if left blank"
+                    placeholder={at("Shown in listings — falls back to Georgian if left blank")}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Content (EN)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{at("Content (EN)")}</label>
                   <RichTextEditor
                     rows={8}
                     value={form.contentEn ?? ''}
                     onChange={(v) => setForm({ ...form, contentEn: v })}
-                    placeholder="Full article body — falls back to Georgian if left blank"
+                    placeholder={at("Full article body — falls back to Georgian if left blank")}
                   />
                 </div>
               </>
@@ -492,7 +493,7 @@ function AdminBlogDashboard() {
               <p className="mt-1.5 text-xs text-gray-400">
                 ოპტიმალური ზომა: 1200 × 675 px (16:9 ratio) | WebP, JPG, PNG
                 <br />
-                Optimal Cover Size: 1200 × 675 px (16:9 ratio)
+                {at("Optimal Cover Size: 1200 × 675 px (16:9 ratio)")}
               </p>
               {form.imageUrl && (
                 <img
@@ -543,7 +544,7 @@ function AdminBlogDashboard() {
             </div>
           )}
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-gray-400">{at("Loading…")}</p>
           ) : posts.length === 0 ? (
             <p className="text-sm text-gray-500">სტატიები ჯერ არ არის დამატებული.</p>
           ) : (
@@ -573,7 +574,7 @@ function AdminBlogDashboard() {
                         )}
                         {post.generatedByAgent && (
                           <span className="text-[10px] font-bold uppercase tracking-wider text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
-                            🤖 AI Generated
+                            {at("🤖 AI Generated")}
                           </span>
                         )}
                       </div>
@@ -631,7 +632,7 @@ function AdminBlogDashboard() {
                             >
                               <div className="min-w-0">
                                 <p className="text-xs font-semibold text-gray-800">
-                                  {comment.author.name} <span className="text-gray-400 font-normal">· {new Date(comment.createdAt).toLocaleDateString()}</span>
+                                  {comment.author.name} <span className="text-gray-400 font-normal">· {new Date(comment.createdAt).toLocaleDateString(adminLocale())}</span>
                                 </p>
                                 <p className="text-xs text-gray-600 mt-0.5 whitespace-pre-wrap break-words">{comment.content}</p>
                               </div>

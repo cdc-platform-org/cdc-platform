@@ -13,6 +13,7 @@ import {
 } from '../../src/services/notificationService';
 import { AdminUser } from '../../src/types/admin';
 
+import { adminLocale } from '../../src/i18n/admin';
 type Target = 'ALL' | 'Student' | 'Client' | 'USER';
 
 export default function AdminNotificationsPage() {
@@ -297,12 +298,12 @@ export default function AdminNotificationsPage() {
                                 </button>
                                 {isExpanded && <p className="text-xs text-gray-600 mt-1.5 whitespace-pre-line">{b.message}</p>}
                               </td>
-                              <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{new Date(b.createdAt).toLocaleString()}</td>
+                              <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">{new Date(b.createdAt).toLocaleString(adminLocale())}</td>
                               <td className="px-4 py-3 text-xs whitespace-nowrap">
                                 {b.recipientCount === 1 ? (
                                   b.singleRecipientRead ? (
                                     <span className="text-emerald-600 font-medium">
-                                      წაკითხულია{b.singleRecipientReadAt ? ` — ${new Date(b.singleRecipientReadAt).toLocaleString()}` : ''}
+                                      წაკითხულია{b.singleRecipientReadAt ? ` — ${new Date(b.singleRecipientReadAt).toLocaleString(adminLocale())}` : ''}
                                     </span>
                                   ) : (
                                     <span className="text-gray-400">წაუკითხავია</span>

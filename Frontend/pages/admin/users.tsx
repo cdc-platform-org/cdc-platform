@@ -23,6 +23,7 @@ import {
 } from '../../src/services/adminService';
 import { promoteToMentor, demoteFromMentor } from '../../src/services/adminMentorshipService';
 
+import { adminLocale, at, atEnum } from '../../src/i18n/admin';
 const STATUS_BADGE: Record<AdminUser['status'], string> = {
   PENDING_APPROVAL: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20 shadow-amber-400/30 dark:shadow-amber-500/20',
   APPROVED: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 shadow-emerald-400/30 dark:shadow-emerald-500/20',
@@ -37,7 +38,7 @@ function StatCard({ label, value, icon: Icon, tint }: { label: string; value: nu
       </div>
       <div>
         <p className="text-xs font-medium text-gray-500 dark:text-slate-400">{label}</p>
-        <p className="text-xl font-black text-gray-900 dark:text-white">{value.toLocaleString()}</p>
+        <p className="text-xl font-black text-gray-900 dark:text-white">{value.toLocaleString(adminLocale())}</p>
       </div>
     </div>
   );
@@ -91,8 +92,8 @@ const PAGE_DICT = {
     educatorVipBadge: 'Educator VIP',
   },
   en: {
-    title: 'User Management',
-    subtitle: 'Search users, assign CDC Graduate badges, and ban/unban accounts.',
+    get title() { return at("User Management"); },
+    get subtitle() { return at("Search users, assign CDC Graduate badges, and ban/unban accounts."); },
     totalUsers: 'Total Users',
     bannedAccounts: 'Banned Accounts',
     tabAll: 'All',
@@ -342,7 +343,7 @@ function UserManagement() {
   return (
     <>
       <Head>
-        <title>User Management | Admin</title>
+        <title>{at("User Management | Admin")}</title>
       </Head>
       <div>
         <div className="mb-6">
@@ -414,8 +415,8 @@ function UserManagement() {
                 <thead>
                   <tr className="text-left text-gray-500 dark:text-slate-400 border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/60">
                     <th className="px-4 py-3 font-medium">{t.common.user}</th>
-                    <th className="px-4 py-3 font-medium">{t.common.role}</th>
-                    <th className="px-4 py-3 font-medium">{t.common.status}</th>
+                    <th className="px-4 py-3 font-medium">{atEnum(t.common.role)}</th>
+                    <th className="px-4 py-3 font-medium">{atEnum(t.common.status)}</th>
                     <th className="px-4 py-3 font-medium">{p.badges}</th>
                     <th className="px-4 py-3 font-medium text-right">{t.common.actions}</th>
                   </tr>
@@ -443,13 +444,13 @@ function UserManagement() {
                               onChange={(e) => handleRoleChange(u, e.target.value as AdminUser['role'])}
                               className="rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50"
                             >
-                              <option value="Student">Student</option>
-                              <option value="Client">Client</option>
-                              {viewer?.adminRole === 'SUPER_ADMIN' && <option value="SuperAdmin">SuperAdmin</option>}
+                              <option value="Student">{at("Student")}</option>
+                              <option value="Client">{at("Client")}</option>
+                              {viewer?.adminRole === 'SUPER_ADMIN' && <option value="SuperAdmin">{at("SuperAdmin")}</option>}
                             </select>
                           ) : (
                             <>
-                              {u.role}
+                              {atEnum(u.role)}
                               {canManageContent && u.role === 'Mentor' && (
                                 <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-0.5">{p.roleMentorNote}</p>
                               )}

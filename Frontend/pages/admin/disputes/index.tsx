@@ -5,6 +5,7 @@ import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { getDisputes, DisputeRow } from '../../../src/services/adminDisputesService';
 
+import { adminLocale, at } from '../../../src/i18n/admin';
 const STATUS_BADGE: Record<string, string> = {
   OPEN: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20 shadow-amber-400/30 dark:shadow-amber-500/20',
   RESOLVED_REFUND: 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/20 shadow-purple-400/30 dark:shadow-purple-500/20',
@@ -33,12 +34,12 @@ function AdminDisputesDashboard() {
   return (
     <>
       <Head>
-        <title>Disputes | Admin</title>
+        <title>{at("Disputes | Admin")}</title>
       </Head>
       <div className="max-w-5xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Disputes</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Review incomplete-work disputes and resolve with a refund or payout.</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{at("Disputes")}</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{at("Review incomplete-work disputes and resolve with a refund or payout.")}</p>
         </div>
 
         <div className="flex items-center gap-2 mb-4">
@@ -49,15 +50,15 @@ function AdminDisputesDashboard() {
               onClick={() => setStatusFilter(s)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${statusFilter === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-900/60 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
             >
-              {s || 'All'}
+              {s || at("All")}
             </button>
           ))}
         </div>
 
         {loading ? (
-          <p className="text-sm text-gray-400 dark:text-slate-500">Loading…</p>
+          <p className="text-sm text-gray-400 dark:text-slate-500">{at("Loading…")}</p>
         ) : disputes.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-slate-400">No disputes here.</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{at("No disputes here.")}</p>
         ) : (
           <div className="space-y-3">
             {disputes.map((d) => (
@@ -72,7 +73,7 @@ function AdminDisputesDashboard() {
                 </div>
                 <p className="text-sm text-gray-600 dark:text-slate-300 line-clamp-2 mb-2">{d.reason}</p>
                 <p className="text-xs text-gray-400 dark:text-slate-500">
-                  Raised by {d.raisedBy.name} · {new Date(d.createdAt).toLocaleString()}
+                  {at("Raised by")}{" "}{d.raisedBy.name} · {new Date(d.createdAt).toLocaleString(adminLocale())}
                 </p>
               </Link>
             ))}

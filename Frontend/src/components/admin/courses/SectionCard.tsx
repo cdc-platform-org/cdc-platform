@@ -6,6 +6,7 @@ import { AdminSection } from '../../../types/lms';
 import { updateSection, deleteSection, createLesson, updateLesson, translateCourse } from '../../../services/courseService';
 import { LessonRow } from './LessonRow';
 
+import { at } from '../../../i18n/admin';
 export function SectionCard({ section, onChanged }: { section: AdminSection; onChanged: () => void }) {
   const [addingLesson, setAddingLesson] = useState(false);
   const [lessonTitle, setLessonTitle] = useState('');
@@ -22,7 +23,7 @@ export function SectionCard({ section, onChanged }: { section: AdminSection; onC
   };
 
   const handleDeleteSection = async () => {
-    if (!window.confirm('Delete this section and all its lessons?')) return;
+    if (!window.confirm(at("Delete this section and all its lessons?"))) return;
     await deleteSection(section.id);
     onChanged();
   };
@@ -63,7 +64,7 @@ export function SectionCard({ section, onChanged }: { section: AdminSection; onC
       );
       onChanged();
     } catch (err: any) {
-      setTranslateError(err?.response?.data?.message ?? 'Translation failed. Please try again.');
+      setTranslateError(err?.response?.data?.message ?? at("Translation failed. Please try again."));
     } finally {
       setTranslating(false);
     }
@@ -83,10 +84,10 @@ export function SectionCard({ section, onChanged }: { section: AdminSection; onC
             disabled={translating}
             className="text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg disabled:opacity-60"
           >
-            {translating ? 'Translating…' : '✨ Translate'}
+            {translating ? at("Translating…") : at("✨ Translate")}
           </button>
           <button type="button" onClick={handleDeleteSection} className="text-xs font-medium text-red-500 hover:text-red-700">
-            Delete section
+            {at("Delete section")}
           </button>
         </div>
       </div>
@@ -100,11 +101,11 @@ export function SectionCard({ section, onChanged }: { section: AdminSection; onC
             autoFocus
             value={lessonTitle}
             onChange={(e) => setLessonTitle(e.target.value)}
-            placeholder="Lesson title"
+            placeholder={at("Lesson title")}
             className="flex-1 text-sm rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           />
-          <button type="submit" className="text-xs font-medium text-indigo-600 hover:text-indigo-800">Add</button>
-          <button type="button" onClick={() => setAddingLesson(false)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+          <button type="submit" className="text-xs font-medium text-indigo-600 hover:text-indigo-800">{at("Add")}</button>
+          <button type="button" onClick={() => setAddingLesson(false)} className="text-xs text-gray-400 hover:text-gray-600">{at("Cancel")}</button>
         </form>
       ) : (
         <button
@@ -112,7 +113,7 @@ export function SectionCard({ section, onChanged }: { section: AdminSection; onC
           onClick={() => setAddingLesson(true)}
           className="w-full text-left px-4 py-2.5 border-t border-gray-100 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
         >
-          + Add lesson
+          {at("+ Add lesson")}
         </button>
       )}
     </div>

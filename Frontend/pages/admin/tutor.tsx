@@ -22,6 +22,7 @@ import {
   updateAdminTutorPromptConfig,
 } from '../../src/services/adminEnglishTutorService';
 
+import { adminLocale, at, atEnum, atf } from '../../src/i18n/admin';
 const TASK_TYPES = ['READING', 'WRITING', 'GRAMMAR', 'VOCABULARY', 'QUIZ', 'LISTENING', 'DIALOGUE'] as const;
 const LEARNING_GOALS = ['TRAVEL', 'TECHNICAL_IT', 'BUSINESS', 'ACADEMIC', 'GENERAL_DAILY', 'INTERVIEW_PREP'] as const;
 
@@ -39,17 +40,17 @@ function TutorAdminContent() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-      <h1 className="text-2xl font-black mb-1 text-gray-900 dark:text-white">IMIAKO — AI English Tutor</h1>
-      <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">Analytics, curriculum inspection, audit logs, and prompt configuration.</p>
+      <h1 className="text-2xl font-black mb-1 text-gray-900 dark:text-white">{at("IMIAKO — AI English Tutor")}</h1>
+      <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">{at("Analytics, curriculum inspection, audit logs, and prompt configuration.")}</p>
 
       <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-200 dark:border-slate-800">
         {(
           [
-            ['analytics', 'Analytics'],
-            ['curriculum', 'Curriculum Inspector'],
-            ['audit', 'Audit Logs'],
-            ['flags', 'Flags'],
-            ['prompts', 'Prompt Configurator'],
+            ['analytics', at('Analytics')],
+            ['curriculum', at('Curriculum Inspector')],
+            ['audit', at('Audit Logs')],
+            ['flags', at('Flags')],
+            ['prompts', at('Prompt Configurator')],
           ] as [Tab, string][]
         ).map(([value, label]) => (
           <button
@@ -93,30 +94,30 @@ function AnalyticsTab() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p className="text-sm text-gray-500 dark:text-slate-400">Loading…</p>;
-  if (!data) return <p className="text-sm text-red-500">Failed to load analytics.</p>;
+  if (loading) return <p className="text-sm text-gray-500 dark:text-slate-400">{at("Loading…")}</p>;
+  if (!data) return <p className="text-sm text-red-500">{at("Failed to load analytics.")}</p>;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="Active PRO subscribers" value={String(data.activeProSubscribers)} />
-        <StatCard label="Trial → Paid conversion" value={pct(data.conversionRate)} />
-        <StatCard label="Revenue (all-time)" value={formatGel(data.revenueGel)} />
-        <StatCard label="Average score" value={data.averageScoreOverall != null ? `${data.averageScoreOverall}%` : '—'} />
-        <StatCard label="Ever started trial" value={String(data.everStartedTrial)} />
-        <StatCard label="Total purchases" value={String(data.totalPurchases)} />
-        <StatCard label="Price / month" value={formatGel(data.subscriptionPriceGel)} />
-        <StatCard label="Total users" value={String(data.totalUsers)} />
+        <StatCard label={at("Active PRO subscribers")} value={String(data.activeProSubscribers)} />
+        <StatCard label={at("Trial → Paid conversion")} value={pct(data.conversionRate)} />
+        <StatCard label={at("Revenue (all-time)")} value={formatGel(data.revenueGel)} />
+        <StatCard label={at("Average score")} value={data.averageScoreOverall != null ? `${data.averageScoreOverall}%` : '—'} />
+        <StatCard label={at("Ever started trial")} value={String(data.everStartedTrial)} />
+        <StatCard label={at("Total purchases")} value={String(data.totalPurchases)} />
+        <StatCard label={at("Price / month")} value={formatGel(data.subscriptionPriceGel)} />
+        <StatCard label={at("Total users")} value={String(data.totalUsers)} />
       </div>
 
       <div className="bg-white/90 dark:bg-slate-900/70 border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-slate-800/60 text-left text-xs text-gray-500 dark:text-slate-400">
             <tr>
-              <th className="px-4 py-2.5">Learning goal</th>
-              <th className="px-4 py-2.5">Total tasks</th>
-              <th className="px-4 py-2.5">Completion rate</th>
-              <th className="px-4 py-2.5">Average score</th>
+              <th className="px-4 py-2.5">{at("Learning goal")}</th>
+              <th className="px-4 py-2.5">{at("Total tasks")}</th>
+              <th className="px-4 py-2.5">{at("Completion rate")}</th>
+              <th className="px-4 py-2.5">{at("Average score")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
@@ -170,10 +171,10 @@ function CurriculumTab() {
       const parsed = JSON.parse(contentDraft);
       const updated = await updateAdminTutorLesson(selected.id, parsed);
       setSelected(updated);
-      setMessage('Saved.');
+      setMessage(at("Saved."));
       load();
     } catch {
-      setMessage('Invalid JSON or save failed.');
+      setMessage(at("Invalid JSON or save failed."));
     } finally {
       setSaving(false);
     }
@@ -194,10 +195,10 @@ function CurriculumTab() {
       const updated = await regenerateAdminTutorLesson(selected.id);
       setSelected(updated);
       setContentDraft(JSON.stringify(updated.content, null, 2));
-      setMessage('Regenerated.');
+      setMessage(at("Regenerated."));
       load();
     } catch {
-      setMessage('Regeneration failed.');
+      setMessage(at("Regeneration failed."));
     } finally {
       setSaving(false);
     }
@@ -211,7 +212,7 @@ function CurriculumTab() {
           onChange={(e) => setTaskType(e.target.value)}
           className="mb-3 rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900 px-3 py-1.5 text-sm"
         >
-          <option value="">All task types</option>
+          <option value="">{at("All task types")}</option>
           {TASK_TYPES.map((tt) => (
             <option key={tt} value={tt}>
               {tt}
@@ -219,7 +220,7 @@ function CurriculumTab() {
           ))}
         </select>
         {loading ? (
-          <p className="text-sm text-gray-500 dark:text-slate-400">Loading…</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{at("Loading…")}</p>
         ) : (
           <div className="flex flex-col divide-y divide-gray-100 dark:divide-slate-800 max-h-[600px] overflow-y-auto">
             {lessons.map((l) => (
@@ -234,34 +235,34 @@ function CurriculumTab() {
                     {l.taskType} · {l.level}
                   </span>
                   <span className="flex items-center gap-1.5 text-xs">
-                    {l.adminApproved && <span className="text-emerald-500">✓ approved</span>}
+                    {l.adminApproved && <span className="text-emerald-500">{at("✓ approved")}</span>}
                     {l._count.flags > 0 && <span className="text-red-500">🚩{l._count.flags}</span>}
                   </span>
                 </div>
                 <div className="text-xs text-gray-400">
-                  {l.generatedForUser.name} · {new Date(l.createdAt).toLocaleDateString()}
+                  {l.generatedForUser.name} · {new Date(l.createdAt).toLocaleDateString(adminLocale())}
                 </div>
               </button>
             ))}
-            {lessons.length === 0 && <p className="text-sm text-gray-400 py-4">No lessons found.</p>}
+            {lessons.length === 0 && <p className="text-sm text-gray-400 py-4">{at("No lessons found.")}</p>}
           </div>
         )}
       </div>
 
       <div className="bg-white/90 dark:bg-slate-900/70 border border-gray-200 dark:border-white/10 rounded-xl p-4">
         {!selected ? (
-          <p className="text-sm text-gray-400">Select a lesson to inspect.</p>
+          <p className="text-sm text-gray-400">{at("Select a lesson to inspect.")}</p>
         ) : (
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2 text-xs">
               <button type="button" onClick={handleApprove} disabled={selected.adminApproved} className="rounded-full bg-emerald-500 text-white font-bold px-3 py-1.5 disabled:opacity-50">
-                {selected.adminApproved ? 'Approved' : 'Approve'}
+                {selected.adminApproved ? at("Approved") : at("Approve")}
               </button>
               <button type="button" onClick={handleRegenerate} disabled={saving} className="rounded-full bg-purple-600 text-white font-bold px-3 py-1.5 disabled:opacity-50">
-                Regenerate
+                {at("Regenerate")}
               </button>
               <button type="button" onClick={handleSave} disabled={saving} className="rounded-full bg-cyan-600 text-white font-bold px-3 py-1.5 disabled:opacity-50">
-                Save edits
+                {at("Save edits")}
               </button>
             </div>
             {message && <p className="text-xs text-gray-500 dark:text-slate-400">{message}</p>}
@@ -295,32 +296,32 @@ function AuditTab() {
     <div className="bg-white/90 dark:bg-slate-900/70 border border-gray-200 dark:border-white/10 rounded-xl p-4">
       <label className="flex items-center gap-2 text-sm mb-3">
         <input type="checkbox" checked={flaggedOnly} onChange={(e) => setFlaggedOnly(e.target.checked)} />
-        Flagged only
+        {at("Flagged only")}
       </label>
       {loading ? (
-        <p className="text-sm text-gray-500 dark:text-slate-400">Loading…</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">{at("Loading…")}</p>
       ) : (
         <div className="flex flex-col divide-y divide-gray-100 dark:divide-slate-800">
           {items.map((item) => (
             <div key={item.id} className="py-3">
               <button type="button" onClick={() => setExpanded(expanded === item.id ? null : item.id)} className="w-full text-left flex items-center justify-between text-sm">
                 <span>
-                  <strong>{item.user.name}</strong> · {item.tutorLesson.taskType} {item.tutorLesson.level} · {item.status}
+                  <strong>{item.user.name}</strong> · {item.tutorLesson.taskType} {item.tutorLesson.level} · {atEnum(item.status)}
                   {item.flags.length > 0 && <span className="ml-2 text-red-500">🚩{item.flags.length}</span>}
                 </span>
                 <span className="text-xs text-gray-400">{item.score != null ? `${item.score}%` : '—'}</span>
               </button>
               {expanded === item.id && (
                 <div className="mt-2 rounded-lg bg-gray-50 dark:bg-slate-800/60 p-3 text-xs">
-                  <p className="font-bold mb-1">Submission</p>
+                  <p className="font-bold mb-1">{at("Submission")}</p>
                   <pre className="whitespace-pre-wrap break-words mb-2">{JSON.stringify(item.responseData, null, 2)}</pre>
-                  <p className="font-bold mb-1">AI feedback</p>
+                  <p className="font-bold mb-1">{at("AI feedback")}</p>
                   <pre className="whitespace-pre-wrap break-words">{JSON.stringify(item.feedback, null, 2)}</pre>
                 </div>
               )}
             </div>
           ))}
-          {items.length === 0 && <p className="text-sm text-gray-400">No records found.</p>}
+          {items.length === 0 && <p className="text-sm text-gray-400">{at("No records found.")}</p>}
         </div>
       )}
     </div>
@@ -363,7 +364,7 @@ function FlagsTab() {
         ))}
       </div>
       {loading ? (
-        <p className="text-sm text-gray-500 dark:text-slate-400">Loading…</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">{at("Loading…")}</p>
       ) : (
         <div className="flex flex-col divide-y divide-gray-100 dark:divide-slate-800">
           {flags.map((f) => (
@@ -371,23 +372,23 @@ function FlagsTab() {
               <div>
                 <p>{f.reason}</p>
                 <p className="text-xs text-gray-400">
-                  {f.flaggedByUser.name} · {new Date(f.createdAt).toLocaleString()} ·{' '}
-                  {f.tutorLesson ? `Lesson ${f.tutorLesson.taskType} ${f.tutorLesson.level}` : 'Progress record'}
+                  {f.flaggedByUser.name} · {new Date(f.createdAt).toLocaleString(adminLocale())} ·{' '}
+                  {f.tutorLesson ? atf("Lesson {0} {1}", f.tutorLesson.taskType, f.tutorLesson.level) : at("Progress record")}
                 </p>
               </div>
               {status === 'OPEN' && (
                 <div className="flex gap-1.5 shrink-0">
                   <button type="button" onClick={() => handleResolve(f.id, 'RESOLVED')} className="text-xs font-bold text-emerald-500">
-                    Resolve
+                    {at("Resolve")}
                   </button>
                   <button type="button" onClick={() => handleResolve(f.id, 'DISMISSED')} className="text-xs font-bold text-gray-400">
-                    Dismiss
+                    {at("Dismiss")}
                   </button>
                 </div>
               )}
             </div>
           ))}
-          {flags.length === 0 && <p className="text-sm text-gray-400">No flags.</p>}
+          {flags.length === 0 && <p className="text-sm text-gray-400">{at("No flags.")}</p>}
         </div>
       )}
     </div>
@@ -418,7 +419,7 @@ function PromptsTab() {
     }
   };
 
-  if (loading) return <p className="text-sm text-gray-500 dark:text-slate-400">Loading…</p>;
+  if (loading) return <p className="text-sm text-gray-500 dark:text-slate-400">{at("Loading…")}</p>;
 
   return (
     <div className="flex flex-col gap-4">
@@ -451,20 +452,20 @@ function PromptConfigRow({
           disabled={saving}
           className="text-xs font-bold rounded-full bg-purple-600 text-white px-3 py-1.5 disabled:opacity-50"
         >
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? at("Saving…") : at("Save")}
         </button>
       </div>
       <textarea
         value={override}
         onChange={(e) => setOverride(e.target.value)}
-        placeholder="Additional instructions appended to this taskType's prompt (leave blank for default)…"
+        placeholder={at("Additional instructions appended to this taskType's prompt (leave blank for default)…")}
         rows={3}
         className="w-full text-sm rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-950 px-3 py-2 mb-2"
       />
       <input
         value={temperature}
         onChange={(e) => setTemperature(e.target.value)}
-        placeholder="Temperature override (0-2, blank = default)"
+        placeholder={at("Temperature override (0-2, blank = default)")}
         className="w-64 text-xs rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-950 px-3 py-1.5"
       />
     </div>
@@ -473,10 +474,10 @@ function PromptConfigRow({
 
 export default function TutorAdminPage() {
   return (
-    <AdminGuard requiredTiers={['SUPER_ADMIN', 'MANAGER']}>
+    <AdminGuard requiredTiers={['SUPER_ADMIN', at('MANAGER')]}>
       <AdminLayout>
         <Head>
-          <title>AI English Tutor | Admin</title>
+          <title>{at("AI English Tutor | Admin")}</title>
         </Head>
         <TutorAdminContent />
       </AdminLayout>

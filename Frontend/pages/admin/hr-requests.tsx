@@ -4,7 +4,6 @@ import Head from 'next/head';
 import { ShieldAlert } from 'lucide-react';
 import { useAuth } from '../../src/context/AuthContext';
 import SiteHeader from '../../src/components/layout/SiteHeader';
-import { resolveLocale } from '../../src/utils/locale';
 import { HRSupportRequest, CandidateEvaluation } from '../../src/types/hrSupport';
 import {
   getHRRequestsAssignedToMe,
@@ -16,6 +15,7 @@ import {
 } from '../../src/services/hrSupportService';
 import { getAllHRSupportRequests, getHRSpecialists, assignHRSpecialist, resolveHRSupportDispute } from '../../src/services/adminHRSupportService';
 
+import { at, atEnum, atf, getAdminLang } from '../../src/i18n/admin';
 const EN_STRINGS = {
   title: 'HR Assistance Requests',
   loading: 'Loading…',
@@ -174,7 +174,7 @@ function CandidateRow({ evaluation, requestId, canEdit, t, onSaved }: CandidateR
             rel="noopener noreferrer"
             className="text-cyan-600 dark:text-cyan-400 hover:underline"
           >
-            CV
+            {at("CV")}
           </a>
         )}
       </td>
@@ -231,12 +231,12 @@ function CandidateRow({ evaluation, requestId, canEdit, t, onSaved }: CandidateR
             type="button"
             onClick={handleSave}
             disabled={saving}
-            title={saveError ? 'Save failed — try again' : undefined}
+            title={saveError ? at("Save failed — try again") : undefined}
             className={`text-xs font-bold hover:underline disabled:opacity-50 ${
               saveError ? 'text-red-600 dark:text-red-400' : 'text-cyan-600 dark:text-cyan-400'
             }`}
           >
-            {saveError ? 'Failed — retry' : saved ? t.saved : saving ? '…' : t.save}
+            {saveError ? at("Failed — retry") : saved ? t.saved : saving ? '…' : t.save}
           </button>
         </td>
       )}
@@ -401,7 +401,7 @@ function RequestDetail({
             <table className="min-w-full text-left">
               <thead className="bg-gray-50 dark:bg-slate-800/60">
                 <tr className="text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-slate-400">
-                  <th className="px-3 py-2">Candidate</th>
+                  <th className="px-3 py-2">{at("Candidate")}</th>
                   <th className="px-2 py-2">{t.hardSkills}</th>
                   <th className="px-2 py-2">{t.softSkills}</th>
                   <th className="px-2 py-2">{t.taskScore}</th>
@@ -468,8 +468,7 @@ function RequestDetail({
 function HRRequestsPortal() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const lang = resolveLocale(router.locale);
-  const t = dict[lang];
+  const t = dict[getAdminLang()];
   const [requests, setRequests] = useState<HRSupportRequest[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -527,7 +526,7 @@ function HRRequestsPortal() {
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
       <Head>
-        <title>{`${t.title} | CDC`}</title>
+        <title>{atf("{0} | CDC", t.title)}</title>
       </Head>
       <SiteHeader />
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
@@ -555,7 +554,7 @@ function HRRequestsPortal() {
                   </p>
                   <div className="flex items-center justify-between mt-2">
                     <span className="text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400">
-                      {r.status}
+                      {atEnum(r.status)}
                     </span>
                     <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{formatGel(r.grossAmount)} {r.currency}</span>
                   </div>

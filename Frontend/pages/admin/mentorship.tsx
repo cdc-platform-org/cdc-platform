@@ -28,6 +28,7 @@ import {
   AdminMentorshipBooking,
 } from '../../src/services/adminMentorshipService';
 
+import { adminLocale, at, atEnum, atf } from '../../src/i18n/admin';
 // Curated checklist, not a DB enum (see mentorLanguages' schema comment) —
 // values are stored/displayed exactly as written here (mixed-script by
 // design, matching how each language names itself).
@@ -95,7 +96,7 @@ function MentorAvailabilitySection() {
       const updated = await setMentorPublished(selectedMentor.id, !selectedMentor.mentorPublished);
       setMentors((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
     } catch {
-      setPublishError('Could not update publish status.');
+      setPublishError(at("Could not update publish status."));
     } finally {
       setTogglingPublish(false);
     }
@@ -165,7 +166,7 @@ function MentorAvailabilitySection() {
   const handleAutoTranslate = async () => {
     setTranslateError(null);
     if (profileForm.mentorTitle.trim().length < 2 || profileForm.bio.trim().length < 5) {
-      setTranslateError('Fill in the Georgian Title and Bio before translating.');
+      setTranslateError(at("Fill in the Georgian Title and Bio before translating."));
       return;
     }
     setTranslating(true);
@@ -174,7 +175,7 @@ function MentorAvailabilitySection() {
       setProfileForm((f) => ({ ...f, mentorTitleEn: translated.titleEn, bioEn: translated.bioEn }));
       setActiveLangTab('en');
     } catch (err: any) {
-      setTranslateError(err?.response?.data?.message ?? 'Translation failed. Please try again.');
+      setTranslateError(err?.response?.data?.message ?? at("Translation failed. Please try again."));
     } finally {
       setTranslating(false);
     }
@@ -189,7 +190,7 @@ function MentorAvailabilitySection() {
       const updated = await uploadMentorCv(selectedMentorId, file);
       setMentors((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
     } catch (err: any) {
-      setCvError(err?.response?.data?.message || 'CV upload failed. Please try again.');
+      setCvError(err?.response?.data?.message || at("CV upload failed. Please try again."));
     } finally {
       setUploadingCv(false);
       e.target.value = '';
@@ -205,7 +206,7 @@ function MentorAvailabilitySection() {
       const updated = await uploadMentorAvatar(selectedMentorId, file);
       setMentors((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
     } catch (err: any) {
-      setAvatarError(err?.response?.data?.message || 'Avatar upload failed. Please try again.');
+      setAvatarError(err?.response?.data?.message || at("Avatar upload failed. Please try again."));
     } finally {
       setUploadingAvatar(false);
       e.target.value = '';
@@ -259,13 +260,13 @@ function MentorAvailabilitySection() {
     setError(null);
     const startMinute = timeToMinutes(timeForm.startTime);
     const endMinute = timeToMinutes(timeForm.endTime);
-    if (!timeForm.startTime || !timeForm.endTime) return setError('Please set both a start and end time.');
+    if (!timeForm.startTime || !timeForm.endTime) return setError(at("Please set both a start and end time."));
     if (endMinute <= startMinute) {
       return setError(
-        `End time (${timeForm.endTime}) must be after start time (${timeForm.startTime}). Overnight ranges spanning midnight aren't supported — split them into two slots instead.`
+        atf("End time ({0}) must be after start time ({1}). Overnight ranges spanning midnight aren't supported — split them into two slots instead.", timeForm.endTime, timeForm.startTime)
       );
     }
-    if (selectedDays.length === 0) return setError('Select at least one day.');
+    if (selectedDays.length === 0) return setError(at("Select at least one day."));
 
     setSaving(true);
     try {
@@ -280,7 +281,7 @@ function MentorAvailabilitySection() {
       await loadRules();
       resetForm();
     } catch {
-      setError(editingRuleId ? 'Unable to update the slot. Please try again.' : 'Unable to add the slot(s). Please try again.');
+      setError(editingRuleId ? at("Unable to update the slot. Please try again.") : at("Unable to add the slot(s). Please try again."));
     } finally {
       setSaving(false);
     }
@@ -295,15 +296,14 @@ function MentorAvailabilitySection() {
   return (
     <div className="mb-10">
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Mentor Availability (Google Calendar bookings)</h2>
+        <h2 className="text-lg font-semibold text-gray-900">{at("Mentor Availability (Google Calendar bookings)")}</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Recurring weekly slots (Asia/Tbilisi time) a mentor can be booked for a paid session. Enforced server-side
-          at checkout, and used to create the Google Calendar invite once payment completes.
+          {at("Recurring weekly slots (Asia/Tbilisi time) a mentor can be booked for a paid session. Enforced server-side at checkout, and used to create the Google Calendar invite once payment completes.")}
         </p>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-xl p-5 max-w-2xl">
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Mentor</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1.5">{at("Mentor")}</label>
         <select
           value={selectedMentorId}
           onChange={(e) => setSelectedMentorId(e.target.value)}
@@ -311,7 +311,7 @@ function MentorAvailabilitySection() {
         >
           {mentors.map((m) => (
             <option key={m.id} value={m.id}>
-              {m.name} ({m.email}) {m.mentorPublished ? '— Published' : '— Not Published'}
+              {m.name} ({m.email}) {m.mentorPublished ? at("— Published") : at("— Not Published")}
             </option>
           ))}
         </select>
@@ -319,11 +319,11 @@ function MentorAvailabilitySection() {
         {selectedMentor && (
           <div className="mb-4 flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
             <div>
-              <p className="text-xs font-semibold text-gray-700">Public directory visibility</p>
+              <p className="text-xs font-semibold text-gray-700">{at("Public directory visibility")}</p>
               <p className="text-xs text-gray-500 mt-0.5">
                 {selectedMentor.mentorPublished
-                  ? 'This mentor is live on the public /mentors page.'
-                  : 'Hidden from the public /mentors page until published.'}
+                  ? at("This mentor is live on the public /mentors page.")
+                  : at("Hidden from the public /mentors page until published.")}
               </p>
               {publishError && <p className="text-xs text-red-600 mt-1">{publishError}</p>}
             </div>
@@ -337,13 +337,13 @@ function MentorAvailabilitySection() {
                   : 'border-transparent text-white bg-emerald-600 hover:bg-emerald-700'
               }`}
             >
-              {togglingPublish ? '…' : selectedMentor.mentorPublished ? 'Unpublish' : 'Publish'}
+              {togglingPublish ? '…' : selectedMentor.mentorPublished ? at("Unpublish") : at("Publish")}
             </button>
           </div>
         )}
 
         <div className="mb-4">
-          <label className="block text-xs font-medium text-gray-700 mb-1">Avatar / Profile Photo (PNG or JPG)</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">{at("Avatar / Profile Photo (PNG or JPG)")}</label>
           <div className="flex items-center gap-3">
             {selectedMentor?.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -359,7 +359,7 @@ function MentorAvailabilitySection() {
             )}
             <label className="inline-block text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-100">
               <input type="file" accept="image/png,image/jpeg" onChange={handleUploadAvatar} disabled={uploadingAvatar || !selectedMentorId} className="hidden" />
-              {uploadingAvatar ? 'Uploading…' : selectedMentor?.avatarUrl ? 'Replace Photo' : 'Upload Photo'}
+              {uploadingAvatar ? at("Uploading…") : selectedMentor?.avatarUrl ? at("Replace Photo") : at("Upload Photo")}
             </label>
           </div>
           {avatarError && <p className="text-xs text-red-600 mt-1.5">{avatarError}</p>}
@@ -376,7 +376,7 @@ function MentorAvailabilitySection() {
                   activeLangTab === tabLang ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-400 hover:text-gray-600'
                 }`}
               >
-                {tabLang === 'ka' ? '🇬🇪 ქართული' : '🇬🇧 English'}
+                {tabLang === 'ka' ? '🇬🇪 ქართული' : at("🇬🇧 English")}
               </button>
             ))}
           </div>
@@ -386,14 +386,14 @@ function MentorAvailabilitySection() {
             disabled={translating}
             className="mb-1.5 text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg disabled:opacity-60"
           >
-            {translating ? 'Translating…' : '✨ Auto-Translate to English'}
+            {translating ? at("Translating…") : at("✨ Auto-Translate to English")}
           </button>
         </div>
         {translateError && <p className="text-xs text-red-600 mb-3">{translateError}</p>}
 
         {activeLangTab === 'ka' ? (
           <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Title / Position (KA)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{at("Title / Position (KA)")}</label>
             <input
               value={profileForm.mentorTitle}
               onChange={(e) => setProfileForm({ ...profileForm, mentorTitle: e.target.value })}
@@ -403,18 +403,18 @@ function MentorAvailabilitySection() {
           </div>
         ) : (
           <div className="mb-3">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Title / Position (EN)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{at("Title / Position (EN)")}</label>
             <input
               value={profileForm.mentorTitleEn}
               onChange={(e) => setProfileForm({ ...profileForm, mentorTitleEn: e.target.value })}
-              placeholder="e.g. Senior Product Designer"
+              placeholder={at("e.g. Senior Product Designer")}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
         )}
 
         <div className="mb-3">
-          <label className="block text-xs font-medium text-gray-700 mb-1">Hourly Rate (GEL / ₾)</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">{at("Hourly Rate (GEL / ₾)")}</label>
           <input
             type="number"
             min={0}
@@ -425,11 +425,11 @@ function MentorAvailabilitySection() {
           />
         </div>
         <div className="mb-3">
-          <label className="block text-xs font-medium text-gray-700 mb-1">Core Skills (comma-separated)</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">{at("Core Skills (comma-separated)")}</label>
           <input
             value={profileForm.mentorSkills}
             onChange={(e) => setProfileForm({ ...profileForm, mentorSkills: e.target.value })}
-            placeholder="Figma, UX Research, Design Systems"
+            placeholder={at("Figma, UX Research, Design Systems")}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
           />
         </div>
@@ -454,7 +454,7 @@ function MentorAvailabilitySection() {
         </div>
         {activeLangTab === 'ka' ? (
           <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Bio (KA)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{at("Bio (KA)")}</label>
             <textarea
               value={profileForm.bio}
               onChange={(e) => setProfileForm({ ...profileForm, bio: e.target.value })}
@@ -464,7 +464,7 @@ function MentorAvailabilitySection() {
           </div>
         ) : (
           <div className="mb-4">
-            <label className="block text-xs font-medium text-gray-700 mb-1">Bio (EN)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{at("Bio (EN)")}</label>
             <textarea
               value={profileForm.bioEn}
               onChange={(e) => setProfileForm({ ...profileForm, bioEn: e.target.value })}
@@ -474,7 +474,7 @@ function MentorAvailabilitySection() {
           </div>
         )}
         <div className="mb-5">
-          <label className="block text-xs font-medium text-gray-700 mb-1">CV / Resume (PDF or DOCX)</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">{at("CV / Resume (PDF or DOCX)")}</label>
           <div className="flex items-center gap-3">
             {selectedMentor?.cvUrl && (
               <a
@@ -483,12 +483,12 @@ function MentorAvailabilitySection() {
                 rel="noopener noreferrer"
                 className="text-xs font-bold text-indigo-600 hover:text-indigo-800 underline"
               >
-                View current CV
+                {at("View current CV")}
               </a>
             )}
             <label className="inline-block text-xs font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-100">
               <input type="file" accept=".pdf,.doc,.docx" onChange={handleUploadCv} disabled={uploadingCv || !selectedMentorId} className="hidden" />
-              {uploadingCv ? 'Uploading…' : selectedMentor?.cvUrl ? 'Replace CV' : 'Upload CV'}
+              {uploadingCv ? at("Uploading…") : selectedMentor?.cvUrl ? at("Replace CV") : at("Upload CV")}
             </label>
           </div>
           {cvError && <p className="text-xs text-red-600 mt-1.5">{cvError}</p>}
@@ -500,20 +500,20 @@ function MentorAvailabilitySection() {
             disabled={savingProfile || !selectedMentorId}
             className="rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900 disabled:opacity-60"
           >
-            {savingProfile ? 'Saving…' : 'Save Profile'}
+            {savingProfile ? at("Saving…") : at("Save Profile")}
           </button>
-          {profileSaved && <span className="text-xs text-emerald-600">Saved.</span>}
+          {profileSaved && <span className="text-xs text-emerald-600">{at("Saved.")}</span>}
         </div>
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">{at("Loading…")}</p>
         ) : rules.length === 0 ? (
-          <p className="text-sm text-gray-500 mb-4">No availability set yet for this mentor.</p>
+          <p className="text-sm text-gray-500 mb-4">{at("No availability set yet for this mentor.")}</p>
         ) : (
           <div className="space-y-4 mb-5">
             {DAY_DISPLAY_ORDER.filter((day) => rules.some((r) => r.dayOfWeek === day)).map((day) => (
               <div key={day}>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">{DAY_LABELS[day]}</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400 mb-1.5">{at(DAY_LABELS[day])}</p>
                 <div className="space-y-1.5">
                   {rules
                     .filter((r) => r.dayOfWeek === day)
@@ -546,13 +546,13 @@ function MentorAvailabilitySection() {
 
         <div className="pt-4 border-t border-gray-100">
           <p className="text-sm font-semibold text-gray-800 mb-3">
-            {editingRuleId ? 'Edit slot' : 'Add slot(s)'}
+            {editingRuleId ? at("Edit slot") : at("Add slot(s)")}
           </p>
 
           {error && <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
 
           <label className="block text-xs font-medium text-gray-700 mb-1.5">
-            {editingRuleId ? 'Day' : 'Days (select one or more)'}
+            {editingRuleId ? at("Day") : at("Days (select one or more)")}
           </label>
           <div className="flex flex-wrap gap-1.5 mb-4">
             {DAY_DISPLAY_ORDER.map((day) => (
@@ -566,14 +566,14 @@ function MentorAvailabilitySection() {
                     : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                {DAY_SHORT[day]}
+                {at(DAY_SHORT[day])}
               </button>
             ))}
           </div>
 
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Start</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{at("Start")}</label>
               <input
                 type="time"
                 value={timeForm.startTime}
@@ -582,7 +582,7 @@ function MentorAvailabilitySection() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">End</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{at("End")}</label>
               <input
                 type="time"
                 value={timeForm.endTime}
@@ -593,7 +593,7 @@ function MentorAvailabilitySection() {
             {timeForm.startTime && timeForm.endTime && (
               <p className="text-xs text-gray-400 pb-2.5">
                 {timeForm.startTime} – {timeForm.endTime}
-                {selectedDays.length > 1 && !editingRuleId ? ` on ${selectedDays.length} days` : ''}
+                {selectedDays.length > 1 && !editingRuleId ? atf(" on {0} days", selectedDays.length) : ''}
               </p>
             )}
             <button
@@ -602,7 +602,7 @@ function MentorAvailabilitySection() {
               disabled={saving || !selectedMentorId}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              {saving ? 'Saving…' : editingRuleId ? 'Update slot' : 'Add slot(s)'}
+              {saving ? at("Saving…") : editingRuleId ? at("Update slot") : at("Add slot(s)")}
             </button>
             {editingRuleId && (
               <button
@@ -611,7 +611,7 @@ function MentorAvailabilitySection() {
                 disabled={saving}
                 className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
               >
-                Cancel
+                {at("Cancel")}
               </button>
             )}
           </div>
@@ -647,7 +647,7 @@ function GeneralHelpRequests() {
       await resolveMentorshipRequest(id);
       setRequests((prev) => prev.filter((r) => r.id !== id));
     } catch {
-      setResolveError('Could not mark this request as resolved. Please try again.');
+      setResolveError(at("Could not mark this request as resolved. Please try again."));
     } finally {
       setBusyId(null);
     }
@@ -656,7 +656,7 @@ function GeneralHelpRequests() {
   return (
     <div className="mb-10">
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">General Help / Mentorship Requests</h2>
+        <h2 className="text-lg font-semibold text-gray-900">{at("General Help / Mentorship Requests")}</h2>
         <p className="text-sm text-gray-500 mt-1">
           Submitted via the graduate-only &quot;დახმარება / მენტორობა&quot; button on the student Dashboard.
         </p>
@@ -665,16 +665,16 @@ function GeneralHelpRequests() {
         <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-4 py-2.5 text-xs text-red-700">{resolveError}</div>
       )}
       {loading ? (
-        <p className="text-sm text-gray-400">Loading…</p>
+        <p className="text-sm text-gray-400">{at("Loading…")}</p>
       ) : requests.length === 0 ? (
-        <p className="text-sm text-gray-500">No open general help requests.</p>
+        <p className="text-sm text-gray-500">{at("No open general help requests.")}</p>
       ) : (
         <div className="space-y-3">
           {requests.map((r) => (
             <div key={r.id} className="bg-white border border-gray-200 rounded-xl p-5">
               <div className="flex items-center justify-between gap-3 mb-2">
                 <span className="font-semibold text-gray-900">{r.user.name}</span>
-                <span className="text-xs text-gray-400">{new Date(r.createdAt).toLocaleString()}</span>
+                <span className="text-xs text-gray-400">{new Date(r.createdAt).toLocaleString(adminLocale())}</span>
               </div>
               <p className="text-xs text-gray-500 mb-3">{r.user.email}</p>
               <p className="text-sm text-gray-700 whitespace-pre-wrap mb-3">{r.message}</p>
@@ -684,7 +684,7 @@ function GeneralHelpRequests() {
                 onClick={() => handleResolve(r.id)}
                 className="text-xs font-medium text-emerald-600 hover:text-emerald-800 disabled:opacity-60"
               >
-                Mark as resolved
+                {at("Mark as resolved")}
               </button>
             </div>
           ))}
@@ -701,10 +701,10 @@ const BOOKING_STATUS_BADGE: Record<string, string> = {
   CANCELLED: 'bg-gray-100 text-gray-500 border-gray-200',
 };
 const BOOKING_STATUS_LABEL: Record<string, string> = {
-  COMPLETED: 'Confirmed',
-  PENDING: 'Pending',
-  FAILED: 'Failed',
-  CANCELLED: 'Cancelled',
+  get COMPLETED() { return at("Confirmed"); },
+  get PENDING() { return at("Pending"); },
+  get FAILED() { return at("Failed"); },
+  get CANCELLED() { return at("Cancelled"); },
 };
 
 function RecordingCell({ booking, onUpdated }: { booking: AdminMentorshipBooking; onUpdated: (b: AdminMentorshipBooking) => void }) {
@@ -722,7 +722,7 @@ function RecordingCell({ booking, onUpdated }: { booking: AdminMentorshipBooking
       onUpdated(updated);
       setEditing(false);
     } catch {
-      setError('Invalid URL or save failed.');
+      setError(at("Invalid URL or save failed."));
     } finally {
       setSaving(false);
     }
@@ -746,14 +746,14 @@ function RecordingCell({ booking, onUpdated }: { booking: AdminMentorshipBooking
             onClick={handleSave}
             className="text-xs font-medium px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60"
           >
-            {saving ? '…' : 'Save'}
+            {saving ? '…' : at("Save")}
           </button>
           <button
             type="button"
             onClick={() => setEditing(false)}
             className="text-xs font-medium px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
           >
-            Cancel
+            {at("Cancel")}
           </button>
         </div>
         {error && <span className="text-[10px] text-red-500">{error}</span>}
@@ -765,7 +765,7 @@ function RecordingCell({ booking, onUpdated }: { booking: AdminMentorshipBooking
     return (
       <div className="flex items-center gap-2">
         <a href={booking.recordingUrl} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
-          Watch
+          {at("Watch")}
         </a>
         <button
           type="button"
@@ -775,7 +775,7 @@ function RecordingCell({ booking, onUpdated }: { booking: AdminMentorshipBooking
           }}
           className="text-[11px] text-gray-400 hover:text-gray-600"
         >
-          Edit
+          {at("Edit")}
         </button>
       </div>
     );
@@ -783,7 +783,7 @@ function RecordingCell({ booking, onUpdated }: { booking: AdminMentorshipBooking
 
   return (
     <button type="button" onClick={() => setEditing(true)} className="text-xs font-medium text-indigo-600 hover:text-indigo-800">
-      + Attach recording
+      {at("+ Attach recording")}
     </button>
   );
 }
@@ -799,14 +799,14 @@ function EscrowCell({ booking, onUpdated }: { booking: AdminMentorshipBooking; o
   const [error, setError] = useState<string | null>(null);
 
   const handleResolve = async (resolution: 'RELEASE' | 'REFUND') => {
-    if (!window.confirm(resolution === 'RELEASE' ? 'Release these funds to the mentor?' : 'Refund these funds (no mentor credit)?')) return;
+    if (!window.confirm(resolution === 'RELEASE' ? at("Release these funds to the mentor?") : at("Refund these funds (no mentor credit)?"))) return;
     setResolving(resolution);
     setError(null);
     try {
       const updated = await resolveMentorshipDispute(booking.id, resolution);
       onUpdated(updated);
     } catch {
-      setError('Resolution failed.');
+      setError(at("Resolution failed."));
     } finally {
       setResolving(null);
     }
@@ -827,11 +827,11 @@ function EscrowCell({ booking, onUpdated }: { booking: AdminMentorshipBooking; o
                 : 'bg-gray-50 text-gray-400 border-gray-200'
         }`}
       >
-        {booking.escrowStatus ?? 'NOT CAPTURED'}
+        {booking.escrowStatus ?? at("NOT CAPTURED")}
       </span>
       {disputePending && (
         <div className="mt-1.5">
-          <p className="text-[10px] text-red-600 font-semibold mb-1">⚠ Dispute open</p>
+          <p className="text-[10px] text-red-600 font-semibold mb-1">{at("⚠ Dispute open")}</p>
           {booking.disputeReason && <p className="text-[10px] text-gray-500 mb-1 max-w-[180px]">{booking.disputeReason}</p>}
           <div className="flex gap-1.5">
             <button
@@ -840,7 +840,7 @@ function EscrowCell({ booking, onUpdated }: { booking: AdminMentorshipBooking; o
               onClick={() => handleResolve('RELEASE')}
               className="text-[10px] font-medium px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
             >
-              {resolving === 'RELEASE' ? '…' : 'Release'}
+              {resolving === 'RELEASE' ? '…' : at("Release")}
             </button>
             <button
               type="button"
@@ -848,14 +848,14 @@ function EscrowCell({ booking, onUpdated }: { booking: AdminMentorshipBooking; o
               onClick={() => handleResolve('REFUND')}
               className="text-[10px] font-medium px-2 py-1 rounded bg-gray-600 text-white hover:bg-gray-700 disabled:opacity-60"
             >
-              {resolving === 'REFUND' ? '…' : 'Refund'}
+              {resolving === 'REFUND' ? '…' : at("Refund")}
             </button>
           </div>
           {error && <p className="text-[10px] text-red-500 mt-1">{error}</p>}
         </div>
       )}
       {booking.disputeResolvedAt && (
-        <p className="text-[10px] text-gray-400 mt-1">Resolved: {booking.disputeResolution}</p>
+        <p className="text-[10px] text-gray-400 mt-1">{at("Resolved:")}{" "}{booking.disputeResolution}</p>
       )}
     </div>
   );
@@ -890,8 +890,8 @@ function BookingsSection() {
     <div className="mb-10">
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Mentorship Bookings</h2>
-          <p className="text-sm text-gray-500 mt-1">Every paid session — mentor, student, time, and Google Meet sync status.</p>
+          <h2 className="text-lg font-semibold text-gray-900">{at("Mentorship Bookings")}</h2>
+          <p className="text-sm text-gray-500 mt-1">{at("Every paid session — mentor, student, time, and Google Meet sync status.")}</p>
         </div>
         <button
           type="button"
@@ -899,28 +899,28 @@ function BookingsSection() {
           disabled={loading}
           className="shrink-0 rounded-lg border border-gray-300 px-3.5 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-60"
         >
-          {loading ? 'Refreshing…' : 'Refresh'}
+          {loading ? at("Refreshing…") : at("Refresh")}
         </button>
       </div>
 
       {error ? (
-        <p className="text-sm text-red-600">Could not load bookings.</p>
+        <p className="text-sm text-red-600">{at("Could not load bookings.")}</p>
       ) : loading && bookings.length === 0 ? (
-        <p className="text-sm text-gray-400">Loading…</p>
+        <p className="text-sm text-gray-400">{at("Loading…")}</p>
       ) : bookings.length === 0 ? (
-        <p className="text-sm text-gray-500">No mentorship bookings yet.</p>
+        <p className="text-sm text-gray-500">{at("No mentorship bookings yet.")}</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left text-[11px] uppercase tracking-wide text-gray-400">
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Mentor</th>
-                <th className="px-4 py-3 font-medium">Student</th>
-                <th className="px-4 py-3 font-medium">Scheduled</th>
-                <th className="px-4 py-3 font-medium">Meet Link</th>
-                <th className="px-4 py-3 font-medium">Recording</th>
-                <th className="px-4 py-3 font-medium">Escrow</th>
+                <th className="px-4 py-3 font-medium">{at("Status")}</th>
+                <th className="px-4 py-3 font-medium">{at("Mentor")}</th>
+                <th className="px-4 py-3 font-medium">{at("Student")}</th>
+                <th className="px-4 py-3 font-medium">{at("Scheduled")}</th>
+                <th className="px-4 py-3 font-medium">{at("Meet Link")}</th>
+                <th className="px-4 py-3 font-medium">{at("Recording")}</th>
+                <th className="px-4 py-3 font-medium">{at("Escrow")}</th>
               </tr>
             </thead>
             <tbody>
@@ -936,7 +936,7 @@ function BookingsSection() {
                     </span>
                     {b.calendarSyncError && (
                       <span className="block mt-1 text-[10px] text-red-500" title={b.calendarSyncError}>
-                        Calendar sync failed
+                        {at("Calendar sync failed")}
                       </span>
                     )}
                   </td>
@@ -949,12 +949,12 @@ function BookingsSection() {
                     <span className="block text-[11px] text-gray-400">{b.student.email}</span>
                   </td>
                   <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                    {new Date(b.scheduledAt).toLocaleString('en-GB', { timeZone: 'Asia/Tbilisi' })}
+                    {new Date(b.scheduledAt).toLocaleString(adminLocale(), { timeZone: 'Asia/Tbilisi' })}
                   </td>
                   <td className="px-4 py-3">
                     {b.googleMeetLink ? (
                       <a href={b.googleMeetLink} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">
-                        Join link
+                        {at("Join link")}
                       </a>
                     ) : (
                       <span className="text-gray-400">—</span>
@@ -1014,7 +1014,7 @@ function AdminMentorshipDashboard() {
   return (
     <>
       <Head>
-        <title>Mentorship Queue | Admin</title>
+        <title>{at("Mentorship Queue | Admin")}</title>
       </Head>
       <div className="max-w-4xl">
         <BookingsSection />
@@ -1022,14 +1022,14 @@ function AdminMentorshipDashboard() {
         <GeneralHelpRequests />
 
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Mentorship Queue</h1>
-          <p className="text-sm text-gray-500 mt-1">Students who requested help, and first-time freelancers flagged for extra support.</p>
+          <h1 className="text-2xl font-semibold text-gray-900">{at("Mentorship Queue")}</h1>
+          <p className="text-sm text-gray-500 mt-1">{at("Students who requested help, and first-time freelancers flagged for extra support.")}</p>
         </div>
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">{at("Loading…")}</p>
         ) : queue.length === 0 ? (
-          <p className="text-sm text-gray-500">No open mentor-help requests.</p>
+          <p className="text-sm text-gray-500">{at("No open mentor-help requests.")}</p>
         ) : (
           <div className="space-y-3">
             {queue.map((gig) => (
@@ -1039,19 +1039,19 @@ function AdminMentorshipDashboard() {
                   <div className="flex items-center gap-2 shrink-0">
                     {gig.isFirstOrder && (
                       <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded border bg-cyan-50 text-cyan-700 border-cyan-200">
-                        First Order
+                        {at("First Order")}
                       </span>
                     )}
                     <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">
-                      {gig.status}
+                      {atEnum(gig.status)}
                     </span>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mb-1">
-                  Freelancer: {gig.assignedFreelancer?.name} ({gig.assignedFreelancer?.email})
+                  {at("Freelancer:")}{" "}{gig.assignedFreelancer?.name} ({gig.assignedFreelancer?.email})
                 </p>
                 <p className="text-xs text-gray-400 mb-3">
-                  Requested help {gig.mentorHelpRequestedAt && new Date(gig.mentorHelpRequestedAt).toLocaleString()}
+                  {at("Requested help")}{" "}{gig.mentorHelpRequestedAt && new Date(gig.mentorHelpRequestedAt).toLocaleString(adminLocale())}
                 </p>
 
                 {expandedId === gig.id && (
@@ -1059,7 +1059,7 @@ function AdminMentorshipDashboard() {
                     <MarkdownContent content={gig.description} className="text-gray-700 mb-2" />
                     {gig.deliveryComment && (
                       <>
-                        <p className="text-xs font-semibold text-gray-500 mt-2">Draft submission:</p>
+                        <p className="text-xs font-semibold text-gray-500 mt-2">{at("Draft submission:")}</p>
                         <p className="text-gray-700 whitespace-pre-wrap">{gig.deliveryComment}</p>
                       </>
                     )}
@@ -1077,7 +1077,7 @@ function AdminMentorshipDashboard() {
                     onClick={() => setExpandedId(expandedId === gig.id ? null : gig.id)}
                     className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
                   >
-                    {expandedId === gig.id ? 'Hide details' : 'Inspect draft'}
+                    {expandedId === gig.id ? at("Hide details") : at("Inspect draft")}
                   </button>
                   <button
                     type="button"
@@ -1085,7 +1085,7 @@ function AdminMentorshipDashboard() {
                     onClick={() => handleDismiss(gig.id)}
                     className="text-xs font-medium text-gray-500 hover:text-gray-700 disabled:opacity-60"
                   >
-                    Mark as handled
+                    {at("Mark as handled")}
                   </button>
                 </div>
               </div>

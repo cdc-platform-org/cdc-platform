@@ -5,8 +5,9 @@ import AdminLayout from '../../src/components/admin/AdminLayout';
 import { AdminTransaction, AdminBogPayment, BogSettings } from '../../src/types/adminPanel';
 import { getTransactions, getBogPayments, getBogSettings, updateBogSettings } from '../../src/services/adminPanelService';
 
+import { adminLocale, at, atEnum } from '../../src/i18n/admin';
 function formatMoney(minorUnits: number, currency: string): string {
-  return `${(minorUnits / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+  return `${(minorUnits / 100).toLocaleString(adminLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -24,10 +25,10 @@ const BOG_STATUS_BADGE: Record<string, string> = {
 };
 
 const PURPOSE_LABEL: Record<string, string> = {
-  COURSE: 'Course',
-  MENTORSHIP: 'Mentorship',
-  GIG_ESCROW_FUNDING: 'Gig Escrow',
-  PRODUCT: 'Digital Product',
+  get COURSE() { return at("Course"); },
+  get MENTORSHIP() { return at("Mentorship"); },
+  get GIG_ESCROW_FUNDING() { return at("Gig Escrow"); },
+  get PRODUCT() { return at("Digital Product"); },
 };
 
 function BogPaymentsSection() {
@@ -46,7 +47,7 @@ function BogPaymentsSection() {
       setPayments(result.data);
       setTotalCount(result.totalCount);
     } catch {
-      setError('Unable to load BOG payments.');
+      setError(at("Unable to load BOG payments."));
     } finally {
       setLoading(false);
     }
@@ -60,32 +61,31 @@ function BogPaymentsSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">Course & BOG Sales ({totalCount})</h2>
+      <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">{at("Course & BOG Sales (")}{totalCount})</h2>
       <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">
-        Every raw BOG payment order — course, mentorship, gig-escrow-funding, and digital-product checkouts —
-        regardless of status.
+        {at("Every raw BOG payment order — course, mentorship, gig-escrow-funding, and digital-product checkouts — regardless of status.")}
       </p>
       {error && (
         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
       {loading ? (
-        <p className="text-sm text-gray-400 dark:text-slate-500">Loading…</p>
+        <p className="text-sm text-gray-400 dark:text-slate-500">{at("Loading…")}</p>
       ) : payments.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-slate-400">No BOG payments yet.</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">{at("No BOG payments yet.")}</p>
       ) : (
         <div className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl border border-gray-200/80 dark:border-white/10 shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-gray-500 dark:text-slate-400 border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/60">
-                  <th className="px-4 py-3 font-medium">User</th>
-                  <th className="px-4 py-3 font-medium">Purpose</th>
-                  <th className="px-4 py-3 font-medium">Item</th>
-                  <th className="px-4 py-3 font-medium text-right">Amount</th>
-                  <th className="px-4 py-3 font-medium">Promo</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">BOG Order ID</th>
-                  <th className="px-4 py-3 font-medium">Date</th>
+                  <th className="px-4 py-3 font-medium">{at("User")}</th>
+                  <th className="px-4 py-3 font-medium">{at("Purpose")}</th>
+                  <th className="px-4 py-3 font-medium">{at("Item")}</th>
+                  <th className="px-4 py-3 font-medium text-right">{at("Amount")}</th>
+                  <th className="px-4 py-3 font-medium">{at("Promo")}</th>
+                  <th className="px-4 py-3 font-medium">{at("Status")}</th>
+                  <th className="px-4 py-3 font-medium">{at("BOG Order ID")}</th>
+                  <th className="px-4 py-3 font-medium">{at("Date")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
@@ -104,12 +104,12 @@ function BogPaymentsSection() {
                       <span
                         className={`text-xs font-medium px-2 py-0.5 rounded-full border shadow-[0_0_10px_-3px] ${BOG_STATUS_BADGE[p.status] ?? ''}`}
                       >
-                        {p.status}
+                        {atEnum(p.status)}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-gray-400 dark:text-slate-500 text-xs font-mono max-w-[160px] truncate">{p.bogOrderId}</td>
                     <td className="px-4 py-3 text-gray-500 dark:text-slate-400 text-xs whitespace-nowrap">
-                      {new Date(p.createdAt).toLocaleString()}
+                      {new Date(p.createdAt).toLocaleString(adminLocale())}
                     </td>
                   </tr>
                 ))}
@@ -123,17 +123,17 @@ function BogPaymentsSection() {
                 disabled={page === 1}
                 className="text-xs font-medium text-gray-600 dark:text-slate-400 disabled:opacity-40"
               >
-                Previous
+                {at("Previous")}
               </button>
               <span className="text-xs text-gray-400 dark:text-slate-500">
-                Page {page} of {totalPages}
+                {at("Page")}{" "}{page} of {totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
                 className="text-xs font-medium text-gray-600 dark:text-slate-400 disabled:opacity-40"
               >
-                Next
+                {at("Next")}
               </button>
             </div>
           )}
@@ -159,7 +159,7 @@ function TransactionsSection() {
       setTransactions(result.data);
       setTotalCount(result.totalCount);
     } catch {
-      setError('Unable to load transactions.');
+      setError(at("Unable to load transactions."));
     } finally {
       setLoading(false);
     }
@@ -173,26 +173,26 @@ function TransactionsSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Transactions ({totalCount})</h2>
+      <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-4">{at("Transactions (")}{totalCount})</h2>
       {error && (
         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
       {loading ? (
-        <p className="text-sm text-gray-400 dark:text-slate-500">Loading…</p>
+        <p className="text-sm text-gray-400 dark:text-slate-500">{at("Loading…")}</p>
       ) : transactions.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-slate-400">No transactions yet.</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">{at("No transactions yet.")}</p>
       ) : (
         <div className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl border border-gray-200/80 dark:border-white/10 shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-gray-500 dark:text-slate-400 border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/60">
-                  <th className="px-4 py-3 font-medium">Gig</th>
-                  <th className="px-4 py-3 font-medium">Client → Freelancer</th>
-                  <th className="px-4 py-3 font-medium text-right">Gross</th>
-                  <th className="px-4 py-3 font-medium text-right">Commission</th>
-                  <th className="px-4 py-3 font-medium text-right">Net</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">{at("Gig")}</th>
+                  <th className="px-4 py-3 font-medium">{at("Client → Freelancer")}</th>
+                  <th className="px-4 py-3 font-medium text-right">{at("Gross")}</th>
+                  <th className="px-4 py-3 font-medium text-right">{at("Commission")}</th>
+                  <th className="px-4 py-3 font-medium text-right">{at("Net")}</th>
+                  <th className="px-4 py-3 font-medium">{at("Status")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
@@ -228,17 +228,17 @@ function TransactionsSection() {
                 disabled={page === 1}
                 className="text-xs font-medium text-gray-600 dark:text-slate-400 disabled:opacity-40"
               >
-                Previous
+                {at("Previous")}
               </button>
               <span className="text-xs text-gray-400 dark:text-slate-500">
-                Page {page} of {totalPages}
+                {at("Page")}{" "}{page} of {totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
                 className="text-xs font-medium text-gray-600 dark:text-slate-400 disabled:opacity-40"
               >
-                Next
+                {at("Next")}
               </button>
             </div>
           )}
@@ -267,7 +267,7 @@ function BogSettingsSection() {
           setIsLiveMode(data.isLiveMode);
         }
       })
-      .catch(() => setError('Unable to load BOG settings.'))
+      .catch(() => setError(at("Unable to load BOG settings.")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -284,7 +284,7 @@ function BogSettingsSection() {
       setSecretKey('');
       setSuccess(true);
     } catch {
-      setError('Unable to save BOG settings. Please try again.');
+      setError(at("Unable to save BOG settings. Please try again."));
     } finally {
       setSaving(false);
     }
@@ -295,15 +295,13 @@ function BogSettingsSection() {
 
   return (
     <section>
-      <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">BOG (Bank of Georgia) Settings</h2>
+      <h2 className="text-base font-semibold text-gray-900 dark:text-white mb-1">{at("BOG (Bank of Georgia) Settings")}</h2>
       <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">
-        OAuth2 Client ID / Secret Key used to authenticate with the live BOG Payment API. These are a fallback —
-        if BOG_CLIENT_ID / BOG_SECRET_KEY environment variables are set on the server, those take priority. Secrets
-        are masked once saved and never shown in full again.
+        {at("OAuth2 Client ID / Secret Key used to authenticate with the live BOG Payment API. These are a fallback — if BOG_CLIENT_ID / BOG_SECRET_KEY environment variables are set on the server, those take priority. Secrets are masked once saved and never shown in full again.")}
       </p>
 
       {loading ? (
-        <p className="text-sm text-gray-400 dark:text-slate-500">Loading…</p>
+        <p className="text-sm text-gray-400 dark:text-slate-500">{at("Loading…")}</p>
       ) : (
         <form onSubmit={handleSubmit} className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl border border-gray-200/80 dark:border-white/10 shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 p-6 space-y-4 max-w-xl">
           {error && (
@@ -311,30 +309,30 @@ function BogSettingsSection() {
           )}
           {success && (
             <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-sm text-emerald-700">
-              Settings saved.
+              {at("Settings saved.")}
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Client ID</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Client ID")}</label>
             <input
               type="text"
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
               className={inputClass}
-              placeholder="BOG-CLIENT-ID"
+              placeholder={at("BOG-CLIENT-ID")}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
-              Secret Key {settings?.secretKey && <span className="text-gray-400 dark:text-slate-500 font-normal">(current: {settings.secretKey})</span>}
+              {at("Secret Key")}{" "}{settings?.secretKey && <span className="text-gray-400 dark:text-slate-500 font-normal">{at("(current:")}{" "}{settings.secretKey})</span>}
             </label>
             <input
               type="password"
               value={secretKey}
               onChange={(e) => setSecretKey(e.target.value)}
               className={inputClass}
-              placeholder="Leave blank to keep current"
+              placeholder={at("Leave blank to keep current")}
             />
           </div>
           <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
@@ -344,12 +342,10 @@ function BogSettingsSection() {
               onChange={(e) => setIsLiveMode(e.target.checked)}
               className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
             />
-            Live mode (record-keeping only)
+            {at("Live mode (record-keeping only)")}
           </label>
           <p className="text-xs text-gray-400 dark:text-slate-500 -mt-2">
-            This does not switch the API endpoint — BOG requests always go to their production API regardless of this
-            flag, using whichever Client ID/Secret is configured above. It only labels transactions for your own
-            records.
+            {at("This does not switch the API endpoint — BOG requests always go to their production API regardless of this flag, using whichever Client ID/Secret is configured above. It only labels transactions for your own records.")}
           </p>
 
           <button
@@ -357,7 +353,7 @@ function BogSettingsSection() {
             disabled={saving}
             className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
           >
-            {saving ? 'Saving…' : 'Save Settings'}
+            {saving ? at("Saving…") : at("Save Settings")}
           </button>
         </form>
       )}
@@ -370,11 +366,11 @@ export default function AdminFinancialsPage() {
     <AdminGuard requiredTiers={['SUPER_ADMIN']}>
       <AdminLayout>
         <Head>
-          <title>Financials & BOG | Admin</title>
+          <title>{at("Financials & BOG | Admin")}</title>
         </Head>
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Financials & BOG Transactions</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Restricted to SuperAdmin.</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{at("Financials & BOG Transactions")}</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{at("Restricted to SuperAdmin.")}</p>
         </div>
         <div className="space-y-10">
           <TransactionsSection />

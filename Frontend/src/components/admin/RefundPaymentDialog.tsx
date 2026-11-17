@@ -6,21 +6,22 @@ import {
   refundPayment,
 } from '../../services/adminFinanceService';
 
+import { adminLocale, at, atEnum } from '../../i18n/admin';
 // Escrow purposes can only be refunded in full while the money is still
 // held (see Backend services/bogRefundService.ts).
 const ESCROW_PURPOSES: CoursePaymentRow['purpose'][] = ['MENTORSHIP', 'HR_SUPPORT', 'GIG_ESCROW_FUNDING'];
 
 const ACCESS_LABEL: Record<CoursePaymentRow['purpose'], string> = {
-  AI_TOOL_SUBSCRIPTION: 'Revoke this paid AI tool subscription period',
-  COURSE: 'Remove the student from the course',
-  LIVE_TRAINING: 'Cancel the live training seat',
-  PRODUCT: 'Remove download access to the product',
-  ENGLISH_TUTOR_SUBSCRIPTION: 'Take back the 30 days of AI English Tutor access',
-  CHILDRENS_BOOK: 'Mark as refunded (the book itself is not changed automatically)',
-  GIFT_CARD: 'Deactivate the gift card code (its unspent balance can no longer be used)',
-  MENTORSHIP: 'Cancel the mentorship booking',
-  HR_SUPPORT: 'Cancel the HR support request',
-  GIG_ESCROW_FUNDING: 'Cancel the gig',
+  get AI_TOOL_SUBSCRIPTION() { return at("Revoke this paid AI tool subscription period"); },
+  get COURSE() { return at("Remove the student from the course"); },
+  get LIVE_TRAINING() { return at("Cancel the live training seat"); },
+  get PRODUCT() { return at("Remove download access to the product"); },
+  get ENGLISH_TUTOR_SUBSCRIPTION() { return at("Take back the 30 days of AI English Tutor access"); },
+  get CHILDRENS_BOOK() { return at("Mark as refunded (the book itself is not changed automatically)"); },
+  get GIFT_CARD() { return at("Deactivate the gift card code (its unspent balance can no longer be used)"); },
+  get MENTORSHIP() { return at("Cancel the mentorship booking"); },
+  get HR_SUPPORT() { return at("Cancel the HR support request"); },
+  get GIG_ESCROW_FUNDING() { return at("Cancel the gig"); },
 };
 
 function money(minor: number, currency: string) {
@@ -72,7 +73,7 @@ export default function RefundPaymentDialog({ payment, onClose, onRefunded }: Pr
       onRefunded(result.message);
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(message || 'Refund failed. Nothing was changed — please try again.');
+      setError(message || at("Refund failed. Nothing was changed — please try again."));
       setStep('form');
     } finally {
       setSubmitting(false);
@@ -84,27 +85,27 @@ export default function RefundPaymentDialog({ payment, onClose, onRefunded }: Pr
       <div className="w-full max-w-lg rounded-xl bg-white dark:bg-slate-900 border border-gray-200 dark:border-white/10 shadow-xl p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Refund payment</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{at("Refund payment")}</h2>
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
               {payment.user.name} ({payment.user.email}) · {payment.courseTitle}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 text-xl leading-none" aria-label="Close">
+          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 text-xl leading-none" aria-label={at("Close")}>
             ×
           </button>
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-xs mb-4">
           <div className="rounded-lg bg-gray-50 dark:bg-slate-800/60 p-2">
-            <div className="text-gray-500 dark:text-slate-400">Paid</div>
+            <div className="text-gray-500 dark:text-slate-400">{at("Paid")}</div>
             <div className="font-semibold text-gray-900 dark:text-white">{money(payment.amount, payment.currency)}</div>
           </div>
           <div className="rounded-lg bg-gray-50 dark:bg-slate-800/60 p-2">
-            <div className="text-gray-500 dark:text-slate-400">Already refunded</div>
+            <div className="text-gray-500 dark:text-slate-400">{at("Already refunded")}</div>
             <div className="font-semibold text-gray-900 dark:text-white">{money(payment.refundedAmount ?? 0, payment.currency)}</div>
           </div>
           <div className="rounded-lg bg-gray-50 dark:bg-slate-800/60 p-2">
-            <div className="text-gray-500 dark:text-slate-400">Can refund</div>
+            <div className="text-gray-500 dark:text-slate-400">{at("Can refund")}</div>
             <div className="font-semibold text-gray-900 dark:text-white">{money(remaining, payment.currency)}</div>
           </div>
         </div>
@@ -119,22 +120,22 @@ export default function RefundPaymentDialog({ payment, onClose, onRefunded }: Pr
                 onClick={() => setMode('full')}
                 className={`flex-1 text-sm px-3 py-2 rounded-lg border ${mode === 'full' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300'}`}
               >
-                Full refund
+                {at("Full refund")}
               </button>
               <button
                 type="button"
                 disabled={isEscrow}
-                title={isEscrow ? 'Escrow payments can only be refunded in full.' : undefined}
+                title={isEscrow ? at("Escrow payments can only be refunded in full.") : undefined}
                 onClick={() => setMode('partial')}
                 className={`flex-1 text-sm px-3 py-2 rounded-lg border disabled:opacity-50 ${mode === 'partial' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300'}`}
               >
-                Partial refund
+                {at("Partial refund")}
               </button>
             </div>
 
             {mode === 'partial' && (
               <label className="block text-sm">
-                <span className="text-gray-700 dark:text-slate-300">Amount ({payment.currency})</span>
+                <span className="text-gray-700 dark:text-slate-300">{at("Amount (")}{payment.currency})</span>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -145,25 +146,25 @@ export default function RefundPaymentDialog({ payment, onClose, onRefunded }: Pr
                   onChange={(e) => setAmountInput(e.target.value)}
                   className="mt-1 w-full rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-2 text-sm"
                 />
-                {!amountValid && <span className="text-xs text-red-600 dark:text-red-400">Enter an amount between 0.01 and {(remaining / 100).toFixed(2)}.</span>}
+                {!amountValid && <span className="text-xs text-red-600 dark:text-red-400">{at("Enter an amount between 0.01 and")}{" "}{(remaining / 100).toFixed(2)}.</span>}
               </label>
             )}
 
             <label className="flex items-start gap-2 text-sm text-gray-700 dark:text-slate-300">
               <input type="checkbox" className="mt-1" checked={isEscrow ? true : revokeAccess} disabled={isEscrow} onChange={(e) => setRevokeAccess(e.target.checked)} />
-              <span>{ACCESS_LABEL[payment.purpose] ?? 'Revoke access'}</span>
+              <span>{ACCESS_LABEL[payment.purpose] ?? at("Revoke access")}</span>
             </label>
 
             <label className="flex items-start gap-2 text-sm text-gray-700 dark:text-slate-300">
               <input type="checkbox" className="mt-1" checked={recordOnly} onChange={(e) => setRecordOnly(e.target.checked)} />
               <span>
-                I already refunded this in the BOG business dashboard — only record it here
-                <span className="block text-xs text-gray-500 dark:text-slate-400">No money is sent when this is checked.</span>
+                {at("I already refunded this in the BOG business dashboard — only record it here")}
+                <span className="block text-xs text-gray-500 dark:text-slate-400">{at("No money is sent when this is checked.")}</span>
               </span>
             </label>
 
             <label className="block text-sm">
-              <span className="text-gray-700 dark:text-slate-300">Reason (optional, saved in the audit log)</span>
+              <span className="text-gray-700 dark:text-slate-300">{at("Reason (optional, saved in the audit log)")}</span>
               <textarea
                 value={reason}
                 maxLength={500}
@@ -175,7 +176,7 @@ export default function RefundPaymentDialog({ payment, onClose, onRefunded }: Pr
 
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={onClose} className="text-sm px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300">
-                Cancel
+                {at("Cancel")}
               </button>
               <button
                 type="button"
@@ -183,7 +184,7 @@ export default function RefundPaymentDialog({ payment, onClose, onRefunded }: Pr
                 onClick={() => setStep('confirm')}
                 className="text-sm px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
               >
-                Continue
+                {at("Continue")}
               </button>
             </div>
           </div>
@@ -191,21 +192,21 @@ export default function RefundPaymentDialog({ payment, onClose, onRefunded }: Pr
           <div className="space-y-4">
             <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 text-sm text-red-800 dark:text-red-200">
               <p className="font-semibold mb-1">
-                {recordOnly ? 'Record a refund of ' : 'Send a refund of '}
+                {recordOnly ? at("Record a refund of ") : at("Send a refund of ")}
                 {money(refundMinor, payment.currency)} to {payment.user.email}?
               </p>
               <ul className="list-disc pl-5 text-xs space-y-1">
-                {!recordOnly && <li>The money goes back through Bank of Georgia. This cannot be undone.</li>}
-                {(isEscrow || revokeAccess) ? <li>{ACCESS_LABEL[payment.purpose]}.</li> : <li>The buyer keeps access.</li>}
-                <li>The creator&apos;s share for the refunded part is taken back from their balance, if they had one.</li>
+                {!recordOnly && <li>{at("The money goes back through Bank of Georgia. This cannot be undone.")}</li>}
+                {(isEscrow || revokeAccess) ? <li>{ACCESS_LABEL[payment.purpose]}.</li> : <li>{at("The buyer keeps access.")}</li>}
+                <li>{at("The creator's share for the refunded part is taken back from their balance, if they had one.")}</li>
               </ul>
             </div>
             <div className="flex justify-end gap-2">
               <button type="button" disabled={submitting} onClick={() => setStep('form')} className="text-sm px-4 py-2 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-700 dark:text-slate-300">
-                Back
+                {at("Back")}
               </button>
               <button type="button" disabled={submitting} onClick={handleSubmit} className="text-sm px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60">
-                {submitting ? 'Refunding…' : 'Yes, refund'}
+                {submitting ? at("Refunding…") : at("Yes, refund")}
               </button>
             </div>
           </div>
@@ -213,13 +214,13 @@ export default function RefundPaymentDialog({ payment, onClose, onRefunded }: Pr
 
         {history.length > 0 && (
           <div className="mt-6 border-t border-gray-200 dark:border-slate-800 pt-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Refund history</h3>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">{at("Refund history")}</h3>
             <ul className="space-y-1 text-xs">
               {history.map((r) => (
                 <li key={r.id} className="flex justify-between gap-2 text-gray-600 dark:text-slate-300">
                   <span>
-                    {new Date(r.createdAt).toLocaleString()} · {money(r.amount, payment.currency)} · {r.status}
-                    {r.recordOnly ? ' (recorded)' : ''}
+                    {new Date(r.createdAt).toLocaleString(adminLocale())} · {money(r.amount, payment.currency)} · {atEnum(r.status)}
+                    {r.recordOnly ? at(" (recorded)") : ''}
                     {r.errorMessage ? ` — ${r.errorMessage}` : ''}
                   </span>
                   <span className="text-gray-400 whitespace-nowrap">{r.requestedBy.name}</span>

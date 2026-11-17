@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { IakoAssignmentMode, IakoKnowledgeSource, IakoProfile } from '../../../services/iakoAssistantService';
 import type { Dispatch, SetStateAction } from 'react';
 
+import { at } from '../../../i18n/admin';
 interface IakoAssistantFieldsProps {
   iakoEnabled: boolean;
   setIakoEnabled: Dispatch<SetStateAction<boolean>>;
@@ -95,23 +96,23 @@ export default function IakoAssistantFields({
                           onClick={() => setIakoMode('TESTING')}
                           className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-semibold ${iakoMode === 'TESTING' ? 'border-amber-500 bg-amber-50 text-amber-800' : 'border-gray-300 text-gray-500 hover:bg-gray-50'}`}
                         >
-                          Private / Testing
+                          {at("Private / Testing")}
                         </button>
                         <button
                           type="button"
                           onClick={() => setIakoMode('LIVE')}
                           className={`flex-1 rounded-lg border px-3 py-2.5 text-sm font-semibold ${iakoMode === 'LIVE' ? 'border-emerald-500 bg-emerald-50 text-emerald-800' : 'border-gray-300 text-gray-500 hover:bg-gray-50'}`}
                         >
-                          Live
+                          {at("Live")}
                         </button>
                       </div>
                       {iakoMode === 'TESTING' ? (
                         <p className="text-xs text-amber-700 mt-1.5">
-                          <span className="font-semibold">Private / Testing</span> — მხოლოდ ჩარიცხულმა ადმინისტრატორმა (SUPER_ADMIN/MANAGER) შეუძლია ამ IAKO-ს გამოყენება. ჩარიცხული მონაწილეები მას ვერც ხედავენ და ვერც წვდებიან.
+                          <span className="font-semibold">{at("Private / Testing")}</span> — მხოლოდ ჩარიცხულმა ადმინისტრატორმა (SUPER_ADMIN/MANAGER) შეუძლია ამ IAKO-ს გამოყენება. ჩარიცხული მონაწილეები მას ვერც ხედავენ და ვერც წვდებიან.
                         </p>
                       ) : (
                         <p className="text-xs text-emerald-700 mt-1.5">
-                          <span className="font-semibold">Live</span> — ავთენტიფიცირებულ მონაწილეებს აქტიური/დასრულებული ჩარიცხვით შეუძლიათ ამ IAKO-ს გამოყენება, მოქმედი ლიმიტების ფარგლებში.
+                          <span className="font-semibold">{at("Live")}</span> — ავთენტიფიცირებულ მონაწილეებს აქტიური/დასრულებული ჩარიცხვით შეუძლიათ ამ IAKO-ს გამოყენება, მოქმედი ლიმიტების ფარგლებში.
                         </p>
                       )}
                     </div>
@@ -121,7 +122,7 @@ export default function IakoAssistantFields({
                     <div className="rounded-lg border border-gray-200 bg-white p-3.5 text-xs text-gray-600 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
                       <div><span className="text-gray-400">პროფილი:</span> {iakoDetail.name}</div>
                       <div><span className="text-gray-400">სტატუსი:</span> {iakoDetail.active ? 'აქტიური' : 'გამორთული'}</div>
-                      <div><span className="text-gray-400">Vision:</span> {iakoDetail.visionEnabled ? 'ჩართული' : 'გამორთული'}</div>
+                      <div><span className="text-gray-400">{at("Vision:")}</span> {iakoDetail.visionEnabled ? 'ჩართული' : 'გამორთული'}</div>
                       <div><span className="text-gray-400">სულ მოთხოვნა (პროფილის ნაგულისხმევი):</span> {iakoDetail.defaultRequestLimit ?? '∞'}</div>
                       <div><span className="text-gray-400">დღიური:</span> {iakoDetail.defaultDailyRequestLimit ?? '∞'}</div>
                       <div><span className="text-gray-400">საათური:</span> {iakoDetail.defaultHourlyRequestLimit ?? '∞'}</div>

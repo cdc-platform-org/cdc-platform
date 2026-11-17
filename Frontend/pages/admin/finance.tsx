@@ -13,6 +13,7 @@ import {
 } from '../../src/services/adminFinanceService';
 import RefundPaymentDialog from '../../src/components/admin/RefundPaymentDialog';
 
+import { adminLocale, at, atf } from '../../src/i18n/admin';
 function formatGel(minorUnits: number, currency: string): string {
   return `${(minorUnits / 100).toFixed(2)} ${currency}`;
 }
@@ -39,13 +40,13 @@ function GrantAccessForm({ onGranted }: { onGranted: () => void }) {
     setMessage(null);
     try {
       await grantCourseAccess({ userEmail, courseId, note: note || undefined });
-      setMessage('✓ Access granted.');
+      setMessage(at("✓ Access granted."));
       setUserEmail('');
       setCourseId('');
       setNote('');
       onGranted();
     } catch {
-      setMessage('Unable to grant access — check the email and course ID.');
+      setMessage(at("Unable to grant access — check the email and course ID."));
     } finally {
       setSubmitting(false);
     }
@@ -53,32 +54,32 @@ function GrantAccessForm({ onGranted }: { onGranted: () => void }) {
 
   return (
     <div className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md border border-gray-200 dark:border-white/10 shadow-md shadow-slate-200/40 dark:shadow-none rounded-xl p-5 mb-8 transition-colors">
-      <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">Manual Course Grant</h3>
-      <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">For students who paid via bank transfer, outside BOG checkout.</p>
+      <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">{at("Manual Course Grant")}</h3>
+      <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">{at("For students who paid via bank transfer, outside BOG checkout.")}</p>
       {message && <div className="mb-3 text-xs text-gray-600 dark:text-slate-300">{message}</div>}
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-2">
         <input
           required
-          placeholder="Student email"
+          placeholder={at("Student email")}
           value={userEmail}
           onChange={(e) => setUserEmail(e.target.value)}
           className="rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-2 text-sm"
         />
         <input
           required
-          placeholder="Course ID"
+          placeholder={at("Course ID")}
           value={courseId}
           onChange={(e) => setCourseId(e.target.value)}
           className="rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-2 text-sm"
         />
         <input
-          placeholder="Note (optional)"
+          placeholder={at("Note (optional)")}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           className="rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-2 text-sm"
         />
         <button type="submit" disabled={submitting} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60">
-          {submitting ? 'Granting…' : 'Grant Access'}
+          {submitting ? at("Granting…") : at("Grant Access")}
         </button>
       </form>
     </div>
@@ -113,9 +114,9 @@ function BankTransferSettingsForm() {
     setMessage(null);
     try {
       await updateAdminBillingSettings({ bankTransferIban: iban, bankTransferBankName: bankName, bankTransferAccountName: accountName });
-      setMessage('✓ Saved.');
+      setMessage(at("✓ Saved."));
     } catch {
-      setMessage('Unable to save — check the IBAN format.');
+      setMessage(at("Unable to save — check the IBAN format."));
     } finally {
       setSaving(false);
     }
@@ -123,36 +124,36 @@ function BankTransferSettingsForm() {
 
   return (
     <div className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md border border-gray-200 dark:border-white/10 shadow-md shadow-slate-200/40 dark:shadow-none rounded-xl p-5 mb-8 transition-colors">
-      <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">Bank Transfer Settings</h3>
+      <h3 className="font-semibold text-sm text-gray-900 dark:text-white mb-1">{at("Bank Transfer Settings")}</h3>
       <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">
-        Shown to users as a manual bank-transfer alternative to attaching a card (Settings → Payment Methods). Leave IBAN blank to hide the option entirely.
+        {at("Shown to users as a manual bank-transfer alternative to attaching a card (Settings → Payment Methods). Leave IBAN blank to hide the option entirely.")}
       </p>
       {loading ? (
-        <p className="text-xs text-gray-400 dark:text-slate-500">Loading…</p>
+        <p className="text-xs text-gray-400 dark:text-slate-500">{at("Loading…")}</p>
       ) : (
         <>
           {message && <div className="mb-3 text-xs text-gray-600 dark:text-slate-300">{message}</div>}
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <input
-              placeholder="IBAN (e.g. GE29TB...)"
+              placeholder={at("IBAN (e.g. GE29TB...)")}
               value={iban}
               onChange={(e) => setIban(e.target.value)}
               className="rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-2 text-sm font-mono"
             />
             <input
-              placeholder="Bank name (optional)"
+              placeholder={at("Bank name (optional)")}
               value={bankName}
               onChange={(e) => setBankName(e.target.value)}
               className="rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-2 text-sm"
             />
             <input
-              placeholder="Recipient name (optional)"
+              placeholder={at("Recipient name (optional)")}
               value={accountName}
               onChange={(e) => setAccountName(e.target.value)}
               className="rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white px-3 py-2 text-sm"
             />
             <button type="submit" disabled={saving} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60">
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? at("Saving…") : at("Save")}
             </button>
           </form>
         </>
@@ -162,16 +163,16 @@ function BankTransferSettingsForm() {
 }
 
 const PURPOSE_LABEL: Record<CoursePaymentRow['purpose'], string> = {
-  AI_TOOL_SUBSCRIPTION: 'AI tool subscription',
-  COURSE: 'Course',
-  MENTORSHIP: 'Mentorship',
-  GIG_ESCROW_FUNDING: 'Gig Escrow',
-  PRODUCT: 'Product',
-  HR_SUPPORT: 'HR Support',
-  LIVE_TRAINING: 'Live Training',
-  ENGLISH_TUTOR_SUBSCRIPTION: 'AI Tutor',
-  CHILDRENS_BOOK: "Children's Book",
-  GIFT_CARD: 'Gift card',
+  get AI_TOOL_SUBSCRIPTION() { return at("AI tool subscription"); },
+  get COURSE() { return at("Course"); },
+  get MENTORSHIP() { return at("Mentorship"); },
+  get GIG_ESCROW_FUNDING() { return at("Gig Escrow"); },
+  get PRODUCT() { return at("Product"); },
+  get HR_SUPPORT() { return at("HR Support"); },
+  get LIVE_TRAINING() { return at("Live Training"); },
+  get ENGLISH_TUTOR_SUBSCRIPTION() { return at("AI Tutor"); },
+  get CHILDRENS_BOOK() { return at("Children's Book"); },
+  get GIFT_CARD() { return at("Gift card"); },
 };
 
 function exportPaymentsCsv(payments: CoursePaymentRow[]) {
@@ -230,7 +231,7 @@ function AdminFinanceDashboard() {
       const updated = gateway === 'STRIPE' ? await reverifyStripePayment(id) : await reverifyCoursePayment(id);
       setPayments((prev) => prev.map((p) => (p.id === id ? updated : p)));
     } catch {
-      alert(`Re-verification failed — could not reach ${gateway === 'STRIPE' ? 'Stripe' : 'BOG'}.`);
+      alert(atf("Re-verification failed — could not reach {0}.", gateway === 'STRIPE' ? 'Stripe' : 'BOG'));
     } finally {
       setBusyId(null);
     }
@@ -245,13 +246,13 @@ function AdminFinanceDashboard() {
   return (
     <>
       <Head>
-        <title>Course Finance | Admin</title>
+        <title>{at("Course Finance | Admin")}</title>
       </Head>
       <div className="max-w-6xl">
         <div className="mb-8 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Payment Finance</h1>
-            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">BOG Pay + Stripe transaction ledger — every purchase type (courses, products, books, live trainings, mentorship, gig escrow…). BOG payments can be refunded from here.</p>
+            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{at("Payment Finance")}</h1>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{at("BOG Pay + Stripe transaction ledger — every purchase type (courses, products, books, live trainings, mentorship, gig escrow…). BOG payments can be refunded from here.")}</p>
           </div>
           <button
             type="button"
@@ -259,14 +260,14 @@ function AdminFinanceDashboard() {
             onClick={() => exportPaymentsCsv(payments)}
             className="text-xs font-medium px-3 py-2 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900/60 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-50 whitespace-nowrap"
           >
-            Export CSV
+            {at("Export CSV")}
           </button>
         </div>
 
         {notice && (
           <div className="mb-6 flex items-start justify-between gap-4 rounded-lg border border-emerald-200 dark:border-emerald-500/30 bg-emerald-50 dark:bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200">
             <span>{notice}</span>
-            <button type="button" onClick={() => setNotice(null)} className="text-emerald-700 dark:text-emerald-300" aria-label="Dismiss">×</button>
+            <button type="button" onClick={() => setNotice(null)} className="text-emerald-700 dark:text-emerald-300" aria-label={at("Dismiss")}>×</button>
           </div>
         )}
 
@@ -281,7 +282,7 @@ function AdminFinanceDashboard() {
               onClick={() => setStatusFilter(s)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${statusFilter === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-900/60 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700'}`}
             >
-              {s ? s.replace('_', ' ') : 'All statuses'}
+              {s ? s.replace('_', ' ') : at("All statuses")}
             </button>
           ))}
           <span className="w-px h-5 bg-gray-200 dark:bg-slate-700 mx-1" />
@@ -292,36 +293,36 @@ function AdminFinanceDashboard() {
               onClick={() => setPurposeFilter(p)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${purposeFilter === p ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-900/60 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700'}`}
             >
-              {p ? PURPOSE_LABEL[p] : 'All purposes'}
+              {p ? PURPOSE_LABEL[p] : at("All purposes")}
             </button>
           ))}
         </div>
 
         {loading ? (
-          <p className="text-sm text-gray-400 dark:text-slate-500">Loading…</p>
+          <p className="text-sm text-gray-400 dark:text-slate-500">{at("Loading…")}</p>
         ) : payments.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-slate-400">No transactions found.</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{at("No transactions found.")}</p>
         ) : (
           <div className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md border border-gray-200 dark:border-white/10 shadow-md shadow-slate-200/40 dark:shadow-none rounded-xl overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wider border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/60">
-                  <th className="px-4 py-3">Order ID</th>
-                  <th className="px-4 py-3">Gateway</th>
-                  <th className="px-4 py-3">User</th>
-                  <th className="px-4 py-3">Purpose</th>
-                  <th className="px-4 py-3">Reference</th>
-                  <th className="px-4 py-3">Amount</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Actions</th>
+                  <th className="px-4 py-3">{at("Order ID")}</th>
+                  <th className="px-4 py-3">{at("Gateway")}</th>
+                  <th className="px-4 py-3">{at("User")}</th>
+                  <th className="px-4 py-3">{at("Purpose")}</th>
+                  <th className="px-4 py-3">{at("Reference")}</th>
+                  <th className="px-4 py-3">{at("Amount")}</th>
+                  <th className="px-4 py-3">{at("Status")}</th>
+                  <th className="px-4 py-3">{at("Date")}</th>
+                  <th className="px-4 py-3">{at("Actions")}</th>
                 </tr>
               </thead>
               <tbody>
                 {payments.map((p) => (
                   <tr key={p.id} className="border-b border-gray-100 dark:border-slate-800 last:border-0 hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs text-gray-500 dark:text-slate-400 max-w-[140px] truncate">{p.bogOrderId}</td>
-                    <td className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-slate-300">{p.gateway === 'STRIPE' ? 'Stripe' : 'BOG'}</td>
+                    <td className="px-4 py-3 text-xs font-semibold text-gray-600 dark:text-slate-300">{p.gateway === 'STRIPE' ? at("Stripe") : 'BOG'}</td>
                     <td className="px-4 py-3">
                       <div className="text-gray-900 dark:text-white">{p.user.name}</div>
                       <div className="text-xs text-gray-400 dark:text-slate-500">{p.user.email}</div>
@@ -337,7 +338,7 @@ function AdminFinanceDashboard() {
                     <td className="px-4 py-3">
                       <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded border shadow-[0_0_10px_-3px] ${STATUS_BADGE[p.status]}`}>{p.status.replace('_', ' ')}</span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500 dark:text-slate-400">{new Date(p.createdAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500 dark:text-slate-400">{new Date(p.createdAt).toLocaleDateString(adminLocale())}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
                         {(p.status === 'PENDING' || p.status === 'COMPLETED') && (
@@ -345,10 +346,10 @@ function AdminFinanceDashboard() {
                             type="button"
                             disabled={busyId === p.id}
                             onClick={() => handleReverify(p.id, p.gateway)}
-                            title={p.status === 'COMPLETED' ? 'Re-check with the gateway and retry fulfillment if it never completed (safe to run again — a no-op if everything already went through).' : undefined}
+                            title={p.status === 'COMPLETED' ? at("Re-check with the gateway and retry fulfillment if it never completed (safe to run again — a no-op if everything already went through).") : undefined}
                             className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 disabled:opacity-60"
                           >
-                            Re-verify
+                            {at("Re-verify")}
                           </button>
                         )}
                         {(p.status === 'COMPLETED' || p.status === 'PARTIALLY_REFUNDED') && p.gateway === 'BOG' && (
@@ -358,7 +359,7 @@ function AdminFinanceDashboard() {
                             onClick={() => setRefundTarget(p)}
                             className="text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 disabled:opacity-60"
                           >
-                            Refund
+                            {at("Refund")}
                           </button>
                         )}
                       </div>

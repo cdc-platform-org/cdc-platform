@@ -51,6 +51,7 @@ import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext'
 import { adminDict } from '../../data/adminDict';
 import { getSidebarBadgeCounts, markSidebarSectionSeen, AdminSidebarBadgeCounts, AdminSeenSection } from '../../services/adminPanelService';
 
+import { at } from '../../i18n/admin';
 // RED = action required (a queue only a human decision can clear — pending
 // applications/verifications/waitlist signups). BLUE = new
 // registrations/leads (informational, clears itself once the admin visits
@@ -281,7 +282,7 @@ function AdminLayoutInner({ children, responsive = false }: AdminLayoutProps) {
             <div className="relative">
               <div className="absolute inset-0 bg-cyan-500/40 blur-lg rounded-lg" aria-hidden="true" />
               <div className="relative bg-gradient-to-tr from-cyan-500 to-purple-600 text-white px-3 py-1.5 rounded-lg font-black text-sm tracking-wider shadow-lg">
-                CDC
+                {at("CDC")}
               </div>
             </div>
             <span className="font-bold text-sm tracking-wide">{t.chrome.adminPanel}</span>
@@ -302,8 +303,8 @@ function AdminLayoutInner({ children, responsive = false }: AdminLayoutProps) {
               type="search"
               value={navQuery}
               onChange={(e) => setNavQuery(e.target.value)}
-              placeholder={lang === 'ka' ? 'მენიუში ძებნა…' : 'Search menu…'}
-              aria-label={lang === 'ka' ? 'მენიუში ძებნა' : 'Search menu'}
+              placeholder={lang === 'ka' ? 'მენიუში ძებნა…' : at("Search menu…")}
+              aria-label={lang === 'ka' ? 'მენიუში ძებნა' : at("Search menu")}
               className="w-full rounded-lg bg-slate-800/70 border border-slate-700 pl-8 pr-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
             />
           </label>
@@ -384,7 +385,7 @@ function AdminLayoutInner({ children, responsive = false }: AdminLayoutProps) {
       <div className="flex-1 min-w-0 flex flex-col">
         {/* TOPBAR */}
         <header className={`h-14 shrink-0 sticky top-0 z-10 border-b border-gray-200 dark:border-slate-800 bg-white/80 dark:bg-[#0e1422]/80 backdrop-blur-md flex items-center ${responsive ? 'justify-between lg:justify-end' : 'justify-end'} px-6 transition-colors`}>
-          {responsive && <button type="button" className="lg:hidden rounded border border-gray-300 dark:border-slate-700 px-3 py-1.5 text-xs" aria-expanded={mobileNavOpen} aria-controls="admin-navigation" onClick={() => setMobileNavOpen(open => !open)}>{lang === 'ka' ? 'მენიუ' : 'Menu'}</button>}
+          {responsive && <button type="button" className="lg:hidden rounded border border-gray-300 dark:border-slate-700 px-3 py-1.5 text-xs" aria-expanded={mobileNavOpen} aria-controls="admin-navigation" onClick={() => setMobileNavOpen(open => !open)}>{lang === 'ka' ? 'მენიუ' : at("Menu")}</button>}
           <div className="flex items-center rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden text-xs font-bold">
             <button
               type="button"
@@ -393,7 +394,7 @@ function AdminLayoutInner({ children, responsive = false }: AdminLayoutProps) {
                 lang === 'ka' ? 'bg-slate-900 text-white' : 'bg-white dark:bg-slate-900/60 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'
               }`}
             >
-              KA
+              {at("KA")}
             </button>
             <button
               type="button"
@@ -402,7 +403,7 @@ function AdminLayoutInner({ children, responsive = false }: AdminLayoutProps) {
                 lang === 'en' ? 'bg-slate-900 text-white' : 'bg-white dark:bg-slate-900/60 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800'
               }`}
             >
-              EN
+              {at("EN")}
             </button>
           </div>
         </header>

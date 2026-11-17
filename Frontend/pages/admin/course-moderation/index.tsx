@@ -5,15 +5,16 @@ import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { getModerationQueue } from '../../../src/services/adminCourseModerationService';
 import { ModerationCourseRow, CourseStatus } from '../../../src/types/instructor';
 
+import { adminLocale, at } from '../../../src/i18n/admin';
 const STATUS_TABS: CourseStatus[] = ['PENDING_REVIEW', 'NEEDS_REVISION', 'PUBLISHED', 'REJECTED', 'ARCHIVED'];
 const STATUS_LABEL: Record<CourseStatus, string> = {
-  DRAFT: 'Draft',
-  PENDING_REVIEW: 'Pending Review',
-  NEEDS_REVISION: 'Needs Revision',
-  APPROVED: 'Approved',
-  PUBLISHED: 'Published',
-  REJECTED: 'Rejected',
-  ARCHIVED: 'Archived',
+  get DRAFT() { return at("Draft"); },
+  get PENDING_REVIEW() { return at("Pending Review"); },
+  get NEEDS_REVISION() { return at("Needs Revision"); },
+  get APPROVED() { return at("Approved"); },
+  get PUBLISHED() { return at("Published"); },
+  get REJECTED() { return at("Rejected"); },
+  get ARCHIVED() { return at("Archived"); },
 };
 
 function AdminCourseModerationDashboard() {
@@ -34,8 +35,8 @@ function AdminCourseModerationDashboard() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Course Moderation Queue</h1>
-        <p className="text-sm text-gray-500 dark:text-slate-400">Review Mentor-authored courses submitted from the Instructor Studio.</p>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">{at("Course Moderation Queue")}</h1>
+        <p className="text-sm text-gray-500 dark:text-slate-400">{at("Review Mentor-authored courses submitted from the Instructor Studio.")}</p>
       </div>
 
       <div className="flex items-center gap-2 border-b border-gray-200 dark:border-slate-800 pb-2">
@@ -56,9 +57,9 @@ function AdminCourseModerationDashboard() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500 dark:text-slate-400">Loading…</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">{at("Loading…")}</p>
       ) : courses.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-slate-400">Nothing here.</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">{at("Nothing here.")}</p>
       ) : (
         <div className="space-y-3">
           {courses.map((course) => (
@@ -75,7 +76,7 @@ function AdminCourseModerationDashboard() {
                     {course._count.sections === 1 ? '' : 's'}
                   </p>
                 </div>
-                <span className="text-xs text-gray-400 dark:text-slate-500">{new Date(course.updatedAt).toLocaleDateString()}</span>
+                <span className="text-xs text-gray-400 dark:text-slate-500">{new Date(course.updatedAt).toLocaleDateString(adminLocale())}</span>
               </div>
             </Link>
           ))}

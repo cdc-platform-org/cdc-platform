@@ -13,6 +13,7 @@ import {
   AdminTrainerAssignment,
 } from '@/src/services/adminTrainerService';
 
+import { at } from '../../../../src/i18n/admin';
 // ============================================================
 // IAKO Trainer Tools — per-training trainer assignment (Phase 1).
 // SUPER_ADMIN/MANAGER only. Same parent-resolved shape as the
@@ -43,7 +44,7 @@ function TrainerAssignmentsContent() {
         setRoster(rosterData.filter((profile) => profile.active));
       setSelectedId((current) => rosterData.some((profile) => profile.id === current) ? current : (rosterData.find((profile) => profile.active)?.id ?? ''));
     } catch {
-      setError('Unable to load trainer assignments.');
+      setError(at("Unable to load trainer assignments."));
     } finally {
       setLoading(false);
     }
@@ -60,7 +61,7 @@ function TrainerAssignmentsContent() {
       await load();
     } catch (err: unknown) {
       const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setError(apiMessage ?? 'Unable to assign this trainer.');
+      setError(apiMessage ?? at("Unable to assign this trainer."));
     } finally {
       setBusy(false);
     }
@@ -73,7 +74,7 @@ function TrainerAssignmentsContent() {
       await removeTrainerAssignment(trainingId, assignmentId);
       await load();
     } catch {
-      setError('Unable to remove this assignment.');
+      setError(at("Unable to remove this assignment."));
     } finally {
       setBusy(false);
     }
@@ -110,7 +111,7 @@ function TrainerAssignmentsContent() {
 
       <div className="mt-6 space-y-2">
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">{at("Loading…")}</p>
         ) : assignments.length === 0 ? (
           <p className="text-sm text-gray-500">ამ ტრენინგზე ტრენერი ჯერ არ არის მინიჭებული.</p>
         ) : (
@@ -140,7 +141,7 @@ export default function TrainerAssignmentsPage() {
   return (
     <AdminGuard requiredTiers={['SUPER_ADMIN', 'MANAGER']}>
       <AdminLayout>
-        <Head><title>Trainer Assignments | CDC Admin</title></Head>
+        <Head><title>{at("Trainer Assignments | CDC Admin")}</title></Head>
         <TrainerAssignmentsContent />
       </AdminLayout>
     </AdminGuard>

@@ -28,6 +28,7 @@ import {
   deleteLiveTrainingExamSession,
 } from '../../../../src/services/adminLiveTrainingService';
 
+import { adminLocale, at } from '../../../../src/i18n/admin';
 const STATUS_LABEL: Record<LiveTrainingLeadStatus, string> = {
   NOT_CONTACTED: 'დაუკავშირებელი',
   CONTACTED: 'დაკავშირებული',
@@ -275,7 +276,7 @@ function AdminLiveTrainingLeadsDashboard() {
   return (
     <>
       <Head>
-        <title>{training ? `${training.title} — ლიდები` : 'ლიდები'} | Admin</title>
+        <title>{training ? `${training.title} — ლიდები` : 'ლიდები'} {at("| Admin")}</title>
       </Head>
       <div className="max-w-5xl">
         <Link href="/admin/live-trainings" className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 mb-4">
@@ -287,7 +288,7 @@ function AdminLiveTrainingLeadsDashboard() {
             <h1 className="blog-heading-safe text-2xl font-semibold text-gray-900">{training?.title ?? 'ლიდები'}</h1>
             {training && (
               <p className="text-sm text-gray-500 mt-1">
-                {new Date(training.scheduledAt).toLocaleString()} · {training.registeredCount} / {training.maxCapacity} რეგისტრირებული ·{' '}
+                {new Date(training.scheduledAt).toLocaleString(adminLocale())} · {training.registeredCount} / {training.maxCapacity} რეგისტრირებული ·{' '}
                 {training.minThresholdMet
                   ? 'მინ. ჯგუფი შევსებულია'
                   : `მინ. ${training.minCapacity}-კაციან ჯგუფს აკლია ${Math.max(0, training.minCapacity - training.registeredCount)} ადამიანი`}
@@ -346,7 +347,7 @@ function AdminLiveTrainingLeadsDashboard() {
                     required
                     value={grantEmail}
                     onChange={(e) => setGrantEmail(e.target.value)}
-                    placeholder="student@example.com"
+                    placeholder={at("student@example.com")}
                     className="flex-1 min-w-[200px] rounded-lg border border-gray-300 px-3 py-2 text-sm"
                   />
                   <input
@@ -386,7 +387,7 @@ function AdminLiveTrainingLeadsDashboard() {
                     <tr key={e.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3 font-medium text-gray-900">{e.user.name}</td>
                       <td className="px-4 py-3 text-gray-600">{e.user.email}</td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{new Date(e.enrolledAt).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">{new Date(e.enrolledAt).toLocaleString(adminLocale())}</td>
                       <td className="px-4 py-3">
                         <span className={`text-xs font-medium px-2.5 py-1 rounded-lg border ${ENROLLMENT_STATUS_BADGE[e.status]}`}>
                           {ENROLLMENT_STATUS_LABEL[e.status]}
@@ -575,7 +576,7 @@ function AdminLiveTrainingLeadsDashboard() {
         {error && <div className="mb-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">{at("Loading…")}</p>
         ) : filteredLeads.length === 0 ? (
           <p className="text-sm text-gray-500">ლიდები ვერ მოიძებნა.</p>
         ) : (
@@ -600,7 +601,7 @@ function AdminLiveTrainingLeadsDashboard() {
                           {l.phone}
                         </a>
                       </td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{new Date(l.createdAt).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">{new Date(l.createdAt).toLocaleString(adminLocale())}</td>
                       <td className="px-4 py-3">
                         <select
                           value={l.status}

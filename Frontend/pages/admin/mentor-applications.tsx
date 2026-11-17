@@ -4,12 +4,13 @@ import AdminLayout from '../../src/components/admin/AdminLayout';
 import { getMentorApplications, approveMentorApplication, rejectMentorApplication } from '../../src/services/adminMentorApplicationService';
 import { MentorApplication, MentorApplicationStatus } from '../../src/types/instructor';
 
+import { at, atEnum } from '../../src/i18n/admin';
 const STATUS_TABS: (MentorApplicationStatus | '')[] = ['PENDING', 'APPROVED', 'REJECTED', ''];
 const STATUS_LABEL: Record<MentorApplicationStatus | '', string> = {
-  PENDING: 'Pending',
-  APPROVED: 'Approved',
-  REJECTED: 'Rejected',
-  '': 'All',
+  get PENDING() { return at("Pending"); },
+  get APPROVED() { return at("Approved"); },
+  get REJECTED() { return at("Rejected"); },
+  get ''() { return at("All"); },
 };
 const STATUS_BADGE: Record<MentorApplicationStatus, string> = {
   PENDING: 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-500/10 dark:border-amber-500/30',
@@ -36,17 +37,17 @@ function ApplicationCard({
           <p className="text-xs text-gray-500 dark:text-slate-400">{application.user?.email}</p>
         </div>
         <span className={`inline-flex items-center text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border ${STATUS_BADGE[application.status]}`}>
-          {application.status}
+          {atEnum(application.status)}
         </span>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-3 text-xs">
         <div>
-          <p className="font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Background</p>
+          <p className="font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">{at("Background")}</p>
           <p className="text-gray-700 dark:text-slate-300 whitespace-pre-wrap">{application.background}</p>
         </div>
         <div>
-          <p className="font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Bio</p>
+          <p className="font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">{at("Bio")}</p>
           <p className="text-gray-700 dark:text-slate-300 whitespace-pre-wrap">{application.bio}</p>
         </div>
       </div>
@@ -59,13 +60,13 @@ function ApplicationCard({
         ))}
         {application.linkedinUrl && (
           <a href={application.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 underline">
-            LinkedIn ↗
+            {at("LinkedIn ↗")}
           </a>
         )}
       </div>
 
       {application.status === 'REJECTED' && application.rejectionReason && (
-        <p className="text-xs text-red-600 dark:text-red-400">Rejection reason: {application.rejectionReason}</p>
+        <p className="text-xs text-red-600 dark:text-red-400">{at("Rejection reason:")}{" "}{application.rejectionReason}</p>
       )}
 
       {application.status === 'PENDING' && (
@@ -80,7 +81,7 @@ function ApplicationCard({
             }}
             className="text-xs font-medium text-white bg-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-60"
           >
-            Approve — Grant Mentor Role
+            {at("Approve — Grant Mentor Role")}
           </button>
           <button
             type="button"
@@ -92,7 +93,7 @@ function ApplicationCard({
             }}
             className="text-xs font-medium text-white bg-red-600 px-3 py-1.5 rounded-lg hover:bg-red-700 disabled:opacity-60"
           >
-            Reject
+            {at("Reject")}
           </button>
         </div>
       )}
@@ -121,7 +122,7 @@ function AdminMentorApplicationsDashboard() {
   };
 
   const handleReject = async (id: string) => {
-    const reason = window.prompt('Rejection reason (shown to the applicant):');
+    const reason = window.prompt(at("Rejection reason (shown to the applicant):"));
     if (!reason || reason.trim().length < 5) return;
     const updated = await rejectMentorApplication(id, reason.trim());
     setApplications((prev) => (status === '' ? prev.map((a) => (a.id === id ? updated : a)) : prev.filter((a) => a.id !== id)));
@@ -130,8 +131,8 @@ function AdminMentorApplicationsDashboard() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Mentor Applications</h1>
-        <p className="text-sm text-gray-500 dark:text-slate-400">Review self-serve applications to become a Mentor / course instructor.</p>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">{at("Mentor Applications")}</h1>
+        <p className="text-sm text-gray-500 dark:text-slate-400">{at("Review self-serve applications to become a Mentor / course instructor.")}</p>
       </div>
 
       <div className="flex items-center gap-2 border-b border-gray-200 dark:border-slate-800 pb-2">
@@ -152,9 +153,9 @@ function AdminMentorApplicationsDashboard() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-500 dark:text-slate-400">Loading…</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">{at("Loading…")}</p>
       ) : applications.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-slate-400">No applications here.</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400">{at("No applications here.")}</p>
       ) : (
         <div className="space-y-3">
           {applications.map((application) => (

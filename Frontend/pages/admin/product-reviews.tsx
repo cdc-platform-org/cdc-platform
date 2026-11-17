@@ -6,6 +6,7 @@ import AdminLayout from '../../src/components/admin/AdminLayout';
 import { getAdminProductReviews, deleteAdminProductReview } from '../../src/services/productReviewService';
 import { AdminProductReview } from '../../src/types/productReview';
 
+import { adminLocale, at } from '../../src/i18n/admin';
 function StarsInline({ rating }: { rating: number }) {
   return (
     <span className="inline-flex items-center gap-0.5">
@@ -28,7 +29,7 @@ function ProductReviewsModeration() {
     try {
       setReviews(await getAdminProductReviews());
     } catch {
-      setError('Failed to load product reviews.');
+      setError(at("Failed to load product reviews."));
     } finally {
       setLoading(false);
     }
@@ -39,13 +40,13 @@ function ProductReviewsModeration() {
   }, [load]);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this review? This cannot be undone.')) return;
+    if (!window.confirm(at("Delete this review? This cannot be undone."))) return;
     setDeletingId(id);
     try {
       await deleteAdminProductReview(id);
       setReviews((prev) => prev.filter((r) => r.id !== id));
     } catch {
-      setError('Failed to delete the review. Please try again.');
+      setError(at("Failed to delete the review. Please try again."));
     } finally {
       setDeletingId(null);
     }
@@ -54,22 +55,22 @@ function ProductReviewsModeration() {
   return (
     <>
       <Head>
-        <title>Product Reviews | Admin</title>
+        <title>{at("Product Reviews | Admin")}</title>
       </Head>
       <div className="max-w-5xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Digital Store — Product Review Moderation</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{at("Digital Store — Product Review Moderation")}</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Every verified-purchase review across the Digital Store — {reviews.length} review{reviews.length === 1 ? '' : 's'} total.
+            {at("Every verified-purchase review across the Digital Store —")}{" "}{reviews.length} review{reviews.length === 1 ? '' : 's'} total.
           </p>
         </div>
 
         {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">{at("Loading…")}</p>
         ) : reviews.length === 0 ? (
-          <p className="text-sm text-gray-500">No product reviews yet.</p>
+          <p className="text-sm text-gray-500">{at("No product reviews yet.")}</p>
         ) : (
           <div className="space-y-3">
             {reviews.map((review) => (
@@ -78,7 +79,7 @@ function ProductReviewsModeration() {
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <StarsInline rating={review.rating} />
-                      <span className="text-xs text-gray-400">{new Date(review.createdAt).toLocaleString()}</span>
+                      <span className="text-xs text-gray-400">{new Date(review.createdAt).toLocaleString(adminLocale())}</span>
                     </div>
                     <p className="text-sm text-gray-700 mt-2 leading-relaxed max-w-2xl">{review.comment}</p>
                     <p className="text-xs text-gray-400 mt-2">
@@ -92,7 +93,7 @@ function ProductReviewsModeration() {
                     className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-50 disabled:opacity-60"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    {deletingId === review.id ? 'Deleting…' : 'Delete'}
+                    {deletingId === review.id ? at("Deleting…") : at("Delete")}
                   </button>
                 </div>
               </div>

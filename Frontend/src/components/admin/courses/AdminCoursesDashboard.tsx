@@ -12,6 +12,7 @@ import { CourseForm } from './CourseForm';
 import { ExamSettingsPanel } from './ExamSettingsPanel';
 import { CurriculumEditor } from './CurriculumEditor';
 
+import { at } from '../../../i18n/admin';
 export function AdminCoursesDashboard() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +45,7 @@ export function AdminCoursesDashboard() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this course and its entire curriculum?')) return;
+    if (!window.confirm(at("Delete this course and its entire curriculum?"))) return;
     await deleteCourse(id);
     setCourses((prev) => prev.filter((c) => c.id !== id));
     if (managingCourse?.id === id) setManagingCourse(null);
@@ -62,7 +63,7 @@ export function AdminCoursesDashboard() {
       setCourses((prev) => prev.map((c) => (c.id === course.id ? updated : c)));
       if (editingCourse?.id === course.id) setEditingCourse(updated);
     } catch {
-      alert('Unable to change publish status. Please try again.');
+      alert(at("Unable to change publish status. Please try again."));
     } finally {
       setTogglingPublishId(null);
     }
@@ -71,25 +72,25 @@ export function AdminCoursesDashboard() {
   return (
     <>
       <Head>
-        <title>Courses | Admin</title>
+        <title>{at("Courses | Admin")}</title>
       </Head>
       <div className="max-w-5xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Course Management</h1>
-          <p className="text-sm text-gray-500 mt-1">Create courses, then manage their sections, lessons, and lesson videos.</p>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{at("Course Management")}</h1>
+          <p className="text-sm text-gray-500 mt-1">{at("Create courses, then manage their sections, lessons, and lesson videos.")}</p>
         </div>
 
         <div ref={formCardRef} className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-md shadow-slate-200/40 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 p-6 md:p-8 mb-10">
-          <h2 className="text-base font-semibold text-gray-900 mb-6">{editingCourse ? 'Edit Course' : 'New Course'}</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-6">{editingCourse ? at("Edit Course") : at("New Course")}</h2>
           <CourseForm editingCourse={editingCourse} onSaved={handleSaved} onCancel={() => setEditingCourse(null)} />
           {managingCourse && <CurriculumEditor course={managingCourse} />}
           {managingCourse && <ExamSettingsPanel course={managingCourse} />}
         </div>
 
         <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Courses ({courses.length})</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-4">{at("Courses (")}{courses.length})</h2>
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-gray-400">{at("Loading…")}</p>
           ) : (
             <div className="space-y-3">
               {courses.map((course) => (
@@ -100,7 +101,7 @@ export function AdminCoursesDashboard() {
                         {course.category}
                       </span>
                       {!course.published && (
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Draft</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded">{at("Draft")}</span>
                       )}
                     </div>
                     <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate mt-1">{course.title}</h3>
@@ -112,14 +113,14 @@ export function AdminCoursesDashboard() {
                       onClick={() => setManagingCourse(course)}
                       className="text-xs font-medium text-emerald-600 hover:text-emerald-800 px-3 py-1.5 rounded-lg hover:bg-emerald-50"
                     >
-                      Curriculum
+                      {at("Curriculum")}
                     </button>
                     <button
                       type="button"
                       onClick={() => setLaunchKitCourse(course)}
                       className="flex items-center gap-1 text-xs font-medium text-white bg-gradient-to-r from-cyan-500 to-purple-600 px-3 py-1.5 rounded-lg hover:opacity-90"
                     >
-                      <Sparkles className="w-3.5 h-3.5" /> Launch Kit
+                      <Sparkles className="w-3.5 h-3.5" /> {at("Launch Kit")}
                     </button>
                     <button
                       type="button"
@@ -131,21 +132,21 @@ export function AdminCoursesDashboard() {
                           : 'text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50'
                       }`}
                     >
-                      {togglingPublishId === course.id ? '…' : course.published ? 'Unpublish' : 'Publish'}
+                      {togglingPublishId === course.id ? '…' : course.published ? at("Unpublish") : at("Publish")}
                     </button>
                     <button
                       type="button"
                       onClick={() => handleEdit(course)}
                       className="text-xs font-medium text-indigo-600 hover:text-indigo-800 px-3 py-1.5 rounded-lg hover:bg-indigo-50"
                     >
-                      Edit
+                      {at("Edit")}
                     </button>
                     <button
                       type="button"
                       onClick={() => handleDelete(course.id)}
                       className="text-xs font-medium text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50"
                     >
-                      Delete
+                      {at("Delete")}
                     </button>
                   </div>
                 </div>

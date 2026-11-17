@@ -15,6 +15,7 @@ import {
 } from '../../src/services/opportunityService';
 import { GrantOpportunity, GrantSource, GrantEligibilityStatus } from '../../src/types/opportunity';
 
+import { adminLocale, at } from '../../src/i18n/admin';
 const STATUS_BADGE: Record<GrantEligibilityStatus, string> = {
   ELIGIBLE: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   NOT_ELIGIBLE: 'bg-red-50 text-red-700 border-red-200',
@@ -42,15 +43,15 @@ function DeadlineBadge({ deadline }: { deadline: string | null }) {
 function formatBudget(o: GrantOpportunity): string {
   if (!o.budgetMin && !o.budgetMax) return '—';
   const cur = o.budgetCurrency ?? '';
-  if (o.budgetMin && o.budgetMax && o.budgetMin !== o.budgetMax) return `${o.budgetMin.toLocaleString()}–${o.budgetMax.toLocaleString()} ${cur}`;
-  return `${(o.budgetMax ?? o.budgetMin)!.toLocaleString()} ${cur}`;
+  if (o.budgetMin && o.budgetMax && o.budgetMin !== o.budgetMax) return `${o.budgetMin.toLocaleString(adminLocale())}–${o.budgetMax.toLocaleString(adminLocale())} ${cur}`;
+  return `${(o.budgetMax ?? o.budgetMin)!.toLocaleString(adminLocale())} ${cur}`;
 }
 
 // Surfaces the ACTUAL backend failure instead of a blanket "check your
 // URLs" message — that generic message used to fire for any error at all
 // (a permissions 403, a network failure, an unrelated 500), which was
 // actively misleading when the real cause had nothing to do with URLs.
-const SOURCE_FIELD_LABELS: Record<string, string> = { name: 'სახელი', baseUrl: 'baseUrl', listingUrls: 'listing URL' };
+const SOURCE_FIELD_LABELS: Record<string, string> = { name: 'სახელი', get baseUrl() { return at("baseUrl"); }, get listingUrls() { return at("listing URL"); } };
 function describeSourceError(err: any): string {
   const zodIssues = err?.response?.data?.errors;
   if (Array.isArray(zodIssues) && zodIssues.length > 0) {

@@ -16,6 +16,7 @@ import {
   PlatformAgent,
 } from '../../src/services/adminAiAgentsService';
 
+import { adminLocale, at, atf } from '../../src/i18n/admin';
 const ALLOWED_EXT = /\.(pdf|docx|md|txt)$/i;
 
 function formatBytes(chars: number): string {
@@ -154,7 +155,7 @@ function AdminBotKnowledgeDashboard() {
                       <p className="text-sm font-medium text-gray-900 truncate">{source.sourceFilename}</p>
                       <p className="text-xs text-gray-400">
                         {source.totalChunks} ნაწილი · {formatBytes(source.totalChars)} · განახლდა{' '}
-                        {new Date(source.updatedAt).toLocaleDateString()}
+                        {new Date(source.updatedAt).toLocaleDateString(adminLocale())}
                       </p>
                     </div>
                   </div>
@@ -245,7 +246,7 @@ function AgentCard({
             {agent.nameEn && <span className="text-xs text-gray-400">/ {agent.nameEn}</span>}
             {agent.isDefault && (
               <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300">
-                <Star className="w-3 h-3" /> Homepage Default
+                <Star className="w-3 h-3" /> {at("Homepage Default")}
               </span>
             )}
             <span
@@ -253,7 +254,7 @@ function AgentCard({
                 agent.isActive ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'
               }`}
             >
-              {agent.isActive ? 'Active' : 'Inactive'}
+              {agent.isActive ? at("Active") : at("Inactive")}
             </span>
           </div>
           <p className="text-xs text-gray-400 mt-0.5">/{agent.slug}</p>
@@ -265,17 +266,17 @@ function AgentCard({
             onClick={() => run(() => onToggleActive(agent))}
             className="text-xs font-medium text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg disabled:opacity-50"
           >
-            {agent.isActive ? 'Deactivate' : 'Activate'}
+            {agent.isActive ? at("Deactivate") : at("Activate")}
           </button>
           {isSuperAdmin && !agent.isDefault && (
             <button
               type="button"
               disabled={busy || !agent.isActive}
-              title={!agent.isActive ? 'Activate this agent first' : undefined}
+              title={!agent.isActive ? at("Activate this agent first") : undefined}
               onClick={() => run(() => onSetDefault(agent))}
               className="text-xs font-medium text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg disabled:opacity-50"
             >
-              Set as Homepage Default
+              {at("Set as Homepage Default")}
             </button>
           )}
           {isSuperAdmin && agent.isDefault && (
@@ -285,14 +286,14 @@ function AgentCard({
               onClick={() => run(() => onUnsetDefault(agent))}
               className="text-xs font-medium text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg disabled:opacity-50"
             >
-              Unset Default
+              {at("Unset Default")}
             </button>
           )}
           {isSuperAdmin && (
             <button
               type="button"
               disabled={busy || agent.isDefault}
-              title={agent.isDefault ? 'Unset as homepage default before deleting' : undefined}
+              title={agent.isDefault ? at("Unset as homepage default before deleting") : undefined}
               onClick={() => run(() => onDelete(agent))}
               className="text-red-500 hover:text-red-600 bg-transparent border-none cursor-pointer p-1 disabled:opacity-30"
             >
@@ -302,7 +303,7 @@ function AgentCard({
         </div>
       </div>
 
-      <label className="block text-xs font-medium text-gray-700 mb-1">System Prompt</label>
+      <label className="block text-xs font-medium text-gray-700 mb-1">{at("System Prompt")}</label>
       <textarea
         value={promptDraft}
         onChange={(e) => {
@@ -324,13 +325,13 @@ function AgentCard({
           }
           className="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg disabled:opacity-50 mb-3"
         >
-          Save Prompt
+          {at("Save Prompt")}
         </button>
       )}
 
-      <label className="block text-xs font-medium text-gray-700 mt-2 mb-1.5">Assigned Knowledge Base Documents</label>
+      <label className="block text-xs font-medium text-gray-700 mt-2 mb-1.5">{at("Assigned Knowledge Base Documents")}</label>
       {knowledgeSources.length === 0 ? (
-        <p className="text-xs text-gray-400">No knowledge base documents uploaded yet — see the Knowledge Base tab.</p>
+        <p className="text-xs text-gray-400">{at("No knowledge base documents uploaded yet — see the Knowledge Base tab.")}</p>
       ) : (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {knowledgeSources.map((source) => (
@@ -350,7 +351,7 @@ function AgentCard({
         </div>
       )}
       <p className="text-[11px] text-gray-400 mb-2">
-        {selectedSources.length === 0 ? 'None assigned — uses the full knowledge base.' : `${selectedSources.length} document(s) assigned.`}
+        {selectedSources.length === 0 ? at("None assigned — uses the full knowledge base.") : atf("{0} document(s) assigned.", selectedSources.length)}
       </p>
       {sourcesDirty && (
         <button
@@ -359,7 +360,7 @@ function AgentCard({
           onClick={() => run(() => onSaveKnowledgeSources(agent, selectedSources))}
           className="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg disabled:opacity-50"
         >
-          Save Knowledge Sources
+          {at("Save Knowledge Sources")}
         </button>
       )}
     </div>
@@ -467,14 +468,14 @@ function AiAgentsSection() {
           <input
             value={form.nameEn}
             onChange={(e) => setForm({ ...form, nameEn: e.target.value })}
-            placeholder="Name (en, optional)"
+            placeholder={at("Name (en, optional)")}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
           />
           <input
             required
             value={form.slug}
             onChange={(e) => setForm({ ...form, slug: e.target.value.toLowerCase() })}
-            placeholder="slug — e.g. career-advisor"
+            placeholder={at("slug — e.g. career-advisor")}
             pattern="[a-z0-9-]+"
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
           />
@@ -483,7 +484,7 @@ function AiAgentsSection() {
             required
             value={form.systemPrompt}
             onChange={(e) => setForm({ ...form, systemPrompt: e.target.value })}
-            placeholder="System prompt — defines this agent's persona/scope"
+            placeholder={at("System prompt — defines this agent's persona/scope")}
             rows={3}
             className="sm:col-span-2 rounded-lg border border-gray-300 px-3 py-2 text-sm"
           />
@@ -531,7 +532,7 @@ export default function AdminBotKnowledgePage() {
     <AdminGuard requiredTiers={['SUPER_ADMIN', 'MANAGER']}>
       <AdminLayout>
         <Head>
-          <title>{tab === 'knowledge' ? 'AI Assistant Knowledge Base' : 'AI Agents'} | Admin</title>
+          <title>{tab === 'knowledge' ? at("AI Assistant Knowledge Base") : at("AI Agents")} {at("| Admin")}</title>
         </Head>
         <div className="max-w-4xl mb-6">
           <div className="flex gap-1.5 border-b border-gray-200">
