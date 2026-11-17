@@ -177,13 +177,22 @@ test('workspace subscriptions use the existing access grants and time windows', 
   expect(access.hasCodeStudioAccess).toBe(false);
   expect(db.accessGrant.findMany.mock.calls[0][0].where).toMatchObject({ revokedAt: null, resourceType: 'DIGITAL_TOOL', AND: expect.any(Array) });
 });
-test('admin roles and current matching enrollments unlock workspaces', async () => {
+test('admin roles and current unfinished paid enrollments unlock workspaces', async () => {
   db.user.findUnique.mockResolvedValue({ role: 'SuperAdmin' });
   expect((await resolveStudentWorkspaceAccess(userId)).hasCodeStudioAccess).toBe(true);
   db.user.findUnique.mockResolvedValue({ role: 'Student' });
-  db.courseEnrollment.findMany.mockResolvedValue([{ grantedAt: new Date(), course: { category: 'Web Development' } }]);
-  expect((await resolveStudentWorkspaceAccess(userId)).hasCodeStudioAccess).toBe(true);
-  db.courseEnrollment.findMany.mockResolvedValue([{ grantedAt: new Date(0), course: { category: 'Web Development' } }]);
+  const unfinished = { certificates: [], exam: null, sections: [{ lessons: [{ progress: [] }] }] };
+  db.courseEnrollment.findMany.mockResolvedValue([{ grantedAt: new Date(), course: unfinished }]);
+  const active = await resolveStudentWorkspaceAccess(userId);
+  expect(active.hasCodeStudioAccess && active.hasDesignStudioAccess).toBe(true);
+  expect(active.codeAccessSource).toBe('ACTIVE_COURSE');
+  // Only paid, published courses count.
+  expect(db.courseEnrollment.findMany.mock.calls.at(-1)[0].where.course).toMatchObject({ status: 'PUBLISHED', originalPrice: { gt: 0 } });
+  // Access window lapsed.
+  db.courseEnrollment.findMany.mockResolvedValue([{ grantedAt: new Date(0), course: unfinished }]);
+  expect((await resolveStudentWorkspaceAccess(userId)).hasCodeStudioAccess).toBe(false);
+  // Course finished (certificate issued).
+  db.courseEnrollment.findMany.mockResolvedValue([{ grantedAt: new Date(), course: { ...unfinished, certificates: [{ id: 'c' }] } }]);
   expect((await resolveStudentWorkspaceAccess(userId)).hasCodeStudioAccess).toBe(false);
 });
 test('full and legacy passport links resolve hyphenated UUIDs', async () => {

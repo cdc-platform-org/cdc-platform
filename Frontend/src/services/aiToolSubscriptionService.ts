@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-export interface AiToolSubscriptionState { allowed: boolean; collegeAccess: boolean; subscriptionEndsAt: string | null; priceMinor: number; periodDays: number; }
+export interface AiToolSubscriptionState { allowed: boolean; collegeAccess: boolean; collegeAccessEndsAt?: string | null; collegeAccessEnded?: boolean; subscriptionEndsAt: string | null; priceMinor: number; periodDays: number; }
 export interface AiToolCatalogEntry { key: string; priceMinor: number; periodDays: number; }
 let catalogPromise: Promise<AiToolCatalogEntry[]> | null = null;
 export function getAiToolSubscriptionCatalog(): Promise<AiToolCatalogEntry[]> {
