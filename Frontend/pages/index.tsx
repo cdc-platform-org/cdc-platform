@@ -31,6 +31,7 @@ import SEOHead from '../src/components/seo/SEOHead';
 import { ORGANIZATION_SCHEMA, buildSoftwareApplicationSchema, buildWebSiteSchema } from '../src/utils/seo';
 import SmartReader from '@/src/components/tools/SmartReader';
 import HomeOverlays from '../src/components/home/HomeOverlays';
+import SaleCountdownBar from '../src/components/courses/SaleCountdownBar';
 import HeroSection from '../src/components/home/HeroSection';
 import AboutBentoSection from '../src/components/home/AboutBentoSection';
 import GalleryPreviewSection from '../src/components/home/GalleryPreviewSection';
@@ -444,6 +445,7 @@ export default function Home() {
 
       {/* 🧭 NAVIGATION — the shared site header (same menu on every page). */}
       <SiteHeader darkMode={darkMode} onToggleDarkMode={toggleDarkMode} />
+      <SaleCountdownBar courses={courses} lang={contentLang} />
 
       <HeroSection courses={courses} coursesLoading={coursesLoading} t={t} cms={cms} translate={translate} promoVideo={promoVideo} setShowPromoVideo={setShowPromoVideo} />
 

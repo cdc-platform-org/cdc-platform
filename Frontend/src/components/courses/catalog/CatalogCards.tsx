@@ -17,7 +17,7 @@ const cardClass = 'vip-card h-full p-4 sm:p-5 flex flex-col';
 const mediaClass = 'relative block w-full aspect-video overflow-hidden rounded-xl bg-cdc-primary-soft no-underline';
 const typeBadge = 'absolute top-3 left-3 text-[11px] font-bold px-2.5 py-1 rounded-lg text-white shadow';
 
-export function CatalogCourseCard(props: { course: Course; lang: Lang; t: T; enrolling: boolean; onEnroll: (c: Course) => void }) {
+export function CatalogCourseCard(props: { course: Course; lang: Lang; t: T; enrolling: boolean; onEnroll: (c: Course) => void; bestseller?: boolean }) {
   return <CourseCard {...props} />;
 }
 

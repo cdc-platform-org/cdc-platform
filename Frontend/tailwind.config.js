@@ -13,17 +13,18 @@
 // Shades keep roughly the same lightness as the Tailwind defaults so text
 // contrast stays where it was (500 on white ≈ 5:1).
 const neutral = {
-  50: '#F9F9F7',
-  100: '#F2F3F0',
-  200: '#E1E3DF',
-  300: '#CED2CF',
-  400: '#9DA5A4',
-  500: '#697174',
-  600: '#4F585B',
-  700: '#3A4246',
-  800: '#282E32',
-  900: '#1B1E21',
-  950: '#131518',
+  // v2 (2026-11-17): cool, faintly violet neutrals to match the logo.
+  50: '#FAFAFC',
+  100: '#F4F4F8',
+  200: '#E9E9F1',
+  300: '#D4D3E0',
+  400: '#9D9BB2',
+  500: '#6B6984',
+  600: '#504E68',
+  700: '#3A3852',
+  800: '#23213B',
+  900: '#14122B',
+  950: '#09071A',
 };
 
 // rgb(var(--x) / <alpha-value>) lets `bg-cdc-primary/10` etc. work.
@@ -61,6 +62,7 @@ module.exports = {
           'primary-ink': token('primary-ink'),   // violet for text/icons (lighter in dark mode)
           accent: token('accent'),     // cyan highlight from the logo
           'accent-soft': token('accent-soft'),
+          night: token('night'),        // deep aurora band background
         },
       },
       borderRadius: {
