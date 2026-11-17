@@ -27,12 +27,7 @@ export default function DesignStudioToolPage() {
         <title>{`${title} | CDC Platform`}</title>
       </Head>
       <ToolErrorBoundary>
-        <StudioWorkspaceGuard studio="design" lang={lang}><!--
-          toolKey="design-studio"
-          toolTitle={title}
-          toolSubtitle={subtitle}
-          toolIcon={Palette}
-          accent="cyan" -->
+        <StudioWorkspaceGuard studio="design" lang={lang}>
           <ToolShell>
             <ToolPageHeader
               icon={Palette}

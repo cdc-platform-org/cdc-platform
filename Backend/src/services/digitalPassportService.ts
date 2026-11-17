@@ -5,9 +5,10 @@
  */
 
 import { prisma } from '../lib/prisma';
+import { getOrSyncCourseReadiness } from './readinessScoringService';
 
 export function buildPassportCode(userId: string): string {
-  return `CDC-PASS-${userId.replace(/-/g, '').slice(0, 10).toUpperCase()}`;
+  return `CDC-PASS-${userId.replace(/-/g, '').toUpperCase()}`;
 }
 
 export function resolveUserIdPrefixFromCode(code: string): string {
@@ -15,13 +16,12 @@ export function resolveUserIdPrefixFromCode(code: string): string {
 }
 
 export async function getStudentDigitalPassport(userId: string) {
-  const [user, records, enrollments, certificates] = await Promise.all([
+  const [user, storedRecords, enrollments, certificates] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
         id: true,
         name: true,
-        email: true,
         role: true,
         isVerifiedGraduate: true,
         createdAt: true,
@@ -53,10 +53,12 @@ export async function getStudentDigitalPassport(userId: string) {
   ]);
 
   if (!user) return null;
+  const records = await Promise.all(storedRecords.map(async (record) => ({
+    ...record, ...(await getOrSyncCourseReadiness(userId, record.courseId))?.record,
+  })));
 
   const skills = Array.from(
     new Set([
-      ...records.flatMap((r) => r.course.skillsTaught ?? []),
       ...certificates.flatMap((c) => c.course.skillsTaught ?? []),
     ])
   );
@@ -71,7 +73,7 @@ export async function getStudentDigitalPassport(userId: string) {
     },
     stats: {
       coursesEvaluated: records.length,
-      liveTrainingsAttended: enrollments.length,
+      liveTrainingsAttended: enrollments.filter((e) => e.status === 'COMPLETED').length,
       certificatesIssued: certificates.length,
       averageReadiness:
         records.length > 0
@@ -114,14 +116,18 @@ export async function getStudentDigitalPassport(userId: string) {
 
 export async function getPublicDigitalPassportByCode(code: string) {
   const prefix = resolveUserIdPrefixFromCode(code);
-  if (prefix.length < 8) return null;
+  // Support legacy ten-hex links, but never guess between matching users.
+  if (!/^CDC-PASS-(?:[0-9a-f]{10}|[0-9a-f]{32})$/i.test(code)) return null;
+  const uuidPrefix = prefix.length === 32
+    ? `${prefix.slice(0, 8)}-${prefix.slice(8, 12)}-${prefix.slice(12, 16)}-${prefix.slice(16, 20)}-${prefix.slice(20)}`
+    : `${prefix.slice(0, 8)}-${prefix.slice(8)}`;
 
   const users = await prisma.user.findMany({
-    where: { id: { startsWith: prefix } },
+    where: { id: { startsWith: uuidPrefix }, isBanned: false, deletionRequestedAt: null },
     select: { id: true },
-    take: 1,
+    take: 2,
   });
 
-  if (users.length === 0) return null;
+  if (users.length !== 1) return null;
   return getStudentDigitalPassport(users[0].id);
 }

@@ -1432,6 +1432,7 @@ model Course {
 // ============================================================
 
 model LiveTraining {
+  classroomRecordings LiveClassroomRecording[]
   id                  String                @id @default(uuid())
   title               String
   titleEn             String?
@@ -6084,6 +6085,20 @@ model ColoringCreditPurchase {
   @@map("coloring_credit_purchases")
 }
 
+model LiveClassroomRecording {
+  id             String       @id @default(uuid())
+  trainingId     String
+  training       LiveTraining @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  title          String
+  recordingUrl   String
+  recordedBy     String
+  createdAt      DateTime     @default(now())
+  emailedToCount Int          @default(0)
+
+  @@index([trainingId, createdAt])
+  @@map("live_classroom_recordings")
+}
+
 model CourseReadinessRecord {
   id               String   @id @default(uuid())
   userId           String
@@ -6096,6 +6111,8 @@ model CourseReadinessRecord {
   lecturerScore    Int      @default(0) // 0..100 (weight 25%)
   totalScore       Int      @default(0) // Weighted average 0..100 (must be >= 90 to unlock exam)
   aiCritique       String?
+  aiEvidenceHash   String?
+  lecturerEvaluatedById String?
   lecturerNote     String?
   lecturerName     String?
   evaluatedAt      DateTime @default(now())

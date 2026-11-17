@@ -10,10 +10,10 @@ import { prisma } from '../lib/prisma';
 
 export interface StudioAccessStatus {
   hasDesignStudioAccess: boolean;
-  designAccessSource: 'SUBSCRIPTION' | 'ACTIVE_COURSE' | 'NONE';
+  designAccessSource: 'SUBSCRIPTION' | 'ACTIVE_COURSE' | 'ADMIN' | 'NONE';
   designAccessExpiresAt: string | null;
   hasCodeStudioAccess: boolean;
-  codeAccessSource: 'SUBSCRIPTION' | 'ACTIVE_COURSE' | 'NONE';
+  codeAccessSource: 'SUBSCRIPTION' | 'ACTIVE_COURSE' | 'ADMIN' | 'NONE';
   codeAccessExpiresAt: string | null;
   hasActiveLiveTraining: boolean;
   activeLiveTrainingId: string | null;
@@ -32,25 +32,30 @@ function isCodeCategory(category: string): boolean {
 export async function resolveStudentWorkspaceAccess(userId: string): Promise<StudioAccessStatus> {
   const now = new Date();
 
+  const user = await prisma.user.findUnique({
+    where: { id: userId }, select: { role: true, adminRole: true, email: true },
+  });
   const [enrollments, liveEnrollments, subscriptions] = await Promise.all([
     prisma.courseEnrollment.findMany({
       where: { userId },
-      include: {
-        course: { select: { id: true, category: true, title: true } },
-      },
+      include: { course: { select: { id: true, category: true, title: true } } },
       orderBy: { grantedAt: 'desc' },
     }),
     prisma.liveTrainingEnrollment.findMany({
-      where: { userId, status: 'ACTIVE' },
-      select: { liveTrainingId: true },
-      take: 1,
+      where: { userId, status: 'ACTIVE' }, select: { liveTrainingId: true }, take: 1,
     }),
-    // Safe lookup if ToolSubscription model exists in Prisma client
-    (prisma as any).toolSubscription?.findMany
-      ? (prisma as any).toolSubscription.findMany({
-          where: { userId, status: 'ACTIVE', expiresAt: { gt: now } },
-        })
-      : Promise.resolve([]),
+    prisma.accessGrant.findMany({
+      where: {
+        resourceType: 'DIGITAL_TOOL', resourceId: { in: ['design-studio', 'code-studio'] },
+        revokedAt: null,
+        OR: [{ userId }, ...(user?.email ? [{ email: user.email.toLowerCase() }] : [])],
+        AND: [
+          { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+          { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] },
+        ],
+      },
+      orderBy: { expiresAt: 'desc' },
+    }),
   ]);
 
   let hasDesignStudioAccess = false;
@@ -61,16 +66,15 @@ export async function resolveStudentWorkspaceAccess(userId: string): Promise<Stu
   let codeAccessSource: StudioAccessStatus['codeAccessSource'] = 'NONE';
   let codeAccessExpiresAt: string | null = null;
 
-  // 1. Check active standalone tool subscriptions (29 GEL/month)
-  for (const sub of subscriptions as any[]) {
-    const slug = String(sub.toolSlug || sub.slug || '').toLowerCase();
-    const exp = sub.expiresAt ? new Date(sub.expiresAt).toISOString() : null;
-    if (slug.includes('design') || slug.includes('photoshop') || slug.includes('illustrator')) {
+  // Paid subscriptions and explicit grants share the existing AccessGrant model.
+  for (const sub of subscriptions) {
+    const exp = sub.expiresAt?.toISOString() ?? null;
+    if (sub.resourceId === 'design-studio' && !hasDesignStudioAccess) {
       hasDesignStudioAccess = true;
       designAccessSource = 'SUBSCRIPTION';
       designAccessExpiresAt = exp;
     }
-    if (slug.includes('code') || slug.includes('sql')) {
+    if (sub.resourceId === 'code-studio' && !hasCodeStudioAccess) {
       hasCodeStudioAccess = true;
       codeAccessSource = 'SUBSCRIPTION';
       codeAccessExpiresAt = exp;
@@ -80,7 +84,7 @@ export async function resolveStudentWorkspaceAccess(userId: string): Promise<Stu
   // 2. Check active course enrollments within their active duration window
   for (const enr of enrollments) {
     const expiresAt = new Date(enr.grantedAt.getTime() + DEFAULT_COURSE_ACCESS_DAYS * 86_400_000);
-    if (expiresAt <= now) continue;
+    if (enr.grantedAt > now || expiresAt <= now) continue;
 
     if (!hasDesignStudioAccess && isDesignCategory(enr.course.category)) {
       hasDesignStudioAccess = true;
@@ -92,6 +96,12 @@ export async function resolveStudentWorkspaceAccess(userId: string): Promise<Stu
       codeAccessSource = 'ACTIVE_COURSE';
       codeAccessExpiresAt = expiresAt.toISOString();
     }
+  }
+
+  if (user?.adminRole || user?.role === 'SuperAdmin') {
+    hasDesignStudioAccess = hasCodeStudioAccess = true;
+    designAccessSource = codeAccessSource = 'ADMIN';
+    designAccessExpiresAt = codeAccessExpiresAt = null;
   }
 
   return {

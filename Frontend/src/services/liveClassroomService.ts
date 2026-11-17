@@ -38,6 +38,7 @@ export async function stopStudentScreenShare(trainingId: string): Promise<void> 
 export async function fetchClassroomState(trainingId: string): Promise<{
   screens: StudentScreenFrame[];
   recordings: ClassroomRecordingRecord[];
+  canManage: boolean;
 }> {
   const res = await api.get(`/live-classroom/${encodeURIComponent(trainingId)}/screens`);
   return res.data;
@@ -45,10 +46,10 @@ export async function fetchClassroomState(trainingId: string): Promise<{
 
 export async function saveRecordingAndNotifyStudents(
   trainingId: string,
-  recordingUrl: string
+  recording: Blob
 ): Promise<ClassroomRecordingRecord> {
-  const res = await api.post(`/live-classroom/${encodeURIComponent(trainingId)}/recording-complete`, {
-    recordingUrl,
-  });
+  const form = new FormData();
+  form.append('file', recording, 'classroom-recording.webm');
+  const res = await api.post(`/live-classroom/${encodeURIComponent(trainingId)}/recordings/upload`, form);
   return res.data.record;
 }

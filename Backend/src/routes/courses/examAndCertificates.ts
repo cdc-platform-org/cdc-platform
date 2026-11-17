@@ -20,6 +20,7 @@ import {
 import { createExamSessionToken, verifyExamSessionToken, ExamSessionError } from '../../services/exams/examSessionService';
 import { logAdminAction } from '../../services/account/auditLogService';
 import { requireCourseAccess } from './shared';
+import { getOrSyncCourseReadiness } from '../../services/readinessScoringService';
 
 const router = Router();
 
@@ -140,6 +141,7 @@ router.get('/:id/exam/status', authenticate, requireCourseAccess, async (req: Re
   if (!exam) return res.json({ data: { configured: false } });
 
   const courseComplete = await getCourseCompletion(courseId, req.user!.id);
+  const readiness = await getOrSyncCourseReadiness(req.user!.id, courseId);
   const [passedAttempt, lastAttempt] = await Promise.all([
     prisma.examAttempt.findFirst({ where: { userId: req.user!.id, examId: exam.id, passed: true }, orderBy: { completedAt: 'desc' } }),
     prisma.examAttempt.findFirst({ where: { userId: req.user!.id, examId: exam.id }, orderBy: { completedAt: 'desc' } }),
@@ -168,7 +170,9 @@ router.get('/:id/exam/status', authenticate, requireCourseAccess, async (req: Re
       weakTopics: !passedAttempt ? lastAttempt?.weakTopics ?? [] : [],
       inCooldown,
       cooldownEndsAt,
-      canStart: courseComplete && !passedAttempt && !inCooldown,
+      eligibleForExam: readiness?.eligibleForExam ?? false,
+      readinessScore: readiness?.record.totalScore ?? 0,
+      canStart: courseComplete && !!readiness?.eligibleForExam && !passedAttempt && !inCooldown,
     },
   });
 });
@@ -188,6 +192,11 @@ router.post('/:id/exam/start', authenticate, requireCourseAccess, async (req: Re
 
   if (!(await getCourseCompletion(courseId, req.user!.id))) {
     return res.status(400).json({ message: 'Complete 100% of the course lessons before taking the exam.' });
+  }
+
+  const readiness = await getOrSyncCourseReadiness(req.user!.id, courseId);
+  if (!readiness?.eligibleForExam) {
+    return res.status(403).json({ message: 'At least 90% pre-exam readiness is required.', readiness });
   }
 
   const [passedAttempt, lastAttempt] = await Promise.all([
@@ -249,6 +258,11 @@ router.post('/:id/exam/submit', authenticate, requireCourseAccess, async (req: R
   }
   if (session.userId !== req.user!.id || session.courseId !== courseId) {
     return res.status(400).json({ message: 'This exam session does not belong to you.' });
+  }
+
+  const readiness = await getOrSyncCourseReadiness(req.user!.id, courseId);
+  if (!readiness?.eligibleForExam || !(await getCourseCompletion(courseId, req.user!.id))) {
+    return res.status(403).json({ message: 'Complete all lessons and reach 90% readiness before submitting the exam.' });
   }
 
   const exam = await prisma.exam.findUnique({ where: { id: session.examId } });

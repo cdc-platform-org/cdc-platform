@@ -1,3 +1,4 @@
+import { resolveStudentWorkspaceAccess } from '../workspaceAccessService';
 import { getSubscriptionState } from '../payments/subscriptionStateService';
 /**
  * Service (digital store & marketplace).
@@ -16,6 +17,10 @@ import { hasAccessGrant } from '../account/accessGrantService';
 // The college check is live, so finishing the final exam removes only that benefit.
 export async function hasDigitalToolAccess(userId: string, email: string, toolKey: string): Promise<boolean> {
   if (!isDigitalToolKey(toolKey)) return false;
+  if (toolKey === 'design-studio' || toolKey === 'code-studio') {
+    const access = await resolveStudentWorkspaceAccess(userId);
+    return toolKey === 'design-studio' ? access.hasDesignStudioAccess : access.hasCodeStudioAccess;
+  }
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { role: true, adminRole: true, educatorVipActive: true, educatorVipTrialEndDate: true, educatorVipPaidUntil: true, tutorSubscriptionTier: true, tutorTrialEndDate: true, tutorSubscriptionPeriodEnd: true } });
   if (!user) return false;
   if (user.adminRole || user.role === 'SuperAdmin') return true;

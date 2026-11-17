@@ -1,3 +1,4 @@
+import { resolveStudentWorkspaceAccess } from '../../services/workspaceAccessService';
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
@@ -17,7 +18,13 @@ router.post('/checkout/ai-tool/:key', checkoutRateLimit, authenticate, requireAp
   const entry = Array.isArray(tools) ? tools.find(tool => tool.slug === slug) : undefined;
   const admin = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { adminRole: true } }))?.adminRole;
   if (entry?.status === 'DISABLED' || entry?.status === 'COMING_SOON' || (entry?.status === 'ADMIN_ONLY' && !admin)) return res.status(403).json({ message: 'This tool is not available for purchase.' });
-  if (await hasActiveCollegeAiAccess(req.user!.id)) return res.json({ included: true, enrolled: true, redirectUrl: null });
+  const workspace = key === 'design-studio' || key === 'code-studio'
+    ? await resolveStudentWorkspaceAccess(req.user!.id) : null;
+  const included = workspace
+    ? (key === 'design-studio' ? workspace.designAccessSource : workspace.codeAccessSource) !== 'NONE'
+      && (key === 'design-studio' ? workspace.designAccessSource : workspace.codeAccessSource) !== 'SUBSCRIPTION'
+    : await hasActiveCollegeAiAccess(req.user!.id);
+  if (included) return res.json({ included: true, enrolled: true, redirectUrl: null });
   const amount = AI_TOOL_MONTHLY_PRICE_MINOR; // Never accepts a client-supplied price or period.
   const reusable = await findReusablePendingOrder(req.user!.id, 'AI_TOOL_SUBSCRIPTION', key, amount, null);
   if (reusable) return res.json({ paymentId: reusable.id, redirectUrl: reusable.redirectUrl });

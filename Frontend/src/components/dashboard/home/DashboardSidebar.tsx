@@ -76,6 +76,7 @@ export default function DashboardSidebar({
       title: learningTitle,
       items: [
         { kind: 'tab', key: 'courses', label: t.tabCourses, icon: GraduationCap },
+        { kind: 'link', href: '/dashboard/passport', label: ka ? 'ციფრული პასპორტი' : 'Digital Skill Passport', icon: Award },
         { kind: 'link', href: '/dashboard/live-trainings', label: ka ? 'ლაივ ტრენინგები' : 'Live trainings', icon: Video },
         { kind: 'link', href: '/dashboard/mentorship-sessions', label: t.tabMentorshipSessions, icon: CalendarClock },
         { kind: 'link', href: '/dashboard/career-quiz', label: ka ? 'ჩემი კარიერული ტესტი' : 'My Career Test', icon: Award },

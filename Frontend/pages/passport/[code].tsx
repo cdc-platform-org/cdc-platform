@@ -15,10 +15,14 @@ export default function PublicPassportVerificationPage() {
 
   useEffect(() => {
     if (!code) return;
+    let active = true;
+    setData(null);
+    setNotFound(false);
     api
       .get(`/passport/public/${encodeURIComponent(code)}`)
-      .then((res) => setData(res.data))
-      .catch(() => setNotFound(true));
+      .then((res) => { if (active) setData(res.data); })
+      .catch(() => { if (active) setNotFound(true); });
+    return () => { active = false; };
   }, [code]);
 
   return (
@@ -48,6 +52,10 @@ export default function PublicPassportVerificationPage() {
                 {isKa ? '✓ ოფიციალურად დადასტურებული სასწავლო გამოცდილება' : '✓ Officially Verified Academic & Practical Record'}
               </p>
             </div>
+            {data.certificates?.length > 0 && <div className="space-y-3">
+              <h2 className="font-bold">{isKa ? 'სერტიფიკატები' : 'Certificates'}</h2>
+              {data.certificates.map((certificate: { id: string; code: string; courseTitle: string }) => <a key={certificate.id} href={`/verify/${encodeURIComponent(certificate.code)}`} className="block rounded-xl border border-cyan-500/30 p-4 text-cyan-300 hover:underline">{certificate.courseTitle} · {certificate.code}</a>)}
+            </div>}
             <div className="space-y-3">
               {data.courseHistory?.map((item: any) => (
                 <div key={item.id} className="rounded-2xl border border-white/10 bg-white/5 p-4 flex flex-wrap items-center justify-between gap-3">

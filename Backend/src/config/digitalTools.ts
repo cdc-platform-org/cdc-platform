@@ -16,6 +16,8 @@ export interface DigitalToolDefinition {
 }
 
 export const DIGITAL_TOOLS: readonly DigitalToolDefinition[] = [
+  { key: 'design-studio', label: 'Design Studio', linkedProductId: null },
+  { key: 'code-studio', label: 'Code & SQL Studio', linkedProductId: null },
   { key: 'english-tutor', label: 'AI English Tutor', linkedProductId: null },
   { key: 'proctoring', label: 'AI Exam Proctoring', linkedProductId: null },
   { key: 'smart-reader', label: 'AI Smart Reader', linkedProductId: null },

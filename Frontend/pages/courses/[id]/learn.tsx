@@ -20,6 +20,7 @@ import { useAuth } from '../../../src/context/AuthContext';
 import { useEscapeToClose } from '../../../src/hooks/useEscapeToClose';
 import { LmsSection, LmsLesson, CourseProgressSummary, Course, ExamStatus, AssignmentSubmission } from '../../../src/types/lms';
 import api from '../../../src/services/apiClient';
+import { evaluateWorkWithAi } from '../../../src/services/readinessPassportService';
 import {
   getCourse,
   getCurriculum,
@@ -59,7 +60,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 // Self-contained: fetches/manages its own submission for the active lesson
 // so switching lessons doesn't leak stale state between them.
-function AssignmentPanel({ lessonId, t }: { lessonId: string; t: TFunction; }) {
+function AssignmentPanel({ lessonId, t, onSubmitted }: { lessonId: string; t: TFunction; onSubmitted: () => void; }) {
   const [submission, setSubmission] = useState<AssignmentSubmission | null | undefined>(undefined);
   const [linkUrl, setLinkUrl] = useState('');
   const [comment, setComment] = useState('');
@@ -104,6 +105,7 @@ function AssignmentPanel({ lessonId, t }: { lessonId: string; t: TFunction; }) {
         comment: comment.trim() || undefined,
       });
       setSubmission(updated);
+      onSubmitted();
       setLinkUrl('');
       setComment('');
       setUploadedFileUrl(null);
@@ -189,6 +191,7 @@ function LearnContent() {
   const allAssignmentsDone = missingAssignmentLessons.length === 0;
   const [readinessData, setReadinessData] = useState<any>(null);
   const [aiCritiqueBanner, setAiCritiqueBanner] = useState<string | null>(null);
+  const [evaluating, setEvaluating] = useState(false);
   const [cameraVerified, setCameraVerified] = useState(false);
   const [checkpointAnswered, setCheckpointAnswered] = useState(false);
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
@@ -295,7 +298,10 @@ function LearnContent() {
     );
     try {
       await setLessonProgress(lesson.id, nextCompleted);
-      if (courseId) setProgress(await getProgressSummary(courseId));
+      if (courseId) {
+        setProgress(await getProgressSummary(courseId));
+        setReadinessData((await api.get(`/readiness/${courseId}`)).data);
+      }
     } catch {
       setSections((prev) =>
         prev.map((s) => ({ ...s, lessons: s.lessons.map((l) => (l.id === lesson.id ? { ...l, completed: !nextCompleted } : l)) }))
@@ -420,7 +426,7 @@ function LearnContent() {
                     )}
                   </div>
                 )}
-                <DesignStudio2in1 lang={lang} onSubmitWork={activeLesson ? async (file: File) => { if (!courseId) return; const fd = new FormData(); fd.append('file', file); await api.post(`/courses/${courseId}/lessons/${activeLesson.id}/assignments`, fd); setSubmittedLessonIds((prev) => new Set(prev).add(activeLesson.id)); } : undefined} />
+                <DesignStudio2in1 lang={lang} onSubmitWork={activeLesson ? async (file: File) => { if (!courseId) return; const fileUrl = await uploadSubmissionFile(activeLesson.id, file); await submitAssignment(activeLesson.id, { fileUrl }); setSubmittedLessonIds((prev) => new Set(prev).add(activeLesson.id)); setReadinessData((await api.get(`/readiness/${courseId}`)).data); } : undefined} />
               </div>
             )}
             {activeTab === 'conspectus' &&
@@ -464,7 +470,7 @@ function LearnContent() {
               (activeLesson?.assignmentPrompt ? (
                 <div className="space-y-4">
                   <p className="text-cdc-ink">{activeLesson.assignmentPrompt}</p>
-                  <AssignmentPanel lessonId={activeLesson.id} t={t} />
+                  <AssignmentPanel onSubmitted={() => { void load(); }} lessonId={activeLesson.id} t={t} />
                 </div>
               ) : (
                 <p className="text-slate-500">{t('noAssignment')}</p>
@@ -546,17 +552,30 @@ function LearnContent() {
                 </div>
               </div>
 
+              <button type="button" disabled={evaluating} className="rounded-lg bg-cyan-600 px-3 py-2 text-white disabled:opacity-50" onClick={async () => {
+                if (!courseId) return;
+                setEvaluating(true);
+                setAiCritiqueBanner(null);
+                try {
+                  const result = await evaluateWorkWithAi(courseId, {});
+                  setReadinessData(result);
+                  setAiCritiqueBanner(result.record.aiCritique ?? null);
+                } catch {
+                  setAiCritiqueBanner(lang === 'ka' ? 'AI შეფასება დროებით მიუწვდომელია.' : 'AI evaluation is temporarily unavailable. Please try again.');
+                } finally { setEvaluating(false); }
+              }}>{evaluating ? '...' : lang === 'ka' ? 'AI მენტორის შეფასება' : 'Request AI mentor evaluation'}</button>
+              {aiCritiqueBanner && <p role="status">{aiCritiqueBanner}</p>}
               {!readinessData.eligibleForExam && (
                 <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-rose-200 font-semibold">
                   {lang === 'ka'
                     ? '⛔ ჯამური ქულა 90%-ზე ნაკლებია. გამოცდაზე გასასვლელად თავიდან უნდა გაიაროთ კურსი და სრულყოფილად შეასრულოთ დავალებები.'
-                    : '⛔ Total score is below 90%. You must retake the course lessons and complete all assignments to unlock the exam.'}
+                    : '⛔ Reach 90% across lesson completion, approved assignments, AI mentor evaluation, and faculty grading to unlock the exam.'}
                 </div>
               )}
             </div>
           )}
 
-          {progress && progress.percent === 100 && allAssignmentsDone && (readinessData?.eligibleForExam ?? true) && examStatus?.configured && !examStatus.passed && (
+          {progress && progress.percent === 100 && allAssignmentsDone && (readinessData?.eligibleForExam ?? false) && examStatus?.configured && !examStatus.passed && (
             <Link
               href={`/courses/${courseId}/exam`}
               className="w-full mb-5 block text-center rounded-xl bg-gradient-to-r from-cyan-400 to-blue-500 text-white font-bold text-sm py-3 shadow-lg hover:shadow-xl transition-all"

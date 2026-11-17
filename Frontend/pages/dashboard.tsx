@@ -36,6 +36,7 @@ import { dashboardDict } from '../src/components/dashboard/home/dashboardDict';
 import { DashboardTab } from '../src/components/dashboard/home/dashboardShared';
 import DashboardSidebar from '../src/components/dashboard/home/DashboardSidebar';
 import OverviewTab from '../src/components/dashboard/home/OverviewTab';
+import WorkspaceAccessCards from '../src/components/dashboard/WorkspaceAccessCards';
 import CoursesTab from '../src/components/dashboard/home/CoursesTab';
 import WalletTab from '../src/components/dashboard/home/WalletTab';
 import GigsTab from '../src/components/dashboard/home/GigsTab';
@@ -258,6 +259,8 @@ function DashboardContent() {
           ) : (
             <>
               {activeTab === 'overview' && (
+                <>
+                <WorkspaceAccessCards lang={lang} />
                 <OverviewTab
                   t={t}
                   lang={lang}
@@ -274,6 +277,7 @@ function DashboardContent() {
                   productDownloadError={productDownloadError}
                   setActiveTab={setActiveTab}
                 />
+                </>
               )}
 
               {activeTab === 'purchases' && (

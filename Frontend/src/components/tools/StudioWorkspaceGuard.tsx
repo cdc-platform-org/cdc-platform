@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { Lock, Sparkles, BookOpen, Loader2 } from 'lucide-react';
 import api from '../../services/apiClient';
 import { useAuth } from '../../context/AuthContext';
+import AiToolSubscriptionActions from './AiToolSubscriptionActions';
 
 interface StudioWorkspaceGuardProps {
   studio: 'design' | 'code';
@@ -27,18 +28,17 @@ export default function StudioWorkspaceGuard({
   children,
 }: StudioWorkspaceGuardProps) {
   const isKa = lang === 'ka';
-  const { user } = useAuth();
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [allowed, setAllowed] = useState(false);
+  const [checkedFor, setCheckedFor] = useState('');
+  const accessKey = `${user?.id}:${studio}`;
 
   useEffect(() => {
-    if (user?.role === 'ADMIN') {
-      setAllowed(true);
-      setLoading(false);
-      return;
-    }
-
+    if (authLoading || !isAuthenticated) return;
     let cancelled = false;
+    setLoading(true);
+    setAllowed(false);
     api
       .get<StudioAccessResponse>('/workspace-access')
       .then((res) => {
@@ -48,9 +48,10 @@ export default function StudioWorkspaceGuard({
             ? Boolean(res.data?.hasDesignStudioAccess)
             : Boolean(res.data?.hasCodeStudioAccess);
         setAllowed(ok);
+        setCheckedFor(`${user?.id}:${studio}`);
       })
       .catch(() => {
-        if (!cancelled) setAllowed(false);
+        if (!cancelled) { setAllowed(false); setCheckedFor(`${user?.id}:${studio}`); }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -59,9 +60,9 @@ export default function StudioWorkspaceGuard({
     return () => {
       cancelled = true;
     };
-  }, [studio, user?.role]);
+  }, [studio, user?.id, authLoading, isAuthenticated]);
 
-  if (loading) {
+  if (authLoading || !isAuthenticated || loading || checkedFor !== accessKey) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center text-slate-400 gap-2 text-sm">
         <Loader2 className="w-5 h-5 animate-spin text-cyan-400" />
@@ -98,6 +99,11 @@ export default function StudioWorkspaceGuard({
             </p>
           </div>
 
+          <AiToolSubscriptionActions
+            toolKey={`${studio}-studio`}
+            href={`/dashboard/tools/${studio}-studio`}
+            lang={isKa ? 'ka' : 'en'}
+          />
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
             <Link
               href="/tools"

@@ -15,6 +15,7 @@ export async function checkoutAiToolSubscription(key: string, lang: 'ka' | 'en')
 
 
 export const AI_TOOL_DESTINATIONS: Record<string, string> = {
+  'design-studio': '/dashboard/tools/design-studio', 'code-studio': '/dashboard/tools/code-studio',
   'english-tutor': '/dashboard/english-tutor', 'educator-hub': '/dashboard/tools/educator-hub',
   'media-studio': '/dashboard/tools/media-studio', 'chatbot-builder': '/dashboard/tools/chatbot-builder',
   proctoring: '/dashboard/tools/proctored-exam', 'smart-reader': '/dashboard/tools/smart-reader',

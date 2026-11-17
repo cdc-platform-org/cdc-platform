@@ -7,6 +7,7 @@ import ProtectedRoute from '../../src/components/auth/ProtectedRoute';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import api from '../../src/services/apiClient';
+import { useAuth } from '../../src/context/AuthContext';
 
 interface PassportData {
   passportCode: string;
@@ -33,10 +34,17 @@ export default function StudentDigitalPassportPage() {
   const [data, setData] = useState<PassportData | null>(null);
   const [showQr, setShowQr] = useState(true);
   const [copied, setCopied] = useState(false);
+  const { loading, isAuthenticated, user } = useAuth();
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    api.get('/passport/me').then((res) => setData(res.data)).catch(() => setData(null));
-  }, []);
+    if (loading || !isAuthenticated) return;
+    let active = true;
+    setData(null);
+    setFailed(false);
+    api.get('/passport/me').then((res) => { if (active) setData(res.data); }).catch(() => { if (active) setFailed(true); });
+    return () => { active = false; };
+  }, [loading, isAuthenticated, user?.id]);
 
   const publicUrl =
     typeof window !== 'undefined' && data
@@ -94,6 +102,7 @@ export default function StudentDigitalPassportPage() {
             )}
           </div>
 
+          {!data && <p role="status">{failed ? (isKa ? 'პასპორტის ჩატვირთვა ვერ მოხერხდა.' : 'Unable to load your passport. Please reload to try again.') : (isKa ? 'იტვირთება...' : 'Loading passport...')}</p>}
           {data && (
             <>
               <div className="relative overflow-hidden rounded-3xl border border-cyan-400/30 bg-gradient-to-br from-slate-900 via-[#0b192c] to-slate-950 p-6 sm:p-8 shadow-[0_25px_80px_rgba(6,182,212,0.16)]">
@@ -164,6 +173,12 @@ export default function StudentDigitalPassportPage() {
                 </div>
               </div>
 
+              {data.certificates.length > 0 && <section className="space-y-3">
+                <h3 className="text-lg font-black">{isKa ? 'სერტიფიკატები' : 'Certificates'}</h3>
+                {data.certificates.map((certificate) => <Link key={certificate.id} href={`/verify/${encodeURIComponent(certificate.code)}`} className="block rounded-xl border border-slate-700 p-4 text-cyan-300 hover:underline">
+                  {certificate.courseTitle} · {certificate.code}
+                </Link>)}
+              </section>}
               <section className="space-y-4">
                 <h3 className="text-lg font-black flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-cyan-400" />

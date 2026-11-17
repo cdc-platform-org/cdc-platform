@@ -4,7 +4,7 @@ export const AI_TOOL_SUBSCRIPTION_DAYS = 30;
 export const AI_TOOL_PAYMENT_NOTE = 'AI_TOOL_SUBSCRIPTION:';
 export const AI_SUBSCRIPTION_TOOLS = [
   'english-tutor', 'educator-hub', 'media-studio', 'chatbot-builder',
-  'proctoring', 'smart-reader', 'ai-agents', 'childrens-book', 'coloring-pages', 'design-studio',
+  'proctoring', 'smart-reader', 'ai-agents', 'childrens-book', 'coloring-pages', 'design-studio', 'code-studio',
 ] as const;
 export type AiSubscriptionToolKey = typeof AI_SUBSCRIPTION_TOOLS[number];
 export function isAiSubscriptionTool(key: string): key is AiSubscriptionToolKey {

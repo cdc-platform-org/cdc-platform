@@ -12,10 +12,10 @@ import api from '../../services/apiClient';
 
 interface StudioAccessStatus {
   hasDesignStudioAccess: boolean;
-  designAccessSource: 'SUBSCRIPTION' | 'ACTIVE_COURSE' | 'NONE';
+  designAccessSource: 'SUBSCRIPTION' | 'ACTIVE_COURSE' | 'ADMIN' | 'NONE';
   designAccessExpiresAt: string | null;
   hasCodeStudioAccess: boolean;
-  codeAccessSource: 'SUBSCRIPTION' | 'ACTIVE_COURSE' | 'NONE';
+  codeAccessSource: 'SUBSCRIPTION' | 'ACTIVE_COURSE' | 'ADMIN' | 'NONE';
   codeAccessExpiresAt: string | null;
   hasActiveLiveTraining: boolean;
   activeLiveTrainingId: string | null;

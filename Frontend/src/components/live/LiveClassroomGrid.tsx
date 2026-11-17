@@ -32,6 +32,7 @@ export default function LiveClassroomGrid({
   const isKa = lang === 'ka';
   const [sharing, setSharing] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [canManage, setCanManage] = useState(false);
   const [screens, setScreens] = useState<StudentScreenFrame[]>([]);
   const [recordings, setRecordings] = useState<ClassroomRecordingRecord[]>([]);
   const [focusedScreen, setFocusedScreen] = useState<StudentScreenFrame | null>(null);
@@ -52,6 +53,7 @@ export default function LiveClassroomGrid({
         if (!mounted) return;
         setScreens(state.screens);
         setRecordings(state.recordings);
+        setCanManage(state.canManage);
       } catch {}
     };
     load();
@@ -133,16 +135,17 @@ export default function LiveClassroomGrid({
       recorder.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
         const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
-        const localPlaybackUrl = URL.createObjectURL(blob);
         try {
-          const saved = await saveRecordingAndNotifyStudents(trainingId, localPlaybackUrl);
+          const saved = await saveRecordingAndNotifyStudents(trainingId, blob);
           setRecordings((prev) => [saved, ...prev]);
           setStatusBanner(
             isKa
               ? `✓ შეხვედრის ჩანაწერი შენახულია და ავტომატურად გაეგზავნა ${saved.emailedToCount} სტუდენტს მეილზე.`
               : `✓ Recording saved and automatically emailed to ${saved.emailedToCount} enrolled students.`
           );
-        } catch {}
+        } catch {
+          setStatusBanner(isKa ? 'ჩანაწერის ატვირთვა ვერ მოხერხდა (მაქს. 100 MB).' : 'Recording upload failed (maximum 100 MB). Please try again.');
+        }
         setRecording(false);
       };
 
@@ -174,7 +177,7 @@ export default function LiveClassroomGrid({
             {screens.length} {isKa ? 'აქტიური ეკრანი' : 'Live Screens'}
           </span>
           <span className="text-xs text-slate-400">
-            {isTrainerView
+            {canManage
               ? isKa
                 ? 'ტრენერის ხედი: ხედავთ ყველა სტუდენტის სამუშაო ეკრანს'
                 : 'Trainer View: Monitoring all student workspaces'
@@ -205,7 +208,7 @@ export default function LiveClassroomGrid({
             </button>
           )}
 
-          {!recording ? (
+          {canManage && (!recording ? (
             <button
               type="button"
               onClick={startMeetingRecording}
@@ -223,7 +226,7 @@ export default function LiveClassroomGrid({
               <Square className="w-4 h-4" />
               {isKa ? 'ჩაწერის დასრულება & მეილზე გაგზავნა' : 'Stop & Email Recording'}
             </button>
-          )}
+          ))}
         </div>
       </div>
 
