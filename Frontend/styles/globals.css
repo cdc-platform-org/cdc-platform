@@ -11,6 +11,8 @@
    toggled in SiteHeader) swaps the same tokens for dark mode.
    ============================================================ */
 :root {
+  --font-georgian-safe: 'Noto Sans Georgian';
+  --font-fallback: 'Inter';
   --cdc-bg: 247 246 242;          /* warm neutral canvas */
   --cdc-surface: 255 255 255;     /* cards / header */
   --cdc-border: 225 224 219;
@@ -54,27 +56,17 @@ body {
    tailwind.config.js's `sans` stack had its own now-dead 'GL-Kirovi' entry
    removed alongside this for the same reason. */
 
-/* Sitewide body-text font — applies to everything rendered inside
-   pages/_app.tsx's wrapper div (i.e. virtually the entire app: nav,
-   buttons, forms, paragraphs). georgianSafeFont is next/font/google's Noto
-   Sans Georgian (--font-georgian-safe in pages/_app.tsx), the same
-   verified-correct family already used for headings via .blog-heading-safe
-   below, loaded with a wider weight range so it covers body text too. A
-   class on the wrapper div (not the bare `html` selector Tailwind's own
-   base layer uses) — next/font's CSS variables are only defined on the
-   element they're applied to and its descendants, not on `html` itself,
-   which sits above that div in the DOM. */
+/* Sitewide Noto Sans Georgian and the Inter fallback are bundled from
+   Fontsource in _app.tsx. The variables live on :root so all app content
+   and overlays inherit the same locally served font families. */
 .app-shell {
   font-family: var(--font-georgian-safe), 'Noto Sans Georgian', var(--font-fallback), 'Inter', sans-serif;
   line-height: 1.65;
   letter-spacing: 0;
 }
 
-/* Headings: BPG ExtraSquare Mtavruli (next/font/local, --font-heading)
-   with a self-hosted Inter (next/font/google, --font-fallback) as the
-   fallback — both variables set on the wrapper div in pages/_app.tsx, see
-   the comment there for why. Body text/inputs above use .app-shell's
-   georgianSafeFont (Noto Sans Georgian), same as everything else. */
+/* Headings use the bundled Georgian family, with Inter as a fallback.
+   The BPG display face remains available through .font-display below. */
 h1, h2, h3, h4, h5, h6, .font-heading {
   font-family: var(--font-georgian-safe), 'Noto Sans Georgian', var(--font-fallback), sans-serif !important;
   letter-spacing: -0.01em;

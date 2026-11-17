@@ -71,10 +71,10 @@ module.exports = {
         'card-hover': '0 12px 32px -12px rgb(76 29 149 / 0.18), 0 2px 6px rgb(21 19 43 / 0.05)',
       },
       // `heading`: BPG ExtraSquare Mtavruli (next/font/local, --font-heading)
-      // with a real self-hosted Inter (next/font/google, --font-fallback,
+      // with a real self-hosted Inter (Fontsource, --font-fallback,
       // weight 600 to match this face's heavier letterforms) as the
       // fallback before generic sans-serif — not the bare string 'Inter'.
-      // Both CSS vars are set on the wrapper div in pages/_app.tsx; see the
+      // The heading variable is set in _app.tsx; the fallback is set on :root. See the
       // comment there for the known mixed-script-heading tradeoff of this
       // two-font-stack approach. `sans` (body text/inputs): 'GL-Kirovi'
       // removed (its @font-face and font FILE never existed together in

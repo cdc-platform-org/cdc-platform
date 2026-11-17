@@ -2,7 +2,6 @@ import { appWithTranslation } from 'next-i18next';
 import Head from 'next/head';
 import Script from 'next/script';
 import localFont from 'next/font/local';
-import { Inter, Noto_Sans_Georgian } from 'next/font/google';
 import { useRouter } from 'next/router';
 import { AuthProvider } from '@/src/context/AuthContext';
 import { AuthModalProvider } from '@/src/context/AuthModalContext';
@@ -18,6 +17,11 @@ import AdminModeBar from '@/src/components/layout/AdminModeBar';
 import MobileTabBar from '@/src/components/layout/MobileTabBar';
 import { resolveLocale } from '@/src/utils/locale';
 import type { AppProps } from 'next/app';
+import '@fontsource/inter/latin-600.css';
+import '@fontsource/noto-sans-georgian/400.css';
+import '@fontsource/noto-sans-georgian/500.css';
+import '@fontsource/noto-sans-georgian/600.css';
+import '@fontsource/noto-sans-georgian/700.css';
 import '@/styles/globals.css';
 
 // Heading font — BPG ExtraSquare Mtavruli (public/fonts/), a Georgian
@@ -46,35 +50,9 @@ const headingFont = localFont({
   display: 'swap',
 });
 
-const fallbackFont = Inter({
-  subsets: ['latin'],
-  weight: '600',
-  variable: '--font-fallback',
-  display: 'swap',
-});
-
-// Verified-safe Georgian font — real Google-hosted Unicode Georgian
-// coverage (self-hosted by next/font at build time, same as Inter above).
-// Originally loaded at weight 700 only, for headings (see .blog-heading-safe
-// below — BPG ExtraSquare Mtavruli has only been spot-checked for 3
-// Georgian letters and has been observed to render other real Georgian
-// words as garbled Latin-lookalike glyphs, a wrong glyph in its cmap, not a
-// missing one, so a plain CSS font-family fallback chain can never recover
-// from it once the browser has "resolved" a glyph in it).
-//
-// Now also the sitewide BODY-text font (see globals.css's .app-shell) —
-// GL-Kirovi (the previous body/nav font, a plain @font-face whose source
-// file never actually existed in this repo and was removed from
-// globals.css/tailwind.config.js as a real production 404) is gone;
-// regular/medium/semibold weights are pulled in alongside the existing 700
-// so this one family can cover both roles without a second Google Fonts
-// request.
-const georgianSafeFont = Noto_Sans_Georgian({
-  subsets: ['georgian'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-georgian-safe',
-  display: 'swap',
-});
+// Inter and Noto Sans Georgian are bundled from Fontsource above. Their
+// local @font-face rules retain script-specific unicode ranges and weights
+// without fetching Google Fonts CSS or font URLs during the production build.
 
 function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -162,7 +140,7 @@ function App({ Component, pageProps }: AppProps) {
         // script actually becomes available instead of silently giving up.
         onLoad={() => window.dispatchEvent(new Event('google-gsi-ready'))}
       />
-      <div className={`app-shell ${headingFont.variable} ${fallbackFont.variable} ${georgianSafeFont.variable} overflow-x-hidden px-4 sm:px-6`}>
+      <div className={`app-shell ${headingFont.variable} overflow-x-hidden px-4 sm:px-6`}>
         <AuthProvider>
           <AuthModalProvider>
             <VerificationDrawerProvider>
