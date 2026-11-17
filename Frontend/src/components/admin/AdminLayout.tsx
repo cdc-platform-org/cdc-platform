@@ -90,7 +90,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   // Overview
   { href: '/admin', labelKey: 'dashboard', icon: LayoutDashboard, section: 'overview' },
-  { href: '/admin/analytics', labelKey: 'analytics', icon: BarChart3, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'overview' },
+  { href: '/admin/analytics', labelKey: 'analytics', icon: BarChart3, tiers: ['SUPER_ADMIN'], section: 'overview' },
 
   // Users & verification
   { href: '/admin/users', labelKey: 'users', icon: Users, section: 'people' },
@@ -121,7 +121,7 @@ const NAV_ITEMS: NavItem[] = [
 
   // Career & gigs (site: კარიერა)
   { href: '/admin/gigs', labelKey: 'gigs', icon: Briefcase, section: 'career' },
-  { href: '/admin/disputes', labelKey: 'disputes', icon: Scale, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'career' },
+  { href: '/admin/disputes', labelKey: 'disputes', icon: Scale, tiers: ['SUPER_ADMIN'], section: 'career' },
   { href: '/admin/opportunities', labelKey: 'opportunities', icon: Radar, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'career' },
 
   // Site content (site: მთავარი, ბლოგი, ჩვენ შესახებ)
@@ -151,8 +151,8 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/financials', labelKey: 'financials', icon: Wallet, tiers: ['SUPER_ADMIN'], section: 'financial' },
   { href: '/admin/finance/payouts', labelKey: 'payouts', icon: Landmark, tiers: ['SUPER_ADMIN'], section: 'financial' },
   { href: '/admin/commissions', labelKey: 'commissions', icon: Percent, tiers: ['SUPER_ADMIN'], section: 'financial' },
-  { href: '/admin/promos', labelKey: 'promos', icon: Tag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'financial' },
-  { href: '/admin/gift-cards', labelKey: 'giftCards', icon: Gift, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'financial' },
+  { href: '/admin/promos', labelKey: 'promos', icon: Tag, tiers: ['SUPER_ADMIN'], section: 'financial' },
+  { href: '/admin/gift-cards', labelKey: 'giftCards', icon: Gift, tiers: ['SUPER_ADMIN'], section: 'financial' },
 
   // System
   { href: '/admin/team', labelKey: 'team', icon: Lock, tiers: ['SUPER_ADMIN'], section: 'admin' },

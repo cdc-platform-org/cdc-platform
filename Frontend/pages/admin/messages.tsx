@@ -103,10 +103,10 @@ function AdminMessagesDashboard() {
                       <div className="flex items-center gap-2">
                         {t.flaggedCount > 0 && (
                           <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-200">
-                            {t.flaggedCount} flagged
+                            {t.flaggedCount} {at("flagged")}
                           </span>
                         )}
-                        <span className="text-xs text-gray-400">{t.messageCount} messages</span>
+                        <span className="text-xs text-gray-400">{t.messageCount} {at("messages")}</span>
                       </div>
                     </div>
                     <p className="text-xs text-gray-400 mt-1">{at("Last message")}{" "}{new Date(t.lastMessageAt).toLocaleString(adminLocale())}</p>

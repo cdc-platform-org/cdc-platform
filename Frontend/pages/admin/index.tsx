@@ -20,6 +20,7 @@ import {
 } from '../../src/services/adminSystemToolsService';
 
 import { adminLocale, at, atf } from '../../src/i18n/admin';
+import { useCanSeeMoney } from '../../src/components/admin/useCanSeeMoney';
 function formatMoney(minorUnits: number): string {
   return `${(minorUnits / 100).toLocaleString(adminLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })} GEL`;
 }
@@ -141,6 +142,7 @@ function DashboardOverview() {
     return () => clearTimeout(timer);
   }, [junkToast]);
 
+  const canSeeMoney = useCanSeeMoney();
   const loadStats = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -211,6 +213,8 @@ function DashboardOverview() {
               </div>
             </section>
 
+            {/* Money KPIs — SUPER_ADMIN only (the API omits `volume` for other tiers). */}
+            {canSeeMoney && stats.volume && (
             <section>
               <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">{at("Platform Volume")}</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -235,6 +239,7 @@ function DashboardOverview() {
                 />
               </div>
             </section>
+            )}
 
             {/* Day-to-day ops queue — the three things someone running the
                 pilot needs to check without hunting through five separate
@@ -246,12 +251,17 @@ function DashboardOverview() {
             <section>
               <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">{at("Needs Attention")}</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link href="/admin/disputes" className="no-underline text-current">
-                  <StatCard label={at("Open Disputes")} value={stats.disputes.open} icon="⚖️" accent="rose" />
-                </Link>
-                <Link href="/admin/finance/payouts" className="no-underline text-current">
-                  <StatCard label={at("Pending Payouts")} value={stats.payouts.pending} icon="🏦" accent="amber" />
-                </Link>
+                {/* Disputes (escrow) and payouts are money queues — SUPER_ADMIN only. */}
+                {canSeeMoney && (
+                  <Link href="/admin/disputes" className="no-underline text-current">
+                    <StatCard label={at("Open Disputes")} value={stats.disputes.open} icon="⚖️" accent="rose" />
+                  </Link>
+                )}
+                {canSeeMoney && stats.payouts && (
+                  <Link href="/admin/finance/payouts" className="no-underline text-current">
+                    <StatCard label={at("Pending Payouts")} value={stats.payouts.pending} icon="🏦" accent="amber" />
+                  </Link>
+                )}
                 <Link href="/admin/candidate-verifications" className="no-underline text-current">
                   <StatCard
                     label={at("Flagged Candidates (7d)")}
@@ -296,7 +306,7 @@ function DashboardOverview() {
                         <ul className="list-disc list-inside text-xs text-gray-600">
                           {i18nAgentResult.patchedGroups.map((g) => (
                             <li key={`${g.locale}-${g.namespace}`}>
-                              {g.locale}/{g.namespace}: {g.keysPatched} key{g.keysPatched === 1 ? '' : 's'}
+                              {g.locale}/{g.namespace}: {atf("{0} key(s)", g.keysPatched)}
                             </li>
                           ))}
                         </ul>
@@ -335,7 +345,7 @@ function DashboardOverview() {
                     <div className="mt-4 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-700 space-y-1">
                       {cacheResult.cleared.map((c) => (
                         <p key={c.name}>
-                          ✓ {c.name}: {c.entriesCleared} entr{c.entriesCleared === 1 ? 'y' : 'ies'} cleared
+                          ✓ {c.name}: {atf("{0} entries cleared", c.entriesCleared)}
                         </p>
                       ))}
                       <p className="text-xs text-gray-400">{cacheResult.note}</p>

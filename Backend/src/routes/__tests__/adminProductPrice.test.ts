@@ -32,7 +32,7 @@ afterAll(async () => { await new Promise<void>((resolve) => server.close(() => r
 beforeEach(() => {
   jest.clearAllMocks();
   stored = { id: 'product', title: 'Title', description: 'Description', titleEn: 'Title', descriptionEn: 'Description', price: 100, discountedPrice: null, saleStartsAt: null, saleEndsAt: null };
-  db.user.findUnique.mockResolvedValue({ adminRole: 'MANAGER', isBanned: false, deletionRequestedAt: null });
+  db.user.findUnique.mockResolvedValue({ adminRole: 'SUPER_ADMIN', isBanned: false, deletionRequestedAt: null });
   db.digitalProduct.findUnique.mockImplementation(async () => ({ ...stored }));
   db.digitalProduct.update.mockImplementation(async ({ data }: any) => { stored = { ...stored, ...data }; return stored; });
 });
@@ -72,4 +72,15 @@ test('requires admin authorization', async () => {
   expect((await update({ priceMinor: 1999 }, false)).status).toBe(401);
   db.user.findUnique.mockResolvedValue({ adminRole: null });
   expect((await update({ priceMinor: 1999 })).status).toBe(403);
+});
+
+test('MANAGER cannot change a price and never sees one', async () => {
+  db.user.findUnique.mockResolvedValue({ adminRole: 'MANAGER', isBanned: false, deletionRequestedAt: null });
+  const response = await update({ priceMinor: 1, title: 'Renamed' });
+  expect(response.status).toBe(200);
+  expect(stored.price).toBe(100);
+  const payload = await response.json() as { data: Record<string, unknown> };
+  expect(payload.data.price).toBeUndefined();
+  expect(payload.data.currentPrice).toBeUndefined();
+  expect(payload.data.title).toBe('Renamed');
 });

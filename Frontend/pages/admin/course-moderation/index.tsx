@@ -72,7 +72,7 @@ function AdminCourseModerationDashboard() {
                 <div>
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">{course.title}</p>
                   <p className="text-xs text-gray-500 dark:text-slate-400">
-                    by {course.instructor.name} ({course.instructor.email}) · {course.category} · {course._count.sections} section
+                    {at("by")} {course.instructor.name} ({course.instructor.email}) · {course.category} · {course._count.sections} {at("section")}
                     {course._count.sections === 1 ? '' : 's'}
                   </p>
                 </div>

@@ -29,6 +29,7 @@ import {
 } from '../../src/services/adminMentorshipService';
 
 import { adminLocale, at, atEnum, atf } from '../../src/i18n/admin';
+import { useCanSeeMoney } from '../../src/components/admin/useCanSeeMoney';
 // Curated checklist, not a DB enum (see mentorLanguages' schema comment) —
 // values are stored/displayed exactly as written here (mixed-script by
 // design, matching how each language names itself).
@@ -55,6 +56,7 @@ function timeToMinutes(time: string): number {
 }
 
 function MentorAvailabilitySection() {
+  const canSeeMoney = useCanSeeMoney();
   const [mentors, setMentors] = useState<MentorProfile[]>([]);
   const [selectedMentorId, setSelectedMentorId] = useState('');
   const [rules, setRules] = useState<MentorAvailabilityRule[]>([]);
@@ -413,6 +415,8 @@ function MentorAvailabilitySection() {
           </div>
         )}
 
+        {/* Rate is money — SUPER_ADMIN only (the API also ignores it from other tiers). */}
+        {canSeeMoney && (
         <div className="mb-3">
           <label className="block text-xs font-medium text-gray-700 mb-1">{at("Hourly Rate (GEL / ₾)")}</label>
           <input
@@ -424,6 +428,7 @@ function MentorAvailabilitySection() {
             className="w-full sm:w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-sm"
           />
         </div>
+        )}
         <div className="mb-3">
           <label className="block text-xs font-medium text-gray-700 mb-1">{at("Core Skills (comma-separated)")}</label>
           <input
@@ -827,7 +832,7 @@ function EscrowCell({ booking, onUpdated }: { booking: AdminMentorshipBooking; o
                 : 'bg-gray-50 text-gray-400 border-gray-200'
         }`}
       >
-        {booking.escrowStatus ?? at("NOT CAPTURED")}
+        {booking.escrowStatus ? atEnum(booking.escrowStatus) : at("NOT CAPTURED")}
       </span>
       {disputePending && (
         <div className="mt-1.5">
@@ -866,6 +871,7 @@ function EscrowCell({ booking, onUpdated }: { booking: AdminMentorshipBooking; o
 // this codebase; adding one would be new architecture, not a small
 // addition to this one page).
 function BookingsSection() {
+  const canSeeMoney = useCanSeeMoney();
   const [bookings, setBookings] = useState<AdminMentorshipBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -891,7 +897,7 @@ function BookingsSection() {
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">{at("Mentorship Bookings")}</h2>
-          <p className="text-sm text-gray-500 mt-1">{at("Every paid session — mentor, student, time, and Google Meet sync status.")}</p>
+          <p className="text-sm text-gray-500 mt-1">{at("Every booked session — mentor, student, time, and Google Meet sync status.")}</p>
         </div>
         <button
           type="button"
@@ -920,7 +926,7 @@ function BookingsSection() {
                 <th className="px-4 py-3 font-medium">{at("Scheduled")}</th>
                 <th className="px-4 py-3 font-medium">{at("Meet Link")}</th>
                 <th className="px-4 py-3 font-medium">{at("Recording")}</th>
-                <th className="px-4 py-3 font-medium">{at("Escrow")}</th>
+                {canSeeMoney && <th className="px-4 py-3 font-medium">{at("Escrow")}</th>}
               </tr>
             </thead>
             <tbody>
@@ -929,10 +935,10 @@ function BookingsSection() {
                   <td className="px-4 py-3">
                     <span
                       className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${
-                        BOOKING_STATUS_BADGE[b.bogPayment.status] ?? BOOKING_STATUS_BADGE.PENDING
+                        BOOKING_STATUS_BADGE[b.sessionStatus] ?? BOOKING_STATUS_BADGE.PENDING
                       }`}
                     >
-                      {BOOKING_STATUS_LABEL[b.bogPayment.status] ?? b.bogPayment.status}
+                      {BOOKING_STATUS_LABEL[b.sessionStatus] ?? atEnum(b.sessionStatus)}
                     </span>
                     {b.calendarSyncError && (
                       <span className="block mt-1 text-[10px] text-red-500" title={b.calendarSyncError}>
@@ -966,12 +972,14 @@ function BookingsSection() {
                       onUpdated={(updated) => setBookings((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))}
                     />
                   </td>
-                  <td className="px-4 py-3">
-                    <EscrowCell
-                      booking={b}
-                      onUpdated={(updated) => setBookings((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))}
-                    />
-                  </td>
+                  {canSeeMoney && (
+                    <td className="px-4 py-3">
+                      <EscrowCell
+                        booking={b}
+                        onUpdated={(updated) => setBookings((prev) => prev.map((row) => (row.id === updated.id ? updated : row)))}
+                      />
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

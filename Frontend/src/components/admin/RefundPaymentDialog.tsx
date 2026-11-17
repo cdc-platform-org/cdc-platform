@@ -193,7 +193,7 @@ export default function RefundPaymentDialog({ payment, onClose, onRefunded }: Pr
             <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 text-sm text-red-800 dark:text-red-200">
               <p className="font-semibold mb-1">
                 {recordOnly ? at("Record a refund of ") : at("Send a refund of ")}
-                {money(refundMinor, payment.currency)} to {payment.user.email}?
+                {money(refundMinor, payment.currency)} {at("to")} {payment.user.email}?
               </p>
               <ul className="list-disc pl-5 text-xs space-y-1">
                 {!recordOnly && <li>{at("The money goes back through Bank of Georgia. This cannot be undone.")}</li>}

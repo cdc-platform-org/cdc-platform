@@ -107,7 +107,7 @@ function AdminAnalyticsDashboard() {
 
 export default function AdminAnalyticsPage() {
   return (
-    <AdminGuard requiredTiers={['SUPER_ADMIN', 'MANAGER']}>
+    <AdminGuard requiredTiers={['SUPER_ADMIN']}>
       <AdminLayout>
         <AdminAnalyticsDashboard />
       </AdminLayout>

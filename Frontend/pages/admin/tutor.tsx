@@ -474,7 +474,7 @@ function PromptConfigRow({
 
 export default function TutorAdminPage() {
   return (
-    <AdminGuard requiredTiers={['SUPER_ADMIN', at('MANAGER')]}>
+    <AdminGuard requiredTiers={['SUPER_ADMIN', 'MANAGER']}>
       <AdminLayout>
         <Head>
           <title>{at("AI English Tutor | Admin")}</title>

@@ -17,7 +17,8 @@ export interface DashboardStats {
     total: number;
     byStatus: Record<string, number>;
   };
-  volume: {
+  // Omitted by the API for non-SUPER_ADMIN tiers (money).
+  volume?: {
     totalGrossAmount: number;
     totalCommissionAmount: number;
     totalNetAmount: number;
@@ -26,7 +27,7 @@ export interface DashboardStats {
   disputes: {
     open: number;
   };
-  payouts: {
+  payouts?: {
     pending: number;
   };
   examProctoring: {

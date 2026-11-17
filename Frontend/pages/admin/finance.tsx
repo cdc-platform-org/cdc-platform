@@ -332,7 +332,7 @@ function AdminFinanceDashboard() {
                     <td className="px-4 py-3 font-semibold">
                       {formatGel(p.amount, p.currency)}
                       {(p.refundedAmount ?? 0) > 0 && (
-                        <div className="text-[11px] font-normal text-purple-600 dark:text-purple-400">−{formatGel(p.refundedAmount, p.currency)} refunded</div>
+                        <div className="text-[11px] font-normal text-purple-600 dark:text-purple-400">−{formatGel(p.refundedAmount, p.currency)} {at("refunded")}</div>
                       )}
                     </td>
                     <td className="px-4 py-3">

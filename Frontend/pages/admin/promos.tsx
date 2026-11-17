@@ -351,7 +351,7 @@ function AdminPromosDashboard() {
                       {c.expiresAt ? atf(" · Expires {0}", new Date(c.expiresAt).toLocaleDateString()) : ''}
                       {' · '}
                       {c.currentUses}
-                      {c.maxUses ? `/${c.maxUses}` : ''} used
+                      {c.maxUses ? `/${c.maxUses}` : ''} {at("used")}
                       {c.applicableType !== 'ALL' && c.applicableTargetIds.length > 0
                         ? atf(" · Targets: {0}", c.applicableTargetIds.map((id) => targetNameById.get(id) ?? id).join(', '))
                         : ''}
@@ -399,7 +399,7 @@ function AdminPromosDashboard() {
 
 export default function AdminPromosPage() {
   return (
-    <AdminGuard requiredTiers={['SUPER_ADMIN', 'MANAGER']}>
+    <AdminGuard requiredTiers={['SUPER_ADMIN']}>
       <AdminLayout>
         <AdminPromosDashboard />
       </AdminLayout>

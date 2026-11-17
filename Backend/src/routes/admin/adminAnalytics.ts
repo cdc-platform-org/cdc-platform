@@ -6,10 +6,10 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
-import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin);
+// Sales/revenue analytics — money-only page, SUPER_ADMIN only.
+router.use(authenticate, requireAdminRole('SUPER_ADMIN'));
 
 router.get('/overview', async (_req: Request, res: Response) => {
   const completedCourseWhere = { purpose: 'COURSE' as const, status: 'COMPLETED' as const };

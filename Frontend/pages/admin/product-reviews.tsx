@@ -6,7 +6,7 @@ import AdminLayout from '../../src/components/admin/AdminLayout';
 import { getAdminProductReviews, deleteAdminProductReview } from '../../src/services/productReviewService';
 import { AdminProductReview } from '../../src/types/productReview';
 
-import { adminLocale, at } from '../../src/i18n/admin';
+import { adminLocale, at, atf } from '../../src/i18n/admin';
 function StarsInline({ rating }: { rating: number }) {
   return (
     <span className="inline-flex items-center gap-0.5">
@@ -61,7 +61,7 @@ function ProductReviewsModeration() {
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-gray-900">{at("Digital Store — Product Review Moderation")}</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {at("Every verified-purchase review across the Digital Store —")}{" "}{reviews.length} review{reviews.length === 1 ? '' : 's'} total.
+            {at("Every verified-purchase review across the Digital Store —")}{" "}{atf("{0} review(s) total.", reviews.length)}
           </p>
         </div>
 
@@ -83,7 +83,7 @@ function ProductReviewsModeration() {
                     </div>
                     <p className="text-sm text-gray-700 mt-2 leading-relaxed max-w-2xl">{review.comment}</p>
                     <p className="text-xs text-gray-400 mt-2">
-                      {review.user.name} ({review.user.email}) · &ldquo;{review.product.title}&rdquo; · {review.helpfulCount} helpful
+                      {review.user.name} ({review.user.email}) · &ldquo;{review.product.title}&rdquo; · {review.helpfulCount} {at("helpful")}
                     </p>
                   </div>
                   <button

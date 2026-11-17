@@ -4,7 +4,7 @@ import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import { getCyberSentinelWaitlist, CyberSentinelWaitlistEntry } from '../../src/services/cyberSentinelService';
 
-import { adminLocale, at } from '../../src/i18n/admin';
+import { adminLocale, at, atf } from '../../src/i18n/admin';
 const OS_LABEL: Record<string, string> = { get WINDOWS() { return at("Windows"); }, get MAC() { return at("macOS"); }, get LINUX() { return at("Linux"); } };
 
 function CyberSentinelWaitlistDashboard() {
@@ -37,7 +37,7 @@ function CyberSentinelWaitlistDashboard() {
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-gray-900">{at("Cyber Sentinel AI — Early Access Waitlist")}</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {at("Leads from the \"Get Early Access\" modal on /tools —")}{" "}{entries.length} signup{entries.length === 1 ? '' : 's'} {at("so far.")}
+            {at("Leads from the \"Get Early Access\" modal on /tools —")}{" "}{atf("{0} signup(s) so far.", entries.length)}
           </p>
         </div>
 

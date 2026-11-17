@@ -42,7 +42,8 @@ import { formatPrice } from '../../src/utils/coursePricing';
 import ProductTemplatePanel from '../../src/components/admin/ProductTemplatePanel';
 import ProductPricingPanel from '../../src/components/admin/ProductPricingPanel';
 
-import { adminLocale, at, atEnum, atf } from '../../src/i18n/admin';
+import { adminLocale, at, atEnum, atf, getAdminLang } from '../../src/i18n/admin';
+import { useCanSeeMoney } from '../../src/components/admin/useCanSeeMoney';
 // Bilingual because this admin page is English-only while its editors work in
 // Georgian. Why 4:3 + centre: the store detail gallery is 4:3 and the store
 // card is 16:9 (crops top/bottom) — see imageRatioCheck.ts.
@@ -325,9 +326,12 @@ function ModerationProductCard({
   const [editVideoUrl, setEditVideoUrl] = useState(p.previewVideoUrl ?? '');
   const [editVideoUploading, setEditVideoUploading] = useState(false);
   const [editToolRoute, setEditToolRoute] = useState(p.toolRoute ?? '');
-  const [editPrice, setEditPrice] = useState((p.price / 100).toFixed(2));
+  // Prices are SUPER_ADMIN-only: other tiers get products without `price`
+  // from the API and never see or send a price.
+  const canSeeMoney = useCanSeeMoney();
+  const [editPrice, setEditPrice] = useState(p.price != null ? (p.price / 100).toFixed(2) : '');
   const editPriceMinor = Math.round(Number(editPrice) * 100);
-  const priceError = !editPrice.trim() || !Number.isFinite(Number(editPrice)) || Number(editPrice) < 0
+  const priceError = !canSeeMoney ? null : !editPrice.trim() || !Number.isFinite(Number(editPrice)) || Number(editPrice) < 0
     || !Number.isSafeInteger(editPriceMinor) || editPriceMinor > 2147483647
     ? at('Enter a valid non-negative price in GEL.')
     : null;
@@ -369,7 +373,7 @@ function ModerationProductCard({
     setEditPreviewImages(p.previewImages);
     setEditVideoUrl(p.previewVideoUrl ?? '');
     setEditToolRoute(p.toolRoute ?? '');
-    setEditPrice((p.price / 100).toFixed(2));
+    setEditPrice(p.price != null ? (p.price / 100).toFixed(2) : '');
     setEditFiles(productFilesOf(p));
     setUseCustomSteps(!!p.howItWorksSteps);
     setSteps(p.howItWorksSteps ?? [emptyHowItWorksStep(), emptyHowItWorksStep(), emptyHowItWorksStep()]);
@@ -404,7 +408,7 @@ function ModerationProductCard({
     setSaving(true);
     try {
       await onSave({
-        priceMinor: editPriceMinor,
+        ...(canSeeMoney ? { priceMinor: editPriceMinor } : {}),
         title,
         description,
         titleEn: titleEn.trim() || null,
@@ -506,6 +510,7 @@ function ModerationProductCard({
 
             <ProductFilesEditor files={editFiles} onChange={setEditFiles} onBusyChange={setEditFilesBusy} />
 
+            {canSeeMoney && (
             <div>
               <label htmlFor={`product-price-${p.id}`} className="block text-xs font-medium text-gray-700 mb-1">{at("Price (₾ / GEL)")}</label>
               <input
@@ -523,6 +528,7 @@ function ModerationProductCard({
               />
               {priceError && <p id={`product-price-error-${p.id}`} role="alert" className="text-xs text-red-600 mt-1">{priceError}</p>}
             </div>
+            )}
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">{at("Tool Route (optional)")}</label>
               <input
@@ -619,7 +625,7 @@ function ModerationProductCard({
         )}
 
         <p className="text-xs text-gray-500">
-          {p.price === 0 ? (
+          {!canSeeMoney ? null : p.price === 0 ? (
             at("Free")
           ) : p.saleActive ? (
             <>
@@ -628,8 +634,7 @@ function ModerationProductCard({
             </>
           ) : (
             formatPrice(p.price)
-          )}{' '}
-          · {p.downloadsCount} {at("downloads ·")}{" "}{LICENSE_LABELS[p.licenseType].en}
+          )}{canSeeMoney ? ' · ' : ''}{p.downloadsCount} {at("downloads ·")}{" "}{getAdminLang() === 'ka' ? LICENSE_LABELS[p.licenseType].ka : LICENSE_LABELS[p.licenseType].en}
           {p.submittedBy && <> {at("· Submitted by")}{" "}{p.submittedBy.name} ({p.submittedBy.email})</>}
         </p>
         {p.status === 'REJECTED' && p.rejectionReason && <p className="text-xs text-red-500 mt-1">{at("Reason:")}{" "}{p.rejectionReason}</p>}
@@ -643,7 +648,7 @@ function ModerationProductCard({
           </div>
         )}
 
-        {showPurchases && (
+        {canSeeMoney && showPurchases && (
           <div className="mt-2 rounded-lg border border-gray-200 p-2">
             {loadingPurchases ? (
               <p className="text-xs text-gray-400">{at("Loading…")}</p>
@@ -671,24 +676,28 @@ function ModerationProductCard({
           </div>
         )}
         {showTemplate && <ProductTemplatePanel productId={p.id} />}
-        {showPricing && <ProductPricingPanel product={p} onSave={onSave} onClose={() => setShowPricing(false)} />}
+        {canSeeMoney && showPricing && <ProductPricingPanel product={p} onSave={onSave} onClose={() => setShowPricing(false)} />}
       </div>
       {!editing && (
         <div className="flex flex-col gap-2 shrink-0 justify-center">
           <button type="button" onClick={startEdit} disabled={acting} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-60">
             {at("Edit")}
           </button>
-          <button
-            type="button"
-            onClick={() => setShowPricing((v) => !v)}
-            disabled={acting}
-            className="text-xs font-medium text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 disabled:opacity-60"
-          >
-            ფასი / ფასდაკლება
-          </button>
-          <button type="button" onClick={togglePurchases} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
-            {showPurchases ? at("Hide Purchases") : at("Purchases")}
-          </button>
+          {canSeeMoney && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowPricing((v) => !v)}
+                disabled={acting}
+                className="text-xs font-medium text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 disabled:opacity-60"
+              >
+                {at("Price / Discount")}
+              </button>
+              <button type="button" onClick={togglePurchases} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
+                {showPurchases ? at("Hide Purchases") : at("Purchases")}
+              </button>
+            </>
+          )}
           <button type="button" onClick={() => setShowTemplate((v) => !v)} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
             {showTemplate ? at("Hide Template") : at("Editable Template")}
           </button>
@@ -754,6 +763,7 @@ function ModerationProductCard({
 }
 
 function AdminProductsDashboard() {
+  const canSeeMoney = useCanSeeMoney();
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('PENDING');
@@ -1090,6 +1100,10 @@ function AdminProductsDashboard() {
               className="w-full sm:w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
+          {!canSeeMoney && (
+            <p className="text-xs text-gray-500">{at("Price is set by a Super Admin. New products wait in Pending until it is set.")}</p>
+          )}
+          {canSeeMoney && (
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">{at("Price (GEL, 0 = free)")}</label>
             <input
@@ -1102,6 +1116,7 @@ function AdminProductsDashboard() {
               className="w-full sm:w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
+          )}
 
           <ImageGalleryUploader
             coverUrl={imageUrl}
@@ -1149,12 +1164,13 @@ function AdminProductsDashboard() {
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             >
               {(Object.keys(LICENSE_LABELS) as ProductLicenseType[]).map((key) => (
-                <option key={key} value={key}>{LICENSE_LABELS[key].en}</option>
+                <option key={key} value={key}>{getAdminLang() === 'ka' ? LICENSE_LABELS[key].ka : LICENSE_LABELS[key].en}</option>
               ))}
             </select>
-            <p className="text-xs text-gray-400 mt-1">{LICENSE_LABELS[licenseType].descriptionEn}</p>
+            <p className="text-xs text-gray-400 mt-1">{getAdminLang() === 'ka' ? LICENSE_LABELS[licenseType].descriptionKa : LICENSE_LABELS[licenseType].descriptionEn}</p>
           </div>
 
+          {canSeeMoney && (
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">{at("Discounted Price (GEL, optional)")}</label>
@@ -1179,6 +1195,7 @@ function AdminProductsDashboard() {
               />
             </div>
           </div>
+          )}
           {discountError && <p className="text-xs text-red-600">{discountError}</p>}
 
           <button

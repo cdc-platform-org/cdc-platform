@@ -286,7 +286,7 @@ export function CourseForm({
           />
           {editingCourse && (
             <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
-              {editingCourse.enrolledCount} enrolled{editingCourse.maxCapacity != null ? ` / ${editingCourse.maxCapacity}` : ''}
+              {editingCourse.enrolledCount} {at("enrolled")}{editingCourse.maxCapacity != null ? ` / ${editingCourse.maxCapacity}` : ''}
             </p>
           )}
         </div>

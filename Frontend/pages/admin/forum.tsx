@@ -79,7 +79,7 @@ function ModerationQueue() {
           </div>
           <h3 className="font-semibold text-sm text-gray-900 mb-1">{thread.title}</h3>
           <p className="text-sm text-gray-600 whitespace-pre-wrap mb-2">{thread.content}</p>
-          <p className="text-xs text-gray-400 mb-4">by {thread.author.name} ({atEnum(thread.author.role)})</p>
+          <p className="text-xs text-gray-400 mb-4">{at("by")} {thread.author.name} ({atEnum(thread.author.role)})</p>
           <div className="flex gap-2">
             <button
               type="button"

@@ -198,7 +198,7 @@ function AdminIakoProfilesContent() {
           {uploading && <p className="text-sm text-slate-500 mt-2">{at("Uploading…")}</p>}
           {sources.length > 0 && <ul className="mt-4 space-y-2">
             {sources.map((source) => <li key={source.sourceFilename} className="flex justify-between items-center gap-3 border-b border-slate-100 py-2 text-sm">
-              <span>{source.sourceFilename} · {source.totalChunks} chunks</span>
+              <span>{source.sourceFilename} · {source.totalChunks} {at("chunks")}</span>
               <button type="button" onClick={() => void removeSource(source.sourceFilename)} className="text-red-600 underline text-xs">{at("Remove")}</button>
             </li>)}
           </ul>}

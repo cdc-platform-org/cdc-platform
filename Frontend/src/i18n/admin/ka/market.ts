@@ -90,6 +90,7 @@ export const KA_MARKET: Record<string, string> = {
   "Sale Ends At (optional)": "ფასდაკლების დასასრული (არასავალდებულო)",
   "Add Product": "პროდუქტის დამატება",
   "No products here.": "პროდუქტები აქ არ არის.",
+  "Price / Discount": "ფასი / ფასდაკლება",
   "Price is set by a Super Admin. New products wait in Pending until it is set.": "ფასს Super Admin აწესებს. ახალი პროდუქტი ფასის დაწესებამდე „მოლოდინშია“.",
 
   // product reviews

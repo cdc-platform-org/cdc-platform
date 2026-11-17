@@ -95,7 +95,7 @@ function AdminCourseReviewDashboard({ courseId }: { courseId: string }) {
         <div>
           <h1 className="blog-heading-safe text-xl font-bold text-gray-900 dark:text-white">{course.title}</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            by {course.instructor.name} ({course.instructor.email}) · {course.category} · {course.originalPrice / 100} {at("GEL")}
+            {at("by")} {course.instructor.name} ({course.instructor.email}) · {course.category} · {course.originalPrice / 100} {at("GEL")}
           </p>
         </div>
         <span className={`text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border ${STATUS_BADGE_CLASS[course.status]}`}>
@@ -126,7 +126,7 @@ function AdminCourseReviewDashboard({ courseId }: { courseId: string }) {
 
       <div>
         <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-2">
-          {at("Curriculum (")}{course.sections.length} section{course.sections.length === 1 ? '' : 's'})
+          {at("Curriculum (")}{course.sections.length} {at("section")}{course.sections.length === 1 ? '' : 's'})
         </p>
         <div className="space-y-3">
           {course.sections.map((section) => (
@@ -166,7 +166,7 @@ function AdminCourseReviewDashboard({ courseId }: { courseId: string }) {
             {course.reviewHistory.map((entry) => (
               <div key={entry.id} className="text-xs rounded-lg border border-gray-200 dark:border-slate-800 p-3">
                 <p className="text-gray-500 dark:text-slate-400">
-                  {entry.action.replace('_', ' ')} by {entry.actedBy.name} · {new Date(entry.createdAt).toLocaleString(adminLocale())}
+                  {entry.action.replace('_', ' ')} {at("by")} {entry.actedBy.name} · {new Date(entry.createdAt).toLocaleString(adminLocale())}
                 </p>
                 {entry.feedback && <p className="text-gray-700 dark:text-slate-300 mt-1">{entry.feedback}</p>}
               </div>

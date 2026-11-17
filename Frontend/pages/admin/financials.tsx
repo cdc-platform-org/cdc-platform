@@ -126,7 +126,7 @@ function BogPaymentsSection() {
                 {at("Previous")}
               </button>
               <span className="text-xs text-gray-400 dark:text-slate-500">
-                {at("Page")}{" "}{page} of {totalPages}
+                {at("Page")}{" "}{page} {at("of")} {totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
@@ -231,7 +231,7 @@ function TransactionsSection() {
                 {at("Previous")}
               </button>
               <span className="text-xs text-gray-400 dark:text-slate-500">
-                {at("Page")}{" "}{page} of {totalPages}
+                {at("Page")}{" "}{page} {at("of")} {totalPages}
               </span>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}

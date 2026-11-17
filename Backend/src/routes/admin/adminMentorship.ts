@@ -367,7 +367,15 @@ router.get('/bookings', async (_req: Request, res: Response) => {
     },
     orderBy: { scheduledAt: 'desc' },
   });
-  res.json({ data: bookings });
+  // sessionStatus carries the "is this session confirmed" signal without any
+  // money detail, so it survives hideMoneyFromNonSuperAdmin (which strips
+  // bogPayment/stripePayment for non-SUPER_ADMIN tiers). Stripe-paid
+  // bookings have no bogPayment, hence the fallback chain.
+  const data = bookings.map((b) => ({
+    ...b,
+    sessionStatus: b.bogPayment?.status ?? b.stripePayment?.status ?? 'PENDING',
+  }));
+  res.json({ data });
 });
 
 // Attach/replace a pasted recording link — emails the student once, the

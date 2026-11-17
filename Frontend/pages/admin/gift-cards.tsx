@@ -185,7 +185,7 @@ function AdminGiftCardsDashboard() {
 
 export default function AdminGiftCardsPage() {
   return (
-    <AdminGuard requiredTiers={['SUPER_ADMIN', 'MANAGER']}>
+    <AdminGuard requiredTiers={['SUPER_ADMIN']}>
       <AdminLayout>
         <AdminGiftCardsDashboard />
       </AdminLayout>

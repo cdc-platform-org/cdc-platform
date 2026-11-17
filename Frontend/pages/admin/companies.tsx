@@ -383,7 +383,7 @@ function AiTrialModal({ company, onClose, onUpdated }: { company: CompanyRow; on
               onClick={() => apply({ mode: 'extend', days })}
               className="flex-1 text-xs font-medium px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-60"
             >
-              +{days} days
+              +{days} {at("days")}
             </button>
           ))}
         </div>

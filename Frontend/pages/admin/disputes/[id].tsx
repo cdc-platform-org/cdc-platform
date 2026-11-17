@@ -178,7 +178,7 @@ function AdminDisputeDetail() {
 
 export default function AdminDisputeDetailPage() {
   return (
-    <AdminGuard requiredTiers={['SUPER_ADMIN', 'MANAGER']}>
+    <AdminGuard requiredTiers={['SUPER_ADMIN']}>
       <AdminLayout>
         <AdminDisputeDetail />
       </AdminLayout>
