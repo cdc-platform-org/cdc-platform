@@ -3,10 +3,12 @@
  * Determines whether a student has active access to the 2-in-1 Design Studio (Ps/Ai)
  * or the SQL & Frontend Code Studio based on:
  *   1. An active standalone monthly tool subscription (29 GEL/month), OR
- *   2. An active CourseEnrollment whose access duration window has not expired.
+ *   2. A paid, unfinished CourseEnrollment within its access window
+ *      (see services/learning/collegeAiAccessService.ts).
  */
 
 import { prisma } from '../lib/prisma';
+import { getCollegeAiAccessStatus } from './learning/collegeAiAccessService';
 
 export interface StudioAccessStatus {
   hasDesignStudioAccess: boolean;
@@ -19,28 +21,14 @@ export interface StudioAccessStatus {
   activeLiveTrainingId: string | null;
 }
 
-const DEFAULT_COURSE_ACCESS_DAYS = 90;
-
-function isDesignCategory(category: string): boolean {
-  return /design|ui|ux|graphic|photoshop|illustrator|დიზაინ/i.test(category);
-}
-
-function isCodeCategory(category: string): boolean {
-  return /dev|code|sql|web|frontend|backend|data|program|პროგრამ|ბაზ/i.test(category);
-}
-
 export async function resolveStudentWorkspaceAccess(userId: string): Promise<StudioAccessStatus> {
   const now = new Date();
 
   const user = await prisma.user.findUnique({
     where: { id: userId }, select: { role: true, adminRole: true, email: true },
   });
-  const [enrollments, liveEnrollments, subscriptions] = await Promise.all([
-    prisma.courseEnrollment.findMany({
-      where: { userId },
-      include: { course: { select: { id: true, category: true, title: true } } },
-      orderBy: { grantedAt: 'desc' },
-    }),
+  const [college, liveEnrollments, subscriptions] = await Promise.all([
+    getCollegeAiAccessStatus(userId, now),
     prisma.liveTrainingEnrollment.findMany({
       where: { userId, status: 'ACTIVE' }, select: { liveTrainingId: true }, take: 1,
     }),
@@ -81,21 +69,13 @@ export async function resolveStudentWorkspaceAccess(userId: string): Promise<Stu
     }
   }
 
-  // 2. Check active course enrollments within their active duration window
-  for (const enr of enrollments) {
-    const expiresAt = new Date(enr.grantedAt.getTime() + DEFAULT_COURSE_ACCESS_DAYS * 86_400_000);
-    if (enr.grantedAt > now || expiresAt <= now) continue;
-
-    if (!hasDesignStudioAccess && isDesignCategory(enr.course.category)) {
-      hasDesignStudioAccess = true;
-      designAccessSource = 'ACTIVE_COURSE';
-      designAccessExpiresAt = expiresAt.toISOString();
-    }
-    if (!hasCodeStudioAccess && isCodeCategory(enr.course.category)) {
-      hasCodeStudioAccess = true;
-      codeAccessSource = 'ACTIVE_COURSE';
-      codeAccessExpiresAt = expiresAt.toISOString();
-    }
+  // 2. A paid, unfinished course within its access window unlocks both
+  // studios — same rule as every other AI tool (collegeAiAccessService), so
+  // access ends automatically when the course is finished or the window lapses.
+  if (college.active && college.endsAt) {
+    const exp = college.endsAt.toISOString();
+    if (!hasDesignStudioAccess) { hasDesignStudioAccess = true; designAccessSource = 'ACTIVE_COURSE'; designAccessExpiresAt = exp; }
+    if (!hasCodeStudioAccess) { hasCodeStudioAccess = true; codeAccessSource = 'ACTIVE_COURSE'; codeAccessExpiresAt = exp; }
   }
 
   if (user?.adminRole || user?.role === 'SuperAdmin') {
