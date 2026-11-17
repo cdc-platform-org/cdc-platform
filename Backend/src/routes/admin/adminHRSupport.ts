@@ -9,12 +9,13 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { assignHRSpecialistSchema, resolveHRSupportDisputeSchema } from '../../schemas/hrSupportSchemas';
 import { resolveHRSupportDispute } from '../../services/payments/hrSupportEscrowService';
 import { logAdminAction } from '../../services/account/auditLogService';
 
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin);
 
 const specialistSelect = { select: { id: true, name: true, email: true } };
 
@@ -69,7 +70,8 @@ router.post('/:id/assign', async (req: Request, res: Response) => {
   res.json(updated);
 });
 
-router.post('/:id/dispute/resolve', async (req: Request, res: Response) => {
+// Escrow release/refund decision — SUPER_ADMIN only (money actions).
+router.post('/:id/dispute/resolve', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
   const result = resolveHRSupportDisputeSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 

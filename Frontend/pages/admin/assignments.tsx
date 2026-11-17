@@ -6,6 +6,7 @@ import AdminLayout from '../../src/components/admin/AdminLayout';
 import { getAdminSubmissions, gradeSubmission } from '../../src/services/courseService';
 import { AdminAssignmentSubmission, AssignmentStatus } from '../../src/types/lms';
 
+import { at } from '../../src/i18n/admin';
 const STATUS_BADGE: Record<string, string> = {
   PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
   APPROVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -22,7 +23,7 @@ function SubmissionCard({ submission, onGraded }: { submission: AdminAssignmentS
       await gradeSubmission(submission.id, status, feedback.trim() || undefined);
       onGraded();
     } catch {
-      alert('Failed to save grading.');
+      alert(at("Failed to save grading."));
     } finally {
       setGrading(false);
     }
@@ -43,7 +44,7 @@ function SubmissionCard({ submission, onGraded }: { submission: AdminAssignmentS
       <div className="flex items-center gap-3 mt-2">
         {submission.fileUrl && (
           <a href={submission.fileUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-indigo-600 hover:underline">
-            Uploaded file →
+            {at("Uploaded file →")}
           </a>
         )}
         {submission.linkUrl && (
@@ -56,7 +57,7 @@ function SubmissionCard({ submission, onGraded }: { submission: AdminAssignmentS
         rows={2}
         value={feedback}
         onChange={(e) => setFeedback(e.target.value)}
-        placeholder="Feedback for the student (optional)"
+        placeholder={at("Feedback for the student (optional)")}
         className="w-full mt-3 rounded-lg border border-gray-300 px-3 py-2 text-xs"
       />
       <div className="flex gap-2 mt-2">
@@ -66,7 +67,7 @@ function SubmissionCard({ submission, onGraded }: { submission: AdminAssignmentS
           disabled={grading}
           className="text-xs font-medium text-white bg-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-60"
         >
-          Approve
+          {at("Approve")}
         </button>
         <button
           type="button"
@@ -74,7 +75,7 @@ function SubmissionCard({ submission, onGraded }: { submission: AdminAssignmentS
           disabled={grading}
           className="text-xs font-medium text-white bg-red-600 px-3 py-1.5 rounded-lg hover:bg-red-700 disabled:opacity-60"
         >
-          Needs Revision
+          {at("Needs Revision")}
         </button>
       </div>
     </div>
@@ -102,12 +103,12 @@ function AdminAssignmentsDashboard() {
   return (
     <>
       <Head>
-        <title>Homework Submissions | Admin</title>
+        <title>{at("Homework Submissions | Admin")}</title>
       </Head>
       <div className="max-w-4xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Homework Submissions</h1>
-          <p className="text-sm text-gray-500 mt-1">Review and grade student assignment submissions.</p>
+          <h1 className="text-2xl font-semibold text-gray-900">{at("Homework Submissions")}</h1>
+          <p className="text-sm text-gray-500 mt-1">{at("Review and grade student assignment submissions.")}</p>
         </div>
 
         <div className="flex items-center gap-2 mb-4">
@@ -118,15 +119,15 @@ function AdminAssignmentsDashboard() {
               onClick={() => setStatusFilter(s)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${statusFilter === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}
             >
-              {s ? s.replace('_', ' ') : 'All'}
+              {s ? s.replace('_', ' ') : at("All")}
             </button>
           ))}
         </div>
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">{at("Loading…")}</p>
         ) : submissions.length === 0 ? (
-          <p className="text-sm text-gray-500">No submissions here.</p>
+          <p className="text-sm text-gray-500">{at("No submissions here.")}</p>
         ) : (
           <div className="space-y-3">
             {submissions.map((s) => (
@@ -136,7 +137,7 @@ function AdminAssignmentsDashboard() {
         )}
 
         <Link href="/admin/courses" className="inline-block mt-6 text-xs text-gray-500 hover:text-gray-700">
-          ← Back to Course Management
+          {at("← Back to Course Management")}
         </Link>
       </div>
     </>

@@ -6,6 +6,7 @@ import { Course, Exam } from '../../../types/lms';
 import { getExamSettings, updateExamSettings } from '../../../services/courseService';
 import { inputClass } from './courseAdminShared';
 
+import { at } from '../../../i18n/admin';
 export const emptyExamForm = {
   passingScore: 95,
   cooldownHours: 24,
@@ -64,17 +65,17 @@ export function ExamSettingsPanel({ course }: { course: Course }) {
 
   return (
     <div className="mt-6 pt-6 border-t border-gray-100 dark:border-slate-800">
-      <h3 className="text-sm font-semibold text-gray-900 mb-1">🎓 AI Certification Exam — {course.title}</h3>
+      <h3 className="text-sm font-semibold text-gray-900 mb-1">{at("🎓 AI Certification Exam —")}{" "}{course.title}</h3>
       <p className="text-xs text-gray-500 mb-4">
-        {exam ? 'Configured — students must pass this exam (after 100% lesson completion) to unlock their certificate.' : 'Not configured yet — students fall back to the old 100%-lessons certificate gate.'}
+        {exam ? at("Configured — students must pass this exam (after 100% lesson completion) to unlock their certificate.") : at("Not configured yet — students fall back to the old 100%-lessons certificate gate.")}
       </p>
       {loading ? (
-        <p className="text-sm text-gray-400">Loading…</p>
+        <p className="text-sm text-gray-400">{at("Loading…")}</p>
       ) : (
         <form onSubmit={handleSave} className="space-y-4">
           <div className="grid md:grid-cols-3 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Passing Score (%)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Passing Score (%)")}</label>
               <input
                 type="number"
                 min={1}
@@ -85,7 +86,7 @@ export function ExamSettingsPanel({ course }: { course: Course }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Retake Cooldown (hours)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Retake Cooldown (hours)")}</label>
               <input
                 type="number"
                 min={0}
@@ -95,7 +96,7 @@ export function ExamSettingsPanel({ course }: { course: Course }) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Question Count</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Question Count")}</label>
               <input
                 type="number"
                 min={3}
@@ -107,20 +108,20 @@ export function ExamSettingsPanel({ course }: { course: Course }) {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">AI Prompt Context (optional)</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("AI Prompt Context (optional)")}</label>
             <textarea
               rows={2}
               value={form.aiPromptContext}
               onChange={(e) => setForm({ ...form, aiPromptContext: e.target.value })}
-              placeholder="e.g. Emphasize practical scenarios over theory; keep difficulty moderate."
+              placeholder={at("e.g. Emphasize practical scenarios over theory; keep difficulty moderate.")}
               className={inputClass}
             />
           </div>
           <div className="flex items-center gap-3">
             <button type="submit" disabled={saving} className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60">
-              {saving ? 'Saving…' : exam ? 'Update Exam Settings' : 'Enable Exam'}
+              {saving ? at("Saving…") : exam ? at("Update Exam Settings") : at("Enable Exam")}
             </button>
-            {saved && <span className="text-xs font-medium text-emerald-600">Saved ✓</span>}
+            {saved && <span className="text-xs font-medium text-emerald-600">{at("Saved ✓")}</span>}
           </div>
         </form>
       )}

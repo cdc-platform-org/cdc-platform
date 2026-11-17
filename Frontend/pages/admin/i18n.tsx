@@ -3,6 +3,7 @@ import apiClient from '../../src/services/apiClient';
 import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 
+import { at } from '../../src/i18n/admin';
 // Mirrors Backend's aiTranslationAgent.ts I18nAgentRunResult — duplicated as
 // a plain type rather than shared, same posture as this codebase's other
 // frontend/backend type mirrors.
@@ -29,7 +30,7 @@ function I18nDashboard() {
       const { data } = await apiClient.post<{ data: I18nAgentRunResult }>('/admin/auto-translate-and-push');
       setResult(data.data);
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'The translation agent run failed.');
+      setError(err?.response?.data?.message ?? at("The translation agent run failed."));
     } finally {
       setRunning(false);
     }
@@ -37,10 +38,9 @@ function I18nDashboard() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-10">
-      <h1 className="text-xl font-black mb-2">Translation Status</h1>
+      <h1 className="text-xl font-black mb-2">{at("Translation Status")}</h1>
       <p className="text-sm text-gray-500 mb-6">
-        Scans every locale file for missing or empty keys against English, drafts translations via Gemini, and commits
-        the patch to a new local git branch — never pushed, never touches main.
+        {at("Scans every locale file for missing or empty keys against English, drafts translations via Gemini, and commits the patch to a new local git branch — never pushed, never touches main.")}
       </p>
 
       <button
@@ -49,7 +49,7 @@ function I18nDashboard() {
         disabled={running}
         className="rounded-lg bg-indigo-600 text-white font-bold text-sm px-4 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {running ? 'Running…' : 'Run auto-translate agent'}
+        {running ? at("Running…") : at("Run auto-translate agent")}
       </button>
 
       {error && <p className="text-sm text-red-600 mt-4">{error}</p>}
@@ -62,7 +62,7 @@ function I18nDashboard() {
             <ul className="space-y-1 mb-3">
               {result.patchedGroups.map((g) => (
                 <li key={`${g.locale}-${g.namespace}`}>
-                  {g.locale}/{g.namespace}: {g.keysPatched} key(s) patched
+                  {g.locale}/{g.namespace}: {g.keysPatched} {at("key(s) patched")}
                 </li>
               ))}
             </ul>
@@ -70,7 +70,7 @@ function I18nDashboard() {
 
           {result.skippedNonStringKeys.length > 0 && (
             <p className="text-amber-600">
-              {result.skippedNonStringKeys.length} non-string key(s) skipped (array-shaped values aren't auto-translated).
+              {result.skippedNonStringKeys.length} {at("non-string key(s) skipped (array-shaped values aren't auto-translated).")}
             </p>
           )}
         </div>

@@ -16,6 +16,7 @@ import {
   TeamMemberPayload,
 } from '../../src/services/teamMemberService';
 
+import { at, atEnum } from '../../src/i18n/admin';
 const emptyForm: TeamMemberPayload = {
   name: '',
   role: '',
@@ -96,7 +97,7 @@ function AdminTeamTrainersDashboard() {
   const handleAutoTranslate = async () => {
     setTranslateError(null);
     if (form.name.trim().length < 2 || form.role.trim().length < 2) {
-      setTranslateError('Fill in the Georgian Name and Position before translating.');
+      setTranslateError(at("Fill in the Georgian Name and Position before translating."));
       return;
     }
     setTranslating(true);
@@ -109,7 +110,7 @@ function AdminTeamTrainersDashboard() {
       setForm((f) => ({ ...f, nameEn: translated.nameEn, roleEn: translated.roleEn, bioEn: translated.bioEn }));
       setActiveLangTab('en');
     } catch (err: any) {
-      setTranslateError(err?.response?.data?.message ?? 'Translation failed. Please try again.');
+      setTranslateError(err?.response?.data?.message ?? at("Translation failed. Please try again."));
     } finally {
       setTranslating(false);
     }
@@ -319,7 +320,7 @@ function AdminTeamTrainersDashboard() {
                       activeLangTab === tabLang ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-400 hover:text-gray-600'
                     }`}
                   >
-                    {tabLang === 'ka' ? 'GE ქართული' : 'GB English'}
+                    {tabLang === 'ka' ? 'GE ქართული' : at("GB English")}
                   </button>
                 ))}
               </div>
@@ -329,7 +330,7 @@ function AdminTeamTrainersDashboard() {
                 disabled={translating}
                 className="mb-1.5 text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg disabled:opacity-60"
               >
-                {translating ? 'Translating…' : '✨ Auto-Translate to English'}
+                {translating ? at("Translating…") : at("✨ Auto-Translate to English")}
               </button>
             </div>
             {translateError && <p className="text-xs text-red-600 mb-1">{translateError}</p>}
@@ -373,34 +374,34 @@ function AdminTeamTrainersDashboard() {
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{at("Full Name")}</label>
                     <input
                       type="text"
                       value={form.nameEn ?? ''}
                       onChange={(e) => setForm({ ...form, nameEn: e.target.value })}
                       className={inputClass}
-                      placeholder="Ia Tavdishvili"
+                      placeholder={at("Ia Tavdishvili")}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Position</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{at("Position")}</label>
                     <input
                       type="text"
                       value={form.roleEn ?? ''}
                       onChange={(e) => setForm({ ...form, roleEn: e.target.value })}
                       className={inputClass}
-                      placeholder="Director"
+                      placeholder={at("Director")}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Bio</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{at("Bio")}</label>
                   <textarea
                     rows={4}
                     value={form.bioEn ?? ''}
                     onChange={(e) => setForm({ ...form, bioEn: e.target.value })}
                     className={inputClass}
-                    placeholder="A short description of the role and experience..."
+                    placeholder={at("A short description of the role and experience...")}
                   />
                 </div>
               </>
@@ -445,7 +446,7 @@ function AdminTeamTrainersDashboard() {
             </div>
           )}
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-gray-400">{at("Loading…")}</p>
           ) : members.length === 0 ? (
             <p className="text-sm text-gray-500">წევრები ჯერ არ არის დამატებული.</p>
           ) : (
@@ -471,7 +472,7 @@ function AdminTeamTrainersDashboard() {
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 truncate">{member.role}</p>
+                    <p className="text-xs text-gray-500 truncate">{atEnum(member.role)}</p>
                     {member.bio && <p className="text-xs text-gray-400 truncate mt-0.5">{member.bio}</p>}
                   </div>
                   <div className="flex gap-1 shrink-0">

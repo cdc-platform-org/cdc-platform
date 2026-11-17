@@ -6,6 +6,7 @@ import { LiveTrainingPayload } from '../../../services/adminLiveTrainingService'
 import { ChangeEvent } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
+import { at } from '../../../i18n/admin';
 interface MediaFieldsProps {
   form: Omit<LiveTrainingPayload, "discountBadgeText"> & { scheduledAtLocal: string; startDateLocal: string; endDateLocal: string; discountEndDateLocal: string; discountBadgeText: string; };
   imageUploading: boolean;
@@ -40,7 +41,7 @@ export default function MediaFields({
                 </div>
               </div>
               <div>
-                <label htmlFor="training-video-url" className="block text-sm font-medium text-gray-700 mb-1.5">YouTube / Video Trailer Link</label>
+                <label htmlFor="training-video-url" className="block text-sm font-medium text-gray-700 mb-1.5">{at("YouTube / Video Trailer Link")}</label>
                 <input
                   id="training-video-url"
                   type="url"
@@ -51,7 +52,7 @@ export default function MediaFields({
                 />
                 {form.videoUrl?.trim() && (
                   <div className="mt-3">
-                    {parseVideoUrl(form.videoUrl.trim()) ? <VideoEmbed url={form.videoUrl.trim()} title="Training trailer preview" /> : (
+                    {parseVideoUrl(form.videoUrl.trim()) ? <VideoEmbed url={form.videoUrl.trim()} title={at("Training trailer preview")} /> : (
                       <p role="status" className="text-xs text-amber-700">გამოიყენეთ YouTube, Vimeo ან პირდაპირი MP4/WebM/OGG/MOV ბმული. ეს ბმული საჯარო გვერდზე ვერ გამოჩნდება.</p>
                     )}
                   </div>
@@ -71,7 +72,7 @@ export default function MediaFields({
                 />
                 {form.trainerVideoUrl?.trim() && (
                   <div className="mt-3">
-                    {parseVideoUrl(form.trainerVideoUrl.trim()) ? <VideoEmbed url={form.trainerVideoUrl.trim()} title="Trainer video preview" /> : (
+                    {parseVideoUrl(form.trainerVideoUrl.trim()) ? <VideoEmbed url={form.trainerVideoUrl.trim()} title={at("Trainer video preview")} /> : (
                       <p role="status" className="text-xs text-amber-700">გამოიყენეთ YouTube, Vimeo ან პირდაპირი MP4/WebM/OGG/MOV ბმული. ეს ბმული საჯარო გვერდზე ვერ გამოჩნდება.</p>
                     )}
                   </div>

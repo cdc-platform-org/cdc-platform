@@ -4,6 +4,7 @@ import AdminGuard from '../../src/components/admin/AdminGuard';
 import AdminLayout from '../../src/components/admin/AdminLayout';
 import { getCandidateVerifications, CandidateVerificationRow } from '../../src/services/adminExamProctoringService';
 
+import { adminLocale, at } from '../../src/i18n/admin';
 const STATUS_BADGE: Record<string, string> = {
   IN_PROGRESS: 'bg-cyan-50 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 border-cyan-200 dark:border-cyan-500/20 shadow-cyan-400/30 dark:shadow-cyan-500/20',
   COMPLETED: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 shadow-emerald-400/30 dark:shadow-emerald-500/20',
@@ -32,7 +33,7 @@ function AdminCandidateVerificationsDashboard() {
       setRows(result.data);
       setCounts(result.counts);
     } catch {
-      setError('Unable to load candidate verifications.');
+      setError(at("Unable to load candidate verifications."));
     } finally {
       setLoading(false);
     }
@@ -47,15 +48,13 @@ function AdminCandidateVerificationsDashboard() {
   return (
     <>
       <Head>
-        <title>Candidate Verifications | Admin</title>
+        <title>{at("Candidate Verifications | Admin")}</title>
       </Head>
       <div>
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Candidate Verifications</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{at("Candidate Verifications")}</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-            Every AI-proctored exam submission across every business — integrity score and violation counts are
-            computed server-side from logged proctoring events, not from anything the candidate's browser reports at
-            submit time.
+            {at("Every AI-proctored exam submission across every business — integrity score and violation counts are computed server-side from logged proctoring events, not from anything the candidate's browser reports at submit time.")}
           </p>
         </div>
 
@@ -71,29 +70,29 @@ function AdminCandidateVerificationsDashboard() {
               onClick={() => setStatusFilter(s)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${statusFilter === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-900/60 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
             >
-              {s || 'All'} {s ? `(${counts[s] ?? 0})` : `(${totalCount})`}
+              {s || at("All")} {s ? `(${counts[s] ?? 0})` : `(${totalCount})`}
             </button>
           ))}
         </div>
 
         {loading ? (
-          <p className="text-sm text-gray-400 dark:text-slate-500">Loading…</p>
+          <p className="text-sm text-gray-400 dark:text-slate-500">{at("Loading…")}</p>
         ) : rows.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-slate-400">No submissions here.</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{at("No submissions here.")}</p>
         ) : (
           <div className="bg-white/90 dark:bg-slate-900/70 backdrop-blur-md rounded-2xl border border-gray-200/80 dark:border-white/10 shadow-md shadow-slate-200/40 dark:shadow-none overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-gray-500 dark:text-slate-400 border-b border-gray-100 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/60">
-                    <th className="px-4 py-3 font-medium">Candidate</th>
-                    <th className="px-4 py-3 font-medium">Exam</th>
-                    <th className="px-4 py-3 font-medium">Business</th>
-                    <th className="px-4 py-3 font-medium text-right">Score</th>
-                    <th className="px-4 py-3 font-medium text-right">Integrity</th>
-                    <th className="px-4 py-3 font-medium text-right">Violations</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 font-medium">Started</th>
+                    <th className="px-4 py-3 font-medium">{at("Candidate")}</th>
+                    <th className="px-4 py-3 font-medium">{at("Exam")}</th>
+                    <th className="px-4 py-3 font-medium">{at("Business")}</th>
+                    <th className="px-4 py-3 font-medium text-right">{at("Score")}</th>
+                    <th className="px-4 py-3 font-medium text-right">{at("Integrity")}</th>
+                    <th className="px-4 py-3 font-medium text-right">{at("Violations")}</th>
+                    <th className="px-4 py-3 font-medium">{at("Status")}</th>
+                    <th className="px-4 py-3 font-medium">{at("Started")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
@@ -112,7 +111,7 @@ function AdminCandidateVerificationsDashboard() {
                         {r.integrityScore != null ? r.integrityScore : <span className="text-gray-300 dark:text-slate-600">—</span>}
                       </td>
                       <td className="px-4 py-3 text-right text-gray-500 dark:text-slate-400 text-xs">
-                        {r.proctoringViolations} <span className="text-gray-300 dark:text-slate-600">({r.tabSwitches} tab / {r.copyPasteCount} paste)</span>
+                        {r.proctoringViolations} <span className="text-gray-300 dark:text-slate-600">({r.tabSwitches} {at("tab /")}{" "}{r.copyPasteCount} {at("paste)")}</span>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border shadow-[0_0_10px_-3px] ${STATUS_BADGE[r.status]}`}>
@@ -120,7 +119,7 @@ function AdminCandidateVerificationsDashboard() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-500 dark:text-slate-400 text-xs whitespace-nowrap">
-                        {new Date(r.startedAt).toLocaleString()}
+                        {new Date(r.startedAt).toLocaleString(adminLocale())}
                       </td>
                     </tr>
                   ))}

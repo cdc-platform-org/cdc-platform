@@ -15,6 +15,7 @@ import { getCourses } from '../../src/services/courseService';
 import { getAdminLiveTrainings } from '../../src/services/adminLiveTrainingService';
 import { getAdminProducts } from '../../src/services/productService';
 
+import { at, atf } from '../../src/i18n/admin';
 const inputClass = 'w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
 const TYPE_LABEL: Record<PromoApplicableType, string> = {
@@ -197,7 +198,7 @@ function AdminPromosDashboard() {
       load();
     } catch (err: any) {
       const apiErrors = err?.response?.data?.errors;
-      setError(Array.isArray(apiErrors) ? apiErrors.map((e: any) => e.message).join(' ') : err?.response?.data?.message ?? 'Unable to create promo code.');
+      setError(Array.isArray(apiErrors) ? apiErrors.map((e: any) => e.message).join(' ') : err?.response?.data?.message ?? at("Unable to create promo code."));
     } finally {
       setCreating(false);
     }
@@ -210,7 +211,7 @@ function AdminPromosDashboard() {
       await updatePromoCode(code.id, { expiresAt: dateOnly ? endOfDayIso(dateOnly) : null });
       load();
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Unable to update this promo code.');
+      setError(err?.response?.data?.message ?? at("Unable to update this promo code."));
     } finally {
       setBusyId(null);
     }
@@ -223,21 +224,21 @@ function AdminPromosDashboard() {
       await updatePromoCode(code.id, { isActive: !code.isActive });
       load();
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Unable to update this promo code.');
+      setError(err?.response?.data?.message ?? at("Unable to update this promo code."));
     } finally {
       setBusyId(null);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this promo code?')) return;
+    if (!window.confirm(at("Delete this promo code?"))) return;
     setBusyId(id);
     setError(null);
     try {
       await deletePromoCode(id);
       load();
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Unable to delete this promo code.');
+      setError(err?.response?.data?.message ?? at("Unable to delete this promo code."));
     } finally {
       setBusyId(null);
     }
@@ -246,11 +247,11 @@ function AdminPromosDashboard() {
   return (
     <>
       <Head>
-        <title>Promo Codes | Admin</title>
+        <title>{at("Promo Codes | Admin")}</title>
       </Head>
       <div className="max-w-3xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Promo Codes</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{at("Promo Codes")}</h1>
           <p className="text-sm text-gray-500 mt-1">
             Discount codes — restrict to a specific course/training/product/AI tool, or leave "ყველა პროდუქტი" for a
             site-wide code.
@@ -260,16 +261,16 @@ function AdminPromosDashboard() {
         <form onSubmit={handleCreate} className="bg-white border border-gray-200 rounded-xl p-6 mb-6 space-y-4">
           {error && <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
           <div className="grid grid-cols-2 gap-4">
-            <input required placeholder="CODE2026" className={inputClass} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} />
+            <input required placeholder={at("CODE2026")} className={inputClass} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} />
             <select className={inputClass} value={form.discountType} onChange={(e) => setForm({ ...form, discountType: e.target.value as 'percent' | 'amount' })}>
-              <option value="percent">% Discount</option>
-              <option value="amount">Fixed Amount (GEL)</option>
+              <option value="percent">{at("% Discount")}</option>
+              <option value="amount">{at("Fixed Amount (GEL)")}</option>
             </select>
           </div>
           <div className="grid grid-cols-3 gap-4">
             <input required type="number" min="1" placeholder={form.discountType === 'percent' ? 'e.g. 20' : 'e.g. 10.00'} className={inputClass} value={form.discountValue} onChange={(e) => setForm({ ...form, discountValue: e.target.value })} />
-            <input type="date" className={inputClass} value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} placeholder="Expires (optional)" />
-            <input type="number" min="1" placeholder="Max uses (optional)" className={inputClass} value={form.maxUses} onChange={(e) => setForm({ ...form, maxUses: e.target.value })} />
+            <input type="date" className={inputClass} value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} placeholder={at("Expires (optional)")} />
+            <input type="number" min="1" placeholder={at("Max uses (optional)")} className={inputClass} value={form.maxUses} onChange={(e) => setForm({ ...form, maxUses: e.target.value })} />
           </div>
 
           <div>
@@ -318,14 +319,14 @@ function AdminPromosDashboard() {
             className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
           >
             <Plus className="w-4 h-4" />
-            {creating ? 'Creating…' : 'Create Promo Code'}
+            {creating ? at("Creating…") : at("Create Promo Code")}
           </button>
         </form>
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">{at("Loading…")}</p>
         ) : codes.length === 0 ? (
-          <p className="text-sm text-gray-500">No promo codes yet.</p>
+          <p className="text-sm text-gray-500">{at("No promo codes yet.")}</p>
         ) : (
           <div className="space-y-2">
             {codes.map((c) => (
@@ -339,20 +340,20 @@ function AdminPromosDashboard() {
                         {TYPE_LABEL[c.applicableType]}
                       </span>
                       {!c.isActive && (
-                        <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Inactive</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">{at("Inactive")}</span>
                       )}
                       {c.expiresAt && new Date(c.expiresAt) <= new Date() && (
                         <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-red-50 text-red-600">Expired · ვადაგასული</span>
                       )}
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {c.discountPercent ? `${c.discountPercent}% off` : `${((c.discountAmount ?? 0) / 100).toFixed(2)} GEL off`}
-                      {c.expiresAt ? ` · Expires ${new Date(c.expiresAt).toLocaleDateString()}` : ''}
+                      {c.discountPercent ? atf("{0}% off", c.discountPercent) : atf("{0} GEL off", ((c.discountAmount ?? 0) / 100).toFixed(2))}
+                      {c.expiresAt ? atf(" · Expires {0}", new Date(c.expiresAt).toLocaleDateString()) : ''}
                       {' · '}
                       {c.currentUses}
-                      {c.maxUses ? `/${c.maxUses}` : ''} used
+                      {c.maxUses ? `/${c.maxUses}` : ''} {at("used")}
                       {c.applicableType !== 'ALL' && c.applicableTargetIds.length > 0
-                        ? ` · Targets: ${c.applicableTargetIds.map((id) => targetNameById.get(id) ?? id).join(', ')}`
+                        ? atf(" · Targets: {0}", c.applicableTargetIds.map((id) => targetNameById.get(id) ?? id).join(', '))
                         : ''}
                     </p>
                   </div>
@@ -362,7 +363,7 @@ function AdminPromosDashboard() {
                     <span className="hidden sm:inline">ვადა</span>
                     <input
                       type="date"
-                      aria-label={`Expiry date for ${c.code}`}
+                      aria-label={atf("Expiry date for {0}", c.code)}
                       disabled={busyId === c.id}
                       value={c.expiresAt ? toDateInputValue(c.expiresAt) : ''}
                       onChange={(e) => handleChangeExpiry(c, e.target.value)}
@@ -373,7 +374,7 @@ function AdminPromosDashboard() {
                     type="button"
                     disabled={busyId === c.id}
                     onClick={() => handleToggleActive(c)}
-                    title={c.isActive ? 'Deactivate' : 'Activate'}
+                    title={c.isActive ? at("Deactivate") : at("Activate")}
                     className={`p-1.5 rounded-lg bg-transparent border-none cursor-pointer disabled:opacity-60 ${c.isActive ? 'text-emerald-600 hover:text-emerald-700' : 'text-gray-400 hover:text-gray-600'}`}
                   >
                     <Power className="w-4 h-4" />
@@ -398,7 +399,7 @@ function AdminPromosDashboard() {
 
 export default function AdminPromosPage() {
   return (
-    <AdminGuard requiredTiers={['SUPER_ADMIN', 'MANAGER']}>
+    <AdminGuard requiredTiers={['SUPER_ADMIN']}>
       <AdminLayout>
         <AdminPromosDashboard />
       </AdminLayout>

@@ -6,6 +6,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 
 // Platform-wide, cross-business view of AI-proctored exam submissions (the
 // "candidate verification" surface businesses see per-session in their own
@@ -14,7 +15,7 @@ import { authenticate, requireAdminRole } from '../../middleware/auth';
 // adminDisputes.ts/adminPayouts.ts). Read-only: no admin action changes an
 // ExamSubmission, so unlike those two there is nothing to audit-log here.
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin);
 
 const businessSelect = { select: { id: true, name: true, email: true } };
 

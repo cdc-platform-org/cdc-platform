@@ -198,12 +198,16 @@ export interface AdminMentorshipBooking {
   createdAt: string;
   mentor: MentorshipUser;
   student: MentorshipUser;
-  bogPayment: { status: string; amount: number; currency: string };
+  // Payment status without the money (COMPLETED = confirmed session). Always
+  // present; the payment objects and escrow fields below are SUPER_ADMIN-only
+  // (the API strips them for other tiers).
+  sessionStatus: string;
+  bogPayment?: { status: string; amount: number; currency: string } | null;
   // Escrow lifecycle (see Backend's mentorshipEscrowService.ts) — null
   // until the payment captures. A non-null disputeRaisedAt with no
   // disputeResolvedAt is what this page needs to resolve.
-  netAmount: number | null;
-  escrowStatus: 'HELD_IN_ESCROW' | 'RELEASED' | 'REFUNDED' | null;
+  netAmount?: number | null;
+  escrowStatus?: 'HELD_IN_ESCROW' | 'RELEASED' | 'REFUNDED' | null;
   disputeRaisedAt: string | null;
   disputeReason: string | null;
   disputeResolvedAt: string | null;

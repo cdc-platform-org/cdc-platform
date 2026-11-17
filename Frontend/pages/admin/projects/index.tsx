@@ -7,6 +7,7 @@ import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { getAdminProjects, updateProject, deleteProject } from '../../../src/services/adminProjectsService';
 import { Project } from '../../../src/types/project';
 
+import { adminLocale, at } from '../../../src/i18n/admin';
 function AdminProjectsDashboard() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,7 +57,7 @@ function AdminProjectsDashboard() {
   return (
     <>
       <Head>
-        <title>Projects | Admin</title>
+        <title>{at("Projects | Admin")}</title>
       </Head>
       <div className="max-w-4xl">
         <div className="flex items-start justify-between gap-4 mb-8">
@@ -107,7 +108,7 @@ function AdminProjectsDashboard() {
                   </div>
                   <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-3 flex-wrap">
                     <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" /> {new Date(p.date).toLocaleDateString()}
+                      <Calendar className="w-3 h-3" /> {new Date(p.date).toLocaleDateString(adminLocale())}
                     </span>
                     {p.location && (
                       <span className="flex items-center gap-1">

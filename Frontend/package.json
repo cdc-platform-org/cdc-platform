@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "check:locales": "node scripts/check-locale-parity.js",
+    "check:admin-i18n": "node scripts/check-admin-i18n.js",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report"

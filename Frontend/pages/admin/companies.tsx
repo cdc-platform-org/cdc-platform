@@ -17,6 +17,7 @@ import {
 } from '../../src/services/adminCompaniesService';
 import { useAuth } from '../../src/context/AuthContext';
 
+import { adminLocale, at } from '../../src/i18n/admin';
 // Inline "how many accounts may share this ს/კ" control — fetches the
 // current override (or platform default) only when opened, since most
 // companies never need this touched at all.
@@ -140,7 +141,7 @@ function ScoreBadge({ score }: { score: number }) {
         : 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20';
   return (
     <span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full border ${tone}`}>
-      AI Confidence: {score}%
+      {at("AI Confidence:")}{" "}{score}%
     </span>
   );
 }
@@ -185,7 +186,7 @@ function KycInspectionDrawer({
       const url = await resolveCompanyDocument(company.id);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch {
-      window.alert('Could not open this document. Please try again.');
+      window.alert(at("Could not open this document. Please try again."));
     } finally {
       setResolvingDoc(false);
     }
@@ -205,7 +206,7 @@ function KycInspectionDrawer({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={at("Close")}
             className="p-2 cursor-pointer text-gray-400 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-200 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"
           >
             <X className="w-4 h-4" />
@@ -220,10 +221,10 @@ function KycInspectionDrawer({
             className="flex items-center gap-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:underline mb-5 rounded-lg border border-gray-200 dark:border-slate-700 px-3.5 py-2.5 disabled:opacity-60"
           >
             <FileText className="w-4 h-4" />
-            {resolvingDoc ? 'Opening…' : 'Open uploaded document'}
+            {resolvingDoc ? at("Opening…") : at("Open uploaded document")}
           </button>
         ) : (
-          <p className="text-sm text-gray-400 dark:text-slate-500 mb-5">No document uploaded yet.</p>
+          <p className="text-sm text-gray-400 dark:text-slate-500 mb-5">{at("No document uploaded yet.")}</p>
         )}
 
         {extracted ? (
@@ -235,26 +236,26 @@ function KycInspectionDrawer({
               </span>
               {extracted.hasOfficialHeaders ? (
                 <span className="inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-full border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300">
-                  Official headers detected
+                  {at("Official headers detected")}
                 </span>
               ) : (
                 <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10">
-                  No official headers detected
+                  {at("No official headers detected")}
                 </span>
               )}
             </div>
 
-            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-2">Extracted vs. entered</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-2">{at("Extracted vs. entered")}</h4>
             <div className="rounded-lg border border-gray-200 dark:border-slate-700 px-3.5 py-1 mb-4">
               <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-100 dark:border-slate-800">
-                <span className="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">Field</span>
-                <span className="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">AI extracted</span>
-                <span className="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">User entered</span>
+                <span className="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">{at("Field")}</span>
+                <span className="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">{at("AI extracted")}</span>
+                <span className="text-[10px] font-bold uppercase text-gray-400 dark:text-slate-500">{at("User entered")}</span>
               </div>
-              <CompareRow label="Company name" extracted={extracted.companyName ?? '—'} entered={company.companyName ?? '—'} />
-              <CompareRow label="Tax/ID code" extracted={extracted.identificationCode ?? '—'} entered={company.taxId ?? '—'} />
+              <CompareRow label={at("Company name")} extracted={extracted.companyName ?? '—'} entered={company.companyName ?? '—'} />
+              <CompareRow label={at("Tax/ID code")} extracted={extracted.identificationCode ?? '—'} entered={company.taxId ?? '—'} />
               <div className="grid grid-cols-3 gap-2 py-2">
-                <span className="text-xs font-medium text-gray-500 dark:text-slate-400">Registered</span>
+                <span className="text-xs font-medium text-gray-500 dark:text-slate-400">{at("Registered")}</span>
                 <span className="text-xs text-gray-900 dark:text-white">{extracted.registrationDate ?? '—'}</span>
                 <span className="text-xs text-gray-600 dark:text-slate-300">{extracted.registryAuthority ?? '—'}</span>
               </div>
@@ -263,7 +264,7 @@ function KycInspectionDrawer({
             {extracted.directors.length > 0 && (
               <>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-2 flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5" /> Directors / representatives
+                  <Users className="w-3.5 h-3.5" /> {at("Directors / representatives")}
                 </h4>
                 <ul className="mb-4 space-y-1">
                   {extracted.directors.map((d, i) => (
@@ -276,18 +277,18 @@ function KycInspectionDrawer({
               </>
             )}
 
-            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-2">AI reasoning</h4>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-2">{at("AI reasoning")}</h4>
             <p className="text-xs text-gray-600 dark:text-slate-300 bg-gray-50 dark:bg-slate-800/60 rounded-lg p-3 mb-5">{extracted.reasoning}</p>
           </>
         ) : (
           <p className="text-sm text-gray-400 dark:text-slate-500 mb-5">
-            No AI parse on file yet — either Gemini isn't configured, or this document hasn't been analyzed.
+            {at("No AI parse on file yet — either Gemini isn't configured, or this document hasn't been analyzed.")}
           </p>
         )}
 
         {company.businessKycRejectionReason && (
           <div className="mb-5 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-3.5 py-2.5">
-            <p className="text-xs font-bold text-red-700 dark:text-red-400 mb-0.5">Last rejection reason</p>
+            <p className="text-xs font-bold text-red-700 dark:text-red-400 mb-0.5">{at("Last rejection reason")}</p>
             <p className="text-xs text-red-600 dark:text-red-300">{company.businessKycRejectionReason}</p>
           </div>
         )}
@@ -299,13 +300,13 @@ function KycInspectionDrawer({
             onClick={onApprove}
             className="w-full text-sm font-semibold px-4 py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
           >
-            Approve — Grant Buy/Sell Access
+            {at("Approve — Grant Buy/Sell Access")}
           </button>
           <textarea
             value={reasonDraft}
             onChange={(e) => setReasonDraft(e.target.value)}
             rows={2}
-            placeholder="Rejection reason (sent to the business by email + in-app)"
+            placeholder={at("Rejection reason (sent to the business by email + in-app)")}
             className="w-full rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-800/60 dark:text-white px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-red-500"
           />
           <button
@@ -314,7 +315,7 @@ function KycInspectionDrawer({
             onClick={() => onReject(reasonDraft.trim())}
             className="w-full text-sm font-semibold px-4 py-2.5 rounded-lg border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
           >
-            Reject
+            {at("Reject")}
           </button>
         </div>
       </div>
@@ -324,10 +325,10 @@ function KycInspectionDrawer({
 
 function formatAiTrialStatus(company: CompanyRow): string {
   if (company.aiSubscriptionActive) return 'Unlimited';
-  if (!company.aiTrialEndsAt) return 'No trial yet';
+  if (!company.aiTrialEndsAt) return at('No trial yet');
   const endsAt = new Date(company.aiTrialEndsAt);
   const isActive = endsAt.getTime() > Date.now();
-  return `${isActive ? 'Active until' : 'Expired'} ${endsAt.toLocaleDateString()}`;
+  return `${isActive ? at('Active until') : at('Expired')} ${endsAt.toLocaleDateString(adminLocale())}`;
 }
 
 function AiTrialModal({ company, onClose, onUpdated }: { company: CompanyRow; onClose: () => void; onUpdated: (c: CompanyRow) => void }) {
@@ -342,7 +343,7 @@ function AiTrialModal({ company, onClose, onUpdated }: { company: CompanyRow; on
       const updated = await updateAiTrial(company.id, payload);
       onUpdated({ ...company, aiTrialEndsAt: updated.aiTrialEndsAt, aiSubscriptionActive: updated.aiSubscriptionActive });
     } catch {
-      setError('Could not update the trial. Please try again.');
+      setError(at("Could not update the trial. Please try again."));
     } finally {
       setSaving(false);
     }
@@ -354,7 +355,7 @@ function AiTrialModal({ company, onClose, onUpdated }: { company: CompanyRow; on
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={at("Close")}
           className="absolute top-4 right-4 p-2 cursor-pointer text-gray-400 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-200 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"
         >
           <X className="w-4 h-4" />
@@ -363,16 +364,16 @@ function AiTrialModal({ company, onClose, onUpdated }: { company: CompanyRow; on
         <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500 to-purple-600 flex items-center justify-center mb-3 shadow-lg shadow-cyan-500/30">
           <Sparkles className="w-5 h-5 text-white" />
         </div>
-        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">AI Trial Management</h3>
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">{at("AI Trial Management")}</h3>
         <p className="text-xs text-gray-500 dark:text-slate-400 mb-4">{company.companyName || company.name}</p>
 
         <p className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-4">
-          Current status: <span className="font-semibold text-gray-900 dark:text-white">{formatAiTrialStatus(company)}</span>
+          {at("Current status:")}{" "}<span className="font-semibold text-gray-900 dark:text-white">{formatAiTrialStatus(company)}</span>
         </p>
 
         {error && <div className="mb-3 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-3 py-2 text-xs text-red-700 dark:text-red-400">{error}</div>}
 
-        <p className="text-xs font-medium text-gray-500 dark:text-slate-400 mb-2">Extend from today (or from the current expiry, whichever is later)</p>
+        <p className="text-xs font-medium text-gray-500 dark:text-slate-400 mb-2">{at("Extend from today (or from the current expiry, whichever is later)")}</p>
         <div className="flex gap-2 mb-4">
           {[7, 14, 30].map((days) => (
             <button
@@ -382,12 +383,12 @@ function AiTrialModal({ company, onClose, onUpdated }: { company: CompanyRow; on
               onClick={() => apply({ mode: 'extend', days })}
               className="flex-1 text-xs font-medium px-3 py-2 rounded-lg border border-gray-300 dark:border-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 disabled:opacity-60"
             >
-              +{days} days
+              +{days} {at("days")}
             </button>
           ))}
         </div>
 
-        <p className="text-xs font-medium text-gray-500 dark:text-slate-400 mb-2">Or set an exact expiration date</p>
+        <p className="text-xs font-medium text-gray-500 dark:text-slate-400 mb-2">{at("Or set an exact expiration date")}</p>
         <div className="flex gap-2 mb-4">
           <input
             type="date"
@@ -401,7 +402,7 @@ function AiTrialModal({ company, onClose, onUpdated }: { company: CompanyRow; on
             onClick={() => apply({ mode: 'set', date: new Date(customDate).toISOString() })}
             className="text-xs font-medium px-3 py-2 rounded-lg bg-gray-800 dark:bg-slate-700 text-white hover:bg-gray-900 dark:hover:bg-slate-600 disabled:opacity-60"
           >
-            Set
+            {at("Set")}
           </button>
         </div>
 
@@ -411,7 +412,7 @@ function AiTrialModal({ company, onClose, onUpdated }: { company: CompanyRow; on
           onClick={() => apply({ mode: 'unlimited' })}
           className="w-full text-xs font-semibold px-4 py-2.5 rounded-lg bg-gradient-to-r from-cyan-500 to-purple-600 text-white hover:opacity-90 disabled:opacity-60"
         >
-          Grant Unlimited Access
+          {at("Grant Unlimited Access")}
         </button>
       </div>
     </div>
@@ -472,7 +473,7 @@ function AdminCompaniesDashboard() {
       const url = await resolveCompanyDocument(id);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch {
-      setActionError('Could not open this document. Please try again.');
+      setActionError(at("Could not open this document. Please try again."));
     } finally {
       setResolvingDocId(null);
     }
@@ -486,7 +487,7 @@ function AdminCompaniesDashboard() {
       setInspectingCompanyId(null);
       load();
     } catch {
-      setActionError('Could not verify this business. Please try again.');
+      setActionError(at("Could not verify this business. Please try again."));
     } finally {
       setBusyId(null);
     }
@@ -499,7 +500,7 @@ function AdminCompaniesDashboard() {
       await unverifyCompany(id);
       load();
     } catch {
-      setActionError('Could not unverify this business. Please try again.');
+      setActionError(at("Could not unverify this business. Please try again."));
     } finally {
       setBusyId(null);
     }
@@ -513,7 +514,7 @@ function AdminCompaniesDashboard() {
       setInspectingCompanyId(null);
       load();
     } catch {
-      setActionError('Could not reject this business. Please try again.');
+      setActionError(at("Could not reject this business. Please try again."));
     } finally {
       setBusyId(null);
     }
@@ -522,13 +523,13 @@ function AdminCompaniesDashboard() {
   return (
     <>
       <Head>
-        <title>Business Verification | Admin</title>
+        <title>{at("Business Verification | Admin")}</title>
       </Head>
       <div className="max-w-5xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Business Verification</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{at("Business Verification")}</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-            Review uploaded Public Registry Extracts / registration documents and approve or revoke Business accounts.
+            {at("Review uploaded Public Registry Extracts / registration documents and approve or revoke Business accounts.")}
           </p>
         </div>
 
@@ -546,15 +547,15 @@ function AdminCompaniesDashboard() {
               onClick={() => setStatusFilter(s)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${statusFilter === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-900/60 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
             >
-              {s === '' ? 'All' : s === 'under_review' ? 'Under Review' : s === 'unverified' ? 'Unverified' : s === 'rejected' ? 'Rejected' : 'Verified'}
+              {s === '' ? at("All") : s === 'under_review' ? at("Under Review") : s === 'unverified' ? at("Unverified") : s === 'rejected' ? at("Rejected") : at("Verified")}
             </button>
           ))}
         </div>
 
         {loading ? (
-          <p className="text-sm text-gray-400 dark:text-slate-500">Loading…</p>
+          <p className="text-sm text-gray-400 dark:text-slate-500">{at("Loading…")}</p>
         ) : companies.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-slate-400">No businesses here.</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{at("No businesses here.")}</p>
         ) : (
           <div className="space-y-3">
             {companies.map((c) => {
@@ -574,7 +575,7 @@ function AdminCompaniesDashboard() {
                       <p className="text-xs text-gray-500 dark:text-slate-400">{c.name} · {c.email}{c.phone ? ` · ${c.phone}` : ''}</p>
                       <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
                         {c.industry ?? '—'}
-                        {c.taxId ? ` · ს/კ ${c.taxId}` : ''} · Registered {new Date(c.createdAt).toLocaleDateString()}
+                        {c.taxId ? ` · ს/კ ${c.taxId}` : ''} {at("· Registered")}{" "}{new Date(c.createdAt).toLocaleDateString(adminLocale())}
                       </p>
                       {c.taxId && <TaxIdLimitControl taxId={c.taxId} />}
                       {c.websiteUrl && (
@@ -594,10 +595,10 @@ function AdminCompaniesDashboard() {
                           className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center gap-1.5 disabled:opacity-60"
                         >
                           <FileText className="w-3.5 h-3.5" />
-                          {resolvingDocId === c.id ? 'Opening…' : 'View Document'}
+                          {resolvingDocId === c.id ? at("Opening…") : at("View Document")}
                         </button>
                       ) : (
-                        <span className="text-xs text-gray-400 dark:text-slate-500">No document uploaded</span>
+                        <span className="text-xs text-gray-400 dark:text-slate-500">{at("No document uploaded")}</span>
                       )}
                       <div className="flex items-center gap-1.5">
                         {c.businessKycScore !== null && <ScoreBadge score={c.businessKycScore} />}
@@ -607,7 +608,7 @@ function AdminCompaniesDashboard() {
                           className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center gap-1.5"
                         >
                           <Search className="w-3.5 h-3.5" />
-                          Inspect
+                          {at("Inspect")}
                         </button>
                       </div>
                       {c.isVerified ? (
@@ -617,7 +618,7 @@ function AdminCompaniesDashboard() {
                           onClick={() => handleUnverify(c.id)}
                           className="text-xs font-medium px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
                         >
-                          Revoke Verification
+                          {at("Revoke Verification")}
                         </button>
                       ) : (
                         <button
@@ -626,7 +627,7 @@ function AdminCompaniesDashboard() {
                           onClick={() => handleVerify(c.id)}
                           className="text-xs font-medium px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
                         >
-                          Approve
+                          {at("Approve")}
                         </button>
                       )}
                       {canManageAiTrial && (
@@ -636,7 +637,7 @@ function AdminCompaniesDashboard() {
                           className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 flex items-center gap-1.5"
                         >
                           <Sparkles className="w-3.5 h-3.5" />
-                          AI Trial: {formatAiTrialStatus(c)}
+                          {at("AI Trial:")}{" "}{formatAiTrialStatus(c)}
                         </button>
                       )}
                     </div>

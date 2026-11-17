@@ -7,6 +7,7 @@ import { getAdminCurriculum, createSection } from '../../../services/courseServi
 import { inputClass } from './courseAdminShared';
 import { SectionCard } from './SectionCard';
 
+import { at } from '../../../i18n/admin';
 export function CurriculumEditor({ course }: { course: Course }) {
   const [sections, setSections] = useState<AdminSection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,9 +38,9 @@ export function CurriculumEditor({ course }: { course: Course }) {
 
   return (
     <div className="mt-6 pt-6 border-t border-gray-100 dark:border-slate-800">
-      <h3 className="text-sm font-semibold text-gray-900 mb-4">Curriculum — {course.title}</h3>
+      <h3 className="text-sm font-semibold text-gray-900 mb-4">{at("Curriculum —")}{" "}{course.title}</h3>
       {loading ? (
-        <p className="text-sm text-gray-400">Loading…</p>
+        <p className="text-sm text-gray-400">{at("Loading…")}</p>
       ) : (
         <div className="space-y-4">
           {sections.map((section) => (
@@ -51,11 +52,11 @@ export function CurriculumEditor({ course }: { course: Course }) {
                 autoFocus
                 value={sectionTitle}
                 onChange={(e) => setSectionTitle(e.target.value)}
-                placeholder="Section title"
+                placeholder={at("Section title")}
                 className={inputClass}
               />
-              <button type="submit" className="shrink-0 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700">Add</button>
-              <button type="button" onClick={() => setAddingSection(false)} className="shrink-0 text-sm text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300">Cancel</button>
+              <button type="submit" className="shrink-0 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700">{at("Add")}</button>
+              <button type="button" onClick={() => setAddingSection(false)} className="shrink-0 text-sm text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300">{at("Cancel")}</button>
             </form>
           ) : (
             <button
@@ -63,7 +64,7 @@ export function CurriculumEditor({ course }: { course: Course }) {
               onClick={() => setAddingSection(true)}
               className="w-full rounded-xl border border-dashed border-gray-300 py-3 text-sm font-medium text-indigo-600 hover:bg-indigo-50"
             >
-              + Add section
+              {at("+ Add section")}
             </button>
           )}
         </div>

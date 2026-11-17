@@ -22,6 +22,7 @@ import crypto from 'crypto';
 import { Role, UserStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { rejectUserSchema, banUserSchema, updateAiTrialSchema, updateUserRoleSchema, updateUserStatusSchema } from '../../schemas/adminSchemas';
 import { sendPasswordResetEmail } from '../../services/integrations/emailService';
 import { logAdminAction } from '../../services/account/auditLogService';
@@ -129,7 +130,7 @@ const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
 
 // Baseline: any admin-team member can at least read. Mutating routes below
 // layer a stricter requireAdminRole() on top where the task calls for it.
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'));
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'), hideMoneyFromNonSuperAdmin);
 
 // `page`/`limit` are opt-in: the admin/users.tsx list page does its own
 // search/role filtering client-side over the full list and doesn't pass

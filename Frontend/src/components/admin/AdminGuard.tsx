@@ -29,7 +29,9 @@ export default function AdminGuard({ children, requiredTiers }: AdminGuardProps)
   if (loading || !isOnTeam || !hasRequiredTier) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <div className="text-sm text-slate-400">Loading…</div>
+        {/* Bilingual on purpose: rendered on the server too, before the
+            admin KA/EN preference (localStorage) is known. */}
+        <div className="text-sm text-slate-400">იტვირთება… / Loading…</div>
       </div>
     );
   }

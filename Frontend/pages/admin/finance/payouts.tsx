@@ -10,6 +10,7 @@ import {
   PayoutRequestRow,
 } from '../../../src/services/adminFinanceService';
 
+import { adminLocale, at, atEnum } from '../../../src/i18n/admin';
 function formatGel(minorUnits: number): string {
   return `${(minorUnits / 100).toFixed(2)} GEL`;
 }
@@ -24,7 +25,7 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 function formatDateTime(iso: string): string {
-  return new Date(iso).toLocaleString();
+  return new Date(iso).toLocaleString(adminLocale());
 }
 
 function AdminPayoutsDashboard() {
@@ -47,21 +48,21 @@ function AdminPayoutsDashboard() {
   }, [load]);
 
   const handleApprove = async (id: string) => {
-    if (!window.confirm('Approve this payout? This debits the student\'s wallet balance immediately — you still need to wire the actual bank transfer via BOG.')) return;
+    if (!window.confirm(at("Approve this payout? This debits the student's wallet balance immediately — you still need to wire the actual bank transfer via BOG."))) return;
     setBusyId(id);
     try {
       const result = await approvePayoutRequest(id);
       alert(result.message);
       load();
     } catch {
-      alert('Unable to approve — the balance may no longer cover this request.');
+      alert(at("Unable to approve — the balance may no longer cover this request."));
     } finally {
       setBusyId(null);
     }
   };
 
   const handleReject = async (id: string) => {
-    const note = window.prompt('Reason for rejection (optional):') ?? undefined;
+    const note = window.prompt(at("Reason for rejection (optional):")) ?? undefined;
     setBusyId(id);
     try {
       await rejectPayoutRequest(id, note);
@@ -84,13 +85,13 @@ function AdminPayoutsDashboard() {
   return (
     <>
       <Head>
-        <title>Student Payouts | Admin</title>
+        <title>{at("Student Payouts | Admin")}</title>
       </Head>
       <div className="max-w-5xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Student Payouts</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{at("Student Payouts")}</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Review and approve withdrawal requests. Approving debits the platform wallet — the actual bank transfer is still sent manually via BOG.
+            {at("Review and approve withdrawal requests. Approving debits the platform wallet — the actual bank transfer is still sent manually via BOG.")}
           </p>
         </div>
 
@@ -102,15 +103,15 @@ function AdminPayoutsDashboard() {
               onClick={() => setStatusFilter(s)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${statusFilter === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}
             >
-              {s || 'All'}
+              {s || at("All")}
             </button>
           ))}
         </div>
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">{at("Loading…")}</p>
         ) : requests.length === 0 ? (
-          <p className="text-sm text-gray-500">No payout requests here.</p>
+          <p className="text-sm text-gray-500">{at("No payout requests here.")}</p>
         ) : (
           <div className="space-y-3">
             {requests.map((r) => {
@@ -132,7 +133,7 @@ function AdminPayoutsDashboard() {
                 >
                   {isFlagged && (
                     <div className="mb-3 -mt-1 -mx-1 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                      <p className="text-xs font-bold text-red-700 uppercase tracking-wide">⚠ Manual review required</p>
+                      <p className="text-xs font-bold text-red-700 uppercase tracking-wide">{at("⚠ Manual review required")}</p>
                       {r.riskReasons.length > 0 && (
                         <ul className="mt-1 space-y-0.5">
                           {r.riskReasons.map((reason, i) => (
@@ -148,26 +149,26 @@ function AdminPayoutsDashboard() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-semibold text-gray-900">{r.user.name}</span>
-                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${STATUS_BADGE[r.status]}`}>{r.status}</span>
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${STATUS_BADGE[r.status]}`}>{atEnum(r.status)}</span>
                         {isFlagged && (
                           <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded border bg-red-100 text-red-700 border-red-300">
-                            Red flag
+                            {at("Red flag")}
                           </span>
                         )}
                       </div>
                       <p className="text-xs text-gray-500">{r.user.email}</p>
-                      <p className="text-xs text-gray-500 mt-1 font-mono">IBAN: {r.iban}</p>
-                      <p className="text-xs text-gray-400 mt-1">Requested {formatDateTime(r.createdAt)}</p>
-                      {r.adminNote && <p className="text-xs text-gray-500 mt-1 italic">Note: {r.adminNote}</p>}
+                      <p className="text-xs text-gray-500 mt-1 font-mono">{at("IBAN:")}{" "}{r.iban}</p>
+                      <p className="text-xs text-gray-400 mt-1">{at("Requested")}{" "}{formatDateTime(r.createdAt)}</p>
+                      {r.adminNote && <p className="text-xs text-gray-500 mt-1 italic">{at("Note:")}{" "}{r.adminNote}</p>}
 
                       <div className="mt-2 pt-2 border-t border-gray-100 space-y-0.5">
                         <p className={`text-xs font-mono ${ipMismatch ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
-                          Request IP: {r.requestIp ?? 'unknown'}
-                          {usualIp && <span className="text-gray-400 font-sans"> · usual IP: {usualIp}</span>}
+                          {at("Request IP:")}{" "}{r.requestIp ?? 'unknown'}
+                          {usualIp && <span className="text-gray-400 font-sans"> {at("· usual IP:")}{" "}{usualIp}</span>}
                         </p>
                         <p className="text-xs text-gray-500">
-                          IBAN last changed:{' '}
-                          {r.user.payoutIbanUpdatedAt ? formatDateTime(r.user.payoutIbanUpdatedAt) : 'never (or predates tracking)'}
+                          {at("IBAN last changed:")}{' '}
+                          {r.user.payoutIbanUpdatedAt ? formatDateTime(r.user.payoutIbanUpdatedAt) : at("never (or predates tracking)")}
                         </p>
                       </div>
                     </div>
@@ -182,7 +183,7 @@ function AdminPayoutsDashboard() {
                               onClick={() => handleApprove(r.id)}
                               className="text-xs font-medium text-white bg-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-60"
                             >
-                              Approve
+                              {at("Approve")}
                             </button>
                             <button
                               type="button"
@@ -190,7 +191,7 @@ function AdminPayoutsDashboard() {
                               onClick={() => handleReject(r.id)}
                               className="text-xs font-medium text-red-600 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100 disabled:opacity-60"
                             >
-                              Reject
+                              {at("Reject")}
                             </button>
                           </>
                         )}
@@ -201,7 +202,7 @@ function AdminPayoutsDashboard() {
                             onClick={() => handleMarkPaid(r.id)}
                             className="text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
                           >
-                            Mark as Paid
+                            {at("Mark as Paid")}
                           </button>
                         )}
                       </div>

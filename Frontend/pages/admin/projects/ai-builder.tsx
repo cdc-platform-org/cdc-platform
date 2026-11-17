@@ -7,6 +7,7 @@ import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { parseProjectFromPhotos, createProject, AiProjectDraft } from '../../../src/services/adminProjectsService';
 
+import { at } from '../../../src/i18n/admin';
 const inputClass = 'w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
 function AiProjectBuilder() {
@@ -72,7 +73,7 @@ function AiProjectBuilder() {
   return (
     <>
       <Head>
-        <title>AI Project Builder | Admin</title>
+        <title>{at("AI Project Builder | Admin")}</title>
       </Head>
       <div className="max-w-3xl">
         <Link href="/admin/projects" className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-gray-700 mb-4">
@@ -82,7 +83,7 @@ function AiProjectBuilder() {
         <div className="mb-6">
           <h1 className="text-2xl font-semibold text-gray-900 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-indigo-600" />
-            AI Project Builder
+            {at("AI Project Builder")}
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             ატვირთეთ ფოტოები და ჩამოწერეთ ღონისძიების შესახებ — AI ამოიცნობს სათაურს, თარიღს, ადგილს და დაწერს სრულ ტექსტს.
@@ -109,7 +110,7 @@ function AiProjectBuilder() {
                       <img src={url} alt="" className="w-full h-full object-cover" />
                       {i === 0 && (
                         <span className="absolute top-1 left-1 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-indigo-600 text-white">
-                          Cover
+                          {at("Cover")}
                         </span>
                       )}
                       <button
@@ -163,7 +164,7 @@ function AiProjectBuilder() {
                   <img src={url} alt="" className="w-full h-full object-cover" />
                   {i === 0 && (
                     <span className="absolute top-1 left-1 text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-indigo-600 text-white">
-                      Cover
+                      {at("Cover")}
                     </span>
                   )}
                 </div>

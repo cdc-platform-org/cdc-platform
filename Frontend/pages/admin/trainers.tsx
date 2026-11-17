@@ -9,6 +9,7 @@ import {
   AdminTrainerProfile,
 } from '@/src/services/adminTrainerService';
 
+import { at, atf } from '../../src/i18n/admin';
 // ============================================================
 // IAKO Trainer Tools — global Trainer roster admin (Phase 1).
 // Enables/disables the Trainer *capability* on existing User
@@ -32,7 +33,7 @@ function AdminTrainersDashboard() {
     try {
       setTrainers(await getAdminTrainers());
     } catch {
-      setError('Unable to load the trainer roster.');
+      setError(at("Unable to load the trainer roster."));
     } finally {
       setLoading(false);
     }
@@ -49,16 +50,16 @@ function AdminTrainersDashboard() {
       const userId = (resolved?.data as Array<{ id: string; email: string }> | undefined)
         ?.find((u) => u.email.toLowerCase() === email.trim().toLowerCase())?.id;
       if (!userId) {
-        setMessage(`No user found with email ${email.trim()}.`);
+        setMessage(atf("No user found with email {0}.", email.trim()));
         return;
       }
       await createTrainerProfile(userId);
       setEmail('');
       await load();
-      setMessage('Trainer enabled.');
+      setMessage(at("Trainer enabled."));
     } catch (err: unknown) {
       const apiMessage = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setMessage(apiMessage ?? 'Unable to enable this trainer.');
+      setMessage(apiMessage ?? at("Unable to enable this trainer."));
     } finally {
       setBusy(false);
     }
@@ -71,7 +72,7 @@ function AdminTrainersDashboard() {
       await setTrainerProfileActive(trainer.id, !trainer.active);
       await load();
     } catch {
-      setMessage('Unable to update this trainer.');
+      setMessage(at("Unable to update this trainer."));
     } finally {
       setBusy(false);
     }
@@ -89,7 +90,7 @@ function AdminTrainersDashboard() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="user@cdc.org.ge"
+          placeholder={at("user@cdc.org.ge")}
           className="rounded-lg border border-gray-300 px-3 py-2 text-sm w-72"
         />
         <button
@@ -106,7 +107,7 @@ function AdminTrainersDashboard() {
 
       <div className="mt-6 space-y-2">
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">{at("Loading…")}</p>
         ) : trainers.length === 0 ? (
           <p className="text-sm text-gray-500">ტრენერები ჯერ არ არიან დამატებული.</p>
         ) : (
@@ -141,7 +142,7 @@ export default function AdminTrainersPage() {
   return (
     <AdminGuard requiredTiers={['SUPER_ADMIN', 'MANAGER']}>
       <AdminLayout>
-        <Head><title>Trainer Roster | CDC Admin</title></Head>
+        <Head><title>{at("Trainer Roster | CDC Admin")}</title></Head>
         <AdminTrainersDashboard />
       </AdminLayout>
     </AdminGuard>

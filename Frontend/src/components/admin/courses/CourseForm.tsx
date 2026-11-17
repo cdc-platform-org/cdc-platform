@@ -12,6 +12,7 @@ import AITranslateButton from '../AITranslateButton';
 import { createCourse, updateCourse, uploadCourseThumbnail, uploadCourseCoverImage, uploadCourseMentorAvatar, translateCourse } from '../../../services/courseService';
 import { DISCOUNT_PRESETS, emptyForm, formatGel, inputClass } from './courseAdminShared';
 
+import { at } from '../../../i18n/admin';
 export function CourseForm({
   editingCourse,
   onSaved,
@@ -79,7 +80,7 @@ export function CourseForm({
   const handleAutoTranslate = async () => {
     setTranslateError(null);
     if (form.title.trim().length < 3 || form.description.trim().length < 20) {
-      setTranslateError('Fill in the Georgian Title and Description before translating.');
+      setTranslateError(at("Fill in the Georgian Title and Description before translating."));
       return;
     }
     setTranslating(true);
@@ -94,7 +95,7 @@ export function CourseForm({
       if (translateToastTimeoutRef.current) clearTimeout(translateToastTimeoutRef.current);
       translateToastTimeoutRef.current = setTimeout(() => setShowTranslateToast(false), 4000);
     } catch (err: any) {
-      setTranslateError(err?.response?.data?.message ?? 'Translation failed. Please try again.');
+      setTranslateError(err?.response?.data?.message ?? at("Translation failed. Please try again."));
     } finally {
       setTranslating(false);
     }
@@ -108,10 +109,10 @@ export function CourseForm({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (form.title.trim().length < 3) return setError('Title is too short.');
-    if (form.description.trim().length < 20) return setError('Description is too short.');
-    if (!form.category.trim()) return setError('Category is required.');
-    if (form.isOnSale && effectiveDiscountPercent <= 0) return setError('Enter a valid discount percentage.');
+    if (form.title.trim().length < 3) return setError(at("Title is too short."));
+    if (form.description.trim().length < 20) return setError(at("Description is too short."));
+    if (!form.category.trim()) return setError(at("Category is required."));
+    if (form.isOnSale && effectiveDiscountPercent <= 0) return setError(at("Enter a valid discount percentage."));
 
     setSubmitting(true);
     try {
@@ -145,7 +146,7 @@ export function CourseForm({
       onSaved(saved);
       if (!editingCourse) setForm(emptyForm);
     } catch {
-      setError('Unable to save course. Please try again.');
+      setError(at("Unable to save course. Please try again."));
     } finally {
       setSubmitting(false);
     }
@@ -161,7 +162,7 @@ export function CourseForm({
       setForm((prev) => ({ ...prev, thumbnailUrl: updated.thumbnailUrl ?? '' }));
       onSaved(updated);
     } catch {
-      setThumbnailError('Upload failed. Please try again.');
+      setThumbnailError(at("Upload failed. Please try again."));
     } finally {
       setThumbnailUploading(false);
       if (thumbnailInputRef.current) thumbnailInputRef.current.value = '';
@@ -178,7 +179,7 @@ export function CourseForm({
       setForm((prev) => ({ ...prev, coverImageUrl: updated.coverImageUrl ?? '' }));
       onSaved(updated);
     } catch {
-      setCoverImageError('Upload failed. Please try again.');
+      setCoverImageError(at("Upload failed. Please try again."));
     } finally {
       setCoverImageUploading(false);
       if (coverImageInputRef.current) coverImageInputRef.current.value = '';
@@ -195,7 +196,7 @@ export function CourseForm({
       setForm((prev) => ({ ...prev, mentorAvatarUrl: updated.mentorAvatarUrl ?? '' }));
       onSaved(updated);
     } catch {
-      setMentorAvatarError('Upload failed. Please try again.');
+      setMentorAvatarError(at("Upload failed. Please try again."));
     } finally {
       setMentorAvatarUploading(false);
       if (mentorAvatarInputRef.current) mentorAvatarInputRef.current.value = '';
@@ -207,11 +208,11 @@ export function CourseForm({
       {error && <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
       <div className="grid md:grid-cols-2 gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Title</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Title")}</label>
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={inputClass} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Category</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Category")}</label>
           {/* Still free text (category has no DB enum — see /courses' own
               comment on why it derives filter chips from whatever values
               are actually present), but suggested via a native datalist —
@@ -232,12 +233,12 @@ export function CourseForm({
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
-          Title (English) <span className="text-gray-400 font-normal">— optional, prints as "Title / Title (English)" on the certificate</span>
+          {at("Title (English)")}{" "}<span className="text-gray-400 font-normal">{at("— optional, prints as \"Title / Title (English)\" on the certificate")}</span>
         </label>
         <input value={form.titleEn} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} className={inputClass} />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Description</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Description")}</label>
         <RichTextEditor rows={3} value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
       </div>
       <div>
@@ -246,20 +247,20 @@ export function CourseForm({
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
-          Description (English) <span className="text-gray-400 font-normal">— optional, shown instead of Description when the site language is English</span>
+          {at("Description (English)")}{" "}<span className="text-gray-400 font-normal">{at("— optional, shown instead of Description when the site language is English")}</span>
         </label>
         <RichTextEditor rows={3} value={form.descriptionEn} onChange={(v) => setForm({ ...form, descriptionEn: v })} />
       </div>
-      {showTranslateToast && <Toast message="✨ Translated to English" />}
+      {showTranslateToast && <Toast message={at("✨ Translated to English")} />}
       <div>
         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
-          Skills Taught <span className="text-gray-400 font-normal">— auto-verifies these on a student's profile when they earn this course's certificate</span>
+          {at("Skills Taught")}{" "}<span className="text-gray-400 font-normal">{at("— auto-verifies these on a student's profile when they earn this course's certificate")}</span>
         </label>
         <SkillPicker value={form.skillsTaught} onChange={(skills) => setForm({ ...form, skillsTaught: skills })} lang="en" />
       </div>
       <div className="grid md:grid-cols-3 gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Original Price (GEL / ₾)</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Original Price (GEL / ₾)")}</label>
           <input
             type="number"
             min={0}
@@ -272,7 +273,7 @@ export function CourseForm({
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
-            Max Capacity <span className="text-gray-400 font-normal">— blank = unlimited</span>
+            {at("Max Capacity")}{" "}<span className="text-gray-400 font-normal">{at("— blank = unlimited")}</span>
           </label>
           <input
             type="number"
@@ -280,27 +281,27 @@ export function CourseForm({
             step="1"
             value={form.maxCapacity}
             onChange={(e) => setForm({ ...form, maxCapacity: e.target.value })}
-            placeholder="Unlimited"
+            placeholder={at("Unlimited")}
             className={inputClass}
           />
           {editingCourse && (
             <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
-              {editingCourse.enrolledCount} enrolled{editingCourse.maxCapacity != null ? ` / ${editingCourse.maxCapacity}` : ''}
+              {editingCourse.enrolledCount} {at("enrolled")}{editingCourse.maxCapacity != null ? ` / ${editingCourse.maxCapacity}` : ''}
             </p>
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Mentor Name</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Mentor Name")}</label>
           <input value={form.mentorName} onChange={(e) => setForm({ ...form, mentorName: e.target.value })} className={inputClass} />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Mentor Title</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Mentor Title")}</label>
           <input value={form.mentorTitle} onChange={(e) => setForm({ ...form, mentorTitle: e.target.value })} className={inputClass} />
         </div>
       </div>
       <div className="grid md:grid-cols-2 gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Thumbnail</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Thumbnail")}</label>
           {editingCourse ? (
             <div className="flex items-center gap-3">
               {form.thumbnailUrl && (
@@ -313,20 +314,19 @@ export function CourseForm({
                   htmlFor="thumbnail-file-input"
                   className="inline-block text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-100"
                 >
-                  {thumbnailUploading ? 'Uploading…' : form.thumbnailUrl ? 'Replace image' : 'Upload image'}
+                  {thumbnailUploading ? at("Uploading…") : form.thumbnailUrl ? at("Replace image") : at("Upload image")}
                 </label>
                 {thumbnailError && <p className="text-xs text-red-600 mt-1">{thumbnailError}</p>}
               </div>
             </div>
           ) : (
-            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Save the course first, then you can upload a thumbnail image directly.</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{at("Save the course first, then you can upload a thumbnail image directly.")}</p>
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Cover Image (Hero Banner)</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Cover Image (Hero Banner)")}</label>
           <p className="text-xs text-gray-400 dark:text-slate-500 mb-2">
-            Full-bleed banners (with baked-in title text/diagrams) work best — this preview shows the whole image uncropped,
-            exactly how it renders on the course page. High-res 16:9 recommended.
+            {at("Full-bleed banners (with baked-in title text/diagrams) work best — this preview shows the whole image uncropped, exactly how it renders on the course page. High-res 16:9 recommended.")}
           </p>
           {editingCourse ? (
             <div className="space-y-3">
@@ -339,31 +339,31 @@ export function CourseForm({
                   htmlFor="cover-image-file-input"
                   className="inline-block text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-100"
                 >
-                  {coverImageUploading ? 'Uploading…' : form.coverImageUrl ? 'Replace image' : 'Upload image'}
+                  {coverImageUploading ? at("Uploading…") : form.coverImageUrl ? at("Replace image") : at("Upload image")}
                 </label>
                 {coverImageError && <p className="text-xs text-red-600 mt-1">{coverImageError}</p>}
               </div>
             </div>
           ) : (
-            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Save the course first, then you can upload a cover image directly.</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{at("Save the course first, then you can upload a cover image directly.")}</p>
           )}
         </div>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Intro / Preview Video (YouTube, Vimeo, or direct link)</label>
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Intro / Preview Video (YouTube, Vimeo, or direct link)")}</label>
         <input
           value={form.introVideoUrl}
           onChange={(e) => setForm({ ...form, introVideoUrl: e.target.value })}
-          placeholder="e.g. https://www.youtube.com/watch?v=..."
+          placeholder={at("e.g. https://www.youtube.com/watch?v=...")}
           className={inputClass}
         />
         <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
-          Shown as an embedded player on the course detail page. Leave blank to show no preview.
+          {at("Shown as an embedded player on the course detail page. Leave blank to show no preview.")}
         </p>
       </div>
       <div className="grid md:grid-cols-2 gap-5">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Mentor Avatar</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Mentor Avatar")}</label>
           {editingCourse ? (
             <div className="flex items-center gap-3">
               {form.mentorAvatarUrl && (
@@ -376,25 +376,25 @@ export function CourseForm({
                   htmlFor="mentor-avatar-file-input"
                   className="inline-block text-sm font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg cursor-pointer hover:bg-indigo-100"
                 >
-                  {mentorAvatarUploading ? 'Uploading…' : form.mentorAvatarUrl ? 'Replace image' : 'Upload image'}
+                  {mentorAvatarUploading ? at("Uploading…") : form.mentorAvatarUrl ? at("Replace image") : at("Upload image")}
                 </label>
                 {mentorAvatarError && <p className="text-xs text-red-600 mt-1">{mentorAvatarError}</p>}
               </div>
             </div>
           ) : (
-            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Save the course first, then you can upload a mentor avatar directly.</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{at("Save the course first, then you can upload a mentor avatar directly.")}</p>
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Instruction Language</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Instruction Language")}</label>
           <select
             value={form.language}
             onChange={(e) => setForm({ ...form, language: e.target.value as CourseLanguage })}
             className={inputClass}
           >
-            <option value="GEORGIAN">🇬🇪 Georgian</option>
-            <option value="ENGLISH">🇬🇧 English</option>
-            <option value="BOTH">🇬🇪🇬🇧 Both</option>
+            <option value="GEORGIAN">{at("🇬🇪 Georgian")}</option>
+            <option value="ENGLISH">{at("🇬🇧 English")}</option>
+            <option value="BOTH">{at("🇬🇪🇬🇧 Both")}</option>
           </select>
         </div>
       </div>
@@ -407,14 +407,14 @@ export function CourseForm({
             onChange={(e) => setForm({ ...form, isOnSale: e.target.checked })}
             className="w-4 h-4 rounded border-gray-300 text-rose-600 focus:ring-rose-500"
           />
-          🏷️ Discount / Sale
+          {at("🏷️ Discount / Sale")}
         </label>
 
         {form.isOnSale && (
           <div className="mt-4 space-y-4">
             <div className="grid md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Discount</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Discount")}</label>
                 <select
                   value={form.useCustomDiscount ? 'custom' : String(form.discountPercent)}
                   onChange={(e) => {
@@ -431,7 +431,7 @@ export function CourseForm({
                       {p}%
                     </option>
                   ))}
-                  <option value="custom">Custom…</option>
+                  <option value="custom">{at("Custom…")}</option>
                 </select>
                 {form.useCustomDiscount && (
                   <input
@@ -446,7 +446,7 @@ export function CourseForm({
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">Sale Ends (optional)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Sale Ends (optional)")}</label>
                 <input
                   type="datetime-local"
                   value={form.discountEndDate}
@@ -458,7 +458,7 @@ export function CourseForm({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
-                Badge Text <span className="text-gray-400 font-normal">— optional, e.g. "SPECIAL OFFER" or "BLACK FRIDAY". Leave blank to show "-{effectiveDiscountPercent}%".</span>
+                {at("Badge Text")}{" "}<span className="text-gray-400 font-normal">{at("— optional, e.g. \"SPECIAL OFFER\" or \"BLACK FRIDAY\". Leave blank to show \"-")}{effectiveDiscountPercent}%".</span>
               </label>
               <input
                 value={form.discountBadgeText}
@@ -485,15 +485,15 @@ export function CourseForm({
           onChange={(e) => setForm({ ...form, published: e.target.checked })}
           className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500"
         />
-        Published
+        {at("Published")}
       </label>
       <div className="flex gap-3">
         <button type="submit" disabled={submitting} className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60">
-          {submitting ? 'Saving…' : editingCourse ? 'Update Course' : 'Create Course'}
+          {submitting ? at("Saving…") : editingCourse ? at("Update Course") : at("Create Course")}
         </button>
         {editingCourse && (
           <button type="button" onClick={onCancel} className="rounded-lg border border-gray-300 dark:border-slate-700 px-5 py-2.5 text-sm font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800">
-            Cancel
+            {at("Cancel")}
           </button>
         )}
       </div>

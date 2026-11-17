@@ -10,6 +10,7 @@ import { resolveBlogImageUrl } from '../../src/services/blogService';
 import KaToEnButton from '../../src/components/admin/KaToEnButton';
 import { parseVideoUrl } from '../../src/components/shared/VideoEmbed';
 
+import { at } from '../../src/i18n/admin';
 // The 4 real, live self-service SaaS tools this CMS currently covers (see
 // marketplace/index.tsx's SAAS_TOOLS and tools.tsx's own cards for where
 // these slugs are read) — pre-seeded here so an admin sees every real tool
@@ -31,9 +32,9 @@ const KNOWN_TOOLS: { slug: string; route: string; name: string; statusWired: boo
 ];
 
 const STATUS_OPTIONS: { value: ToolCatalogStatus; label: string }[] = [
-  { value: 'ACTIVE', label: 'Active' },
+  { value: 'ACTIVE', get label() { return at("Active"); } },
   { value: 'COMING_SOON', label: 'Coming Soon / მალე' },
-  { value: 'DISABLED', label: 'Disabled' },
+  { value: 'DISABLED', get label() { return at("Disabled"); } },
   { value: 'ADMIN_ONLY', label: 'Admin only / მხოლოდ ადმინი (პირადი გამოყენება)' },
 ];
 
@@ -128,12 +129,12 @@ function ToolEntryEditor({
       )}
       <div className="flex items-center justify-between gap-3">
         <div className="flex-1">
-          <label className={labelClass}>Slug (matches the tool&apos;s card id — see tools.tsx / marketplace/index.tsx)</label>
-          <input placeholder="e.g. educator-hub" value={entry.slug} onChange={(e) => onChange({ slug: e.target.value })} className={inputClass} />
-          {known && <p className="text-[11px] text-gray-400 mt-1">Live route: {known.route}</p>}
+          <label className={labelClass}>{at("Slug (matches the tool's card id — see tools.tsx / marketplace/index.tsx)")}</label>
+          <input placeholder={at("e.g. educator-hub")} value={entry.slug} onChange={(e) => onChange({ slug: e.target.value })} className={inputClass} />
+          {known && <p className="text-[11px] text-gray-400 mt-1">{at("Live route:")}{" "}{known.route}</p>}
         </div>
         <div>
-          <label className={labelClass}>Status</label>
+          <label className={labelClass}>{at("Status")}</label>
           <select value={entry.status} onChange={(e) => onChange({ status: e.target.value as ToolCatalogStatus })} className={inputClass}>
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -154,7 +155,7 @@ function ToolEntryEditor({
             placeholder="https://... (leave empty for the default gradient/icon)"
           />
           <label className="shrink-0 inline-flex items-center justify-center px-4 py-2.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-600 cursor-pointer hover:bg-gray-50">
-            {uploadingImage ? 'იტვირთება…' : '📁 Upload'}
+            {uploadingImage ? 'იტვირთება…' : at("📁 Upload")}
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" disabled={uploadingImage} />
           </label>
         </div>
@@ -203,21 +204,21 @@ function ToolEntryEditor({
       />
       <div className="grid md:grid-cols-2 gap-2">
         <div>
-          <label className={labelClass}>Title (KA)</label>
+          <label className={labelClass}>{at("Title (KA)")}</label>
           <input value={entry.titleKa ?? ''} onChange={(e) => onChange({ titleKa: e.target.value })} className={inputClass} />
         </div>
         <div>
-          <label className={labelClass}>Title (EN)</label>
+          <label className={labelClass}>{at("Title (EN)")}</label>
           <input value={entry.titleEn ?? ''} onChange={(e) => onChange({ titleEn: e.target.value })} className={inputClass} />
         </div>
       </div>
       <div className="grid md:grid-cols-2 gap-2">
         <div>
-          <label className={labelClass}>Subtitle (KA)</label>
+          <label className={labelClass}>{at("Subtitle (KA)")}</label>
           <input value={entry.subtitleKa ?? ''} onChange={(e) => onChange({ subtitleKa: e.target.value })} className={inputClass} />
         </div>
         <div>
-          <label className={labelClass}>Subtitle (EN)</label>
+          <label className={labelClass}>{at("Subtitle (EN)")}</label>
           <input value={entry.subtitleEn ?? ''} onChange={(e) => onChange({ subtitleEn: e.target.value })} className={inputClass} />
         </div>
       </div>
@@ -227,7 +228,7 @@ function ToolEntryEditor({
           <input value={entry.badgeKa ?? ''} onChange={(e) => onChange({ badgeKa: e.target.value })} className={inputClass} />
         </div>
         <div>
-          <label className={labelClass}>Badge (EN)</label>
+          <label className={labelClass}>{at("Badge (EN)")}</label>
           <input value={entry.badgeEn ?? ''} onChange={(e) => onChange({ badgeEn: e.target.value })} className={inputClass} />
         </div>
       </div>
@@ -237,34 +238,34 @@ function ToolEntryEditor({
           <input value={entry.pricingLabelKa ?? ''} onChange={(e) => onChange({ pricingLabelKa: e.target.value })} className={inputClass} />
         </div>
         <div>
-          <label className={labelClass}>Pricing label (EN)</label>
+          <label className={labelClass}>{at("Pricing label (EN)")}</label>
           <input value={entry.pricingLabelEn ?? ''} onChange={(e) => onChange({ pricingLabelEn: e.target.value })} className={inputClass} />
         </div>
       </div>
       <div className="grid md:grid-cols-2 gap-2">
         <div>
-          <label className={labelClass}>Description (KA)</label>
+          <label className={labelClass}>{at("Description (KA)")}</label>
           <textarea rows={2} value={entry.descriptionKa ?? ''} onChange={(e) => onChange({ descriptionKa: e.target.value })} className={inputClass} />
         </div>
         <div>
-          <label className={labelClass}>Description (EN)</label>
+          <label className={labelClass}>{at("Description (EN)")}</label>
           <textarea rows={2} value={entry.descriptionEn ?? ''} onChange={(e) => onChange({ descriptionEn: e.target.value })} className={inputClass} />
         </div>
       </div>
       <div className="grid md:grid-cols-2 gap-2">
         <div>
-          <label className={labelClass}>Feature bullets (KA) — one per line</label>
+          <label className={labelClass}>{at("Feature bullets (KA) — one per line")}</label>
           <textarea rows={3} value={featuresToText(entry.featuresKa)} onChange={(e) => onChange({ featuresKa: textToFeatures(e.target.value) })} className={inputClass} />
         </div>
         <div>
-          <label className={labelClass}>Feature bullets (EN) — one per line</label>
+          <label className={labelClass}>{at("Feature bullets (EN) — one per line")}</label>
           <textarea rows={3} value={featuresToText(entry.featuresEn)} onChange={(e) => onChange({ featuresEn: textToFeatures(e.target.value) })} className={inputClass} />
         </div>
       </div>
 
       <button type="button" onClick={onRemove} className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700">
         <Trash2 className="w-3.5 h-3.5" />
-        Remove entry
+        {at("Remove entry")}
       </button>
     </div>
   );
@@ -298,7 +299,7 @@ function ToolsCmsDashboard() {
       setContent({ tools: [...existing, ...missing] });
       setKeys(makeKeys(existing.length + missing.length));
     } catch {
-      setError('Could not load the tool catalog.');
+      setError(at("Could not load the tool catalog."));
       setContent({ tools: KNOWN_TOOLS.map((k) => emptyEntry(k.slug)) });
       setKeys(makeKeys(KNOWN_TOOLS.length));
     } finally {
@@ -318,7 +319,7 @@ function ToolsCmsDashboard() {
       await updateSiteContent('tool-catalog', content);
       setSaved(true);
     } catch {
-      setError('Could not save changes.');
+      setError(at("Could not save changes."));
     } finally {
       setSaving(false);
     }
@@ -351,24 +352,24 @@ function ToolsCmsDashboard() {
   };
 
   if (loading) {
-    return <p className="text-sm text-gray-400">Loading…</p>;
+    return <p className="text-sm text-gray-400">{at("Loading…")}</p>;
   }
 
   return (
     <>
       <Head>
-        <title>Tool Catalog CMS | Admin</title>
+        <title>{at("Tool Catalog CMS | Admin")}</title>
       </Head>
       <div className="max-w-4xl">
         <div className="mb-8 flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Tool Catalog CMS</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">{at("Tool Catalog CMS")}</h1>
             <p className="text-sm text-gray-500 mt-1">
               აქედან იცვლება თითოეული AI ხელსაწყოს ქავერის ფოტო, სათაური, აღწერა, ბეჯი და ჩამონათვალი /tools და /marketplace გვერდებზე. ცარიელი ველი = გვერდის საწყისი ტექსტი. ცვლილების შემდეგ დააჭირე „Save Changes“.
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            {saved && <span className="text-xs font-medium text-emerald-600">Saved ✓</span>}
+            {saved && <span className="text-xs font-medium text-emerald-600">{at("Saved ✓")}</span>}
             {error && <span className="text-xs font-medium text-red-600">{error}</span>}
             <button
               type="button"
@@ -376,14 +377,14 @@ function ToolsCmsDashboard() {
               disabled={saving}
               className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              {saving ? 'Saving…' : 'Save Changes'}
+              {saving ? at("Saving…") : at("Save Changes")}
             </button>
           </div>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-sm text-gray-900">Tools</h2>
+            <h2 className="font-semibold text-sm text-gray-900">{at("Tools")}</h2>
             <button
               type="button"
               onClick={addEntry}

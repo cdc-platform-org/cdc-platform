@@ -8,6 +8,7 @@ import { resolveBlogImageUrl } from '../../../src/services/blogService';
 import { isImageTooLarge, IMAGE_SIZE_ERROR } from '../../../src/utils/imageUpload';
 import KaToEnButton from '../../../src/components/admin/KaToEnButton';
 
+import { at } from '../../../src/i18n/admin';
 const inputClass = 'w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
 function GalleryCmsDashboard() {
@@ -107,41 +108,41 @@ function GalleryCmsDashboard() {
   };
 
   if (loading) {
-    return <p className="text-sm text-gray-400">Loading…</p>;
+    return <p className="text-sm text-gray-400">{at("Loading…")}</p>;
   }
 
   return (
     <>
       <Head>
-        <title>Photo Gallery CMS | Admin</title>
+        <title>{at("Photo Gallery CMS | Admin")}</title>
       </Head>
       <div className="max-w-4xl">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Photo Gallery</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">{at("Photo Gallery")}</h1>
             <p className="text-sm text-gray-500 mt-1">
-              Images shown on the public /gallery page and the homepage's "CDC Life" preview grid.
+              {at("Images shown on the public /gallery page and the homepage's \"CDC Life\" preview grid.")}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {saved && <span className="text-xs font-medium text-emerald-600">Saved ✓</span>}
+            {saved && <span className="text-xs font-medium text-emerald-600">{at("Saved ✓")}</span>}
             <button
               type="button"
               onClick={handleSave}
               disabled={saving}
               className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              {saving ? 'Saving…' : 'Save Changes'}
+              {saving ? at("Saving…") : at("Save Changes")}
             </button>
           </div>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-sm text-gray-900">Images ({images.length})</h2>
+            <h2 className="font-semibold text-sm text-gray-900">{at("Images (")}{images.length})</h2>
             <div className="flex items-center gap-3">
               <label className="text-xs font-medium text-indigo-600 hover:text-indigo-800 cursor-pointer">
-                {uploading && uploadProgress ? `იტვირთება ${uploadProgress.done}/${uploadProgress.total}…` : '📁 Upload images'}
+                {uploading && uploadProgress ? `იტვირთება ${uploadProgress.done}/${uploadProgress.total}…` : at("📁 Upload images")}
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -157,7 +158,7 @@ function GalleryCmsDashboard() {
                 onClick={() => setContent({ ...content, images: [...images, { url: '' }] })}
                 className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
               >
-                + Add by URL
+                {at("+ Add by URL")}
               </button>
             </div>
           </div>
@@ -174,7 +175,7 @@ function GalleryCmsDashboard() {
           >
             {images.length === 0 ? (
               <p className="text-xs text-gray-400 border-2 border-dashed border-gray-200 rounded-lg p-8 text-center">
-                No images yet — drag & drop images here, upload, or add by URL.
+                {at("No images yet — drag & drop images here, upload, or add by URL.")}
               </p>
             ) : (
               <>
@@ -197,24 +198,24 @@ function GalleryCmsDashboard() {
                       value={img.url}
                       onChange={(e) => updateImage(i, { url: e.target.value })}
                       className={inputClass}
-                      placeholder="Image URL"
+                      placeholder={at("Image URL")}
                     />
                     <div className="grid grid-cols-2 gap-1.5">
                       <input
                         value={img.captionKa ?? ''}
                         onChange={(e) => updateImage(i, { captionKa: e.target.value })}
                         className={inputClass}
-                        placeholder="Caption (KA)"
+                        placeholder={at("Caption (KA)")}
                       />
                       <input
                         value={img.captionEn ?? ''}
                         onChange={(e) => updateImage(i, { captionEn: e.target.value })}
                         className={inputClass}
-                        placeholder="Caption (EN)"
+                        placeholder={at("Caption (EN)")}
                       />
                     </div>
                     <button type="button" onClick={() => removeImage(i)} className="text-xs text-red-500 hover:text-red-700">
-                      Remove
+                      {at("Remove")}
                     </button>
                   </div>
                 </div>

@@ -19,6 +19,7 @@ import {
   SuccessStoryPayload,
 } from '../../src/services/successStoryService';
 
+import { at } from '../../src/i18n/admin';
 const emptyForm: SuccessStoryPayload = {
   studentName: '',
   roleTitle: '',
@@ -307,7 +308,7 @@ function AdminSuccessStoriesDashboard() {
                   value={form.roleTitle}
                   onChange={(e) => setForm({ ...form, roleTitle: e.target.value })}
                   className={inputClass}
-                  placeholder="Frontend Developer"
+                  placeholder={at("Frontend Developer")}
                 />
               </div>
               <div>
@@ -317,7 +318,7 @@ function AdminSuccessStoriesDashboard() {
                   value={form.courseName}
                   onChange={(e) => setForm({ ...form, courseName: e.target.value })}
                   className={inputClass}
-                  placeholder="Web Development"
+                  placeholder={at("Web Development")}
                 />
               </div>
             </div>
@@ -347,7 +348,7 @@ function AdminSuccessStoriesDashboard() {
                 disabled={translating}
                 className="text-xs font-semibold text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 px-3 py-1.5 rounded-lg disabled:opacity-60"
               >
-                {translating ? 'ითარგმნება…' : '✨ Auto-Translate via Gemini'}
+                {translating ? 'ითარგმნება…' : at("✨ Auto-Translate via Gemini")}
               </button>
               {translateError && <p className="text-xs text-red-600 mt-1.5">{translateError}</p>}
             </div>
@@ -361,7 +362,7 @@ function AdminSuccessStoriesDashboard() {
                 value={form.roleTitleEn ?? ''}
                 onChange={(e) => setForm({ ...form, roleTitleEn: e.target.value })}
                 className={inputClass}
-                placeholder="Frontend Developer"
+                placeholder={at("Frontend Developer")}
               />
             </div>
 
@@ -419,7 +420,7 @@ function AdminSuccessStoriesDashboard() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">LinkedIn URL <span className="text-gray-400 font-normal">(არასავალდებულო)</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">{at("LinkedIn URL")}{" "}<span className="text-gray-400 font-normal">(არასავალდებულო)</span></label>
                 <input
                   type="text"
                   value={form.linkedinUrl ?? ''}
@@ -492,7 +493,7 @@ function AdminSuccessStoriesDashboard() {
             </div>
           )}
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-gray-400">{at("Loading…")}</p>
           ) : stories.length === 0 ? (
             <p className="text-sm text-gray-500">ისტორიები ჯერ არ არის დამატებული.</p>
           ) : (

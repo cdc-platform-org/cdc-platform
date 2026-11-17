@@ -19,8 +19,10 @@ import {
   purgeSystemJunk,
 } from '../../src/services/adminSystemToolsService';
 
+import { adminLocale, at, atf } from '../../src/i18n/admin';
+import { useCanSeeMoney } from '../../src/components/admin/useCanSeeMoney';
 function formatMoney(minorUnits: number): string {
-  return `${(minorUnits / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} GEL`;
+  return `${(minorUnits / 100).toLocaleString(adminLocale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })} GEL`;
 }
 
 // Every System Tools handler below used to fall back to the exact same
@@ -39,8 +41,8 @@ function formatMoney(minorUnits: number): string {
 // turns that into a one-glance diagnosis.
 function describeToolError(err: any, fallback: string): string {
   if (err?.response?.data?.message) return err.response.data.message;
-  if (err?.response) return `Server returned an unexpected error (HTTP ${err.response.status}).`;
-  if (err?.request) return 'Request never reached the server — this usually means a network or CORS problem, not a bug in this specific tool.';
+  if (err?.response) return atf("Server returned an unexpected error (HTTP {0}).", err.response.status);
+  if (err?.request) return at("Request never reached the server — this usually means a network or CORS problem, not a bug in this specific tool.");
   return fallback;
 }
 
@@ -76,7 +78,7 @@ function DashboardOverview() {
     try {
       setI18nAgentResult(await runI18nAutoTranslateAgent());
     } catch (err: any) {
-      setI18nAgentError(describeToolError(err, 'The translation agent run failed.'));
+      setI18nAgentError(describeToolError(err, at('The translation agent run failed.')));
     } finally {
       setI18nAgentRunning(false);
     }
@@ -89,7 +91,7 @@ function DashboardOverview() {
     try {
       setCacheResult(await clearApplicationCache());
     } catch (err: any) {
-      setCacheError(describeToolError(err, 'Clearing the cache failed.'));
+      setCacheError(describeToolError(err, at('Clearing the cache failed.')));
     } finally {
       setCacheClearing(false);
     }
@@ -102,7 +104,7 @@ function DashboardOverview() {
     try {
       setHealthResult(await runHealthCheck());
     } catch (err: any) {
-      setHealthError(describeToolError(err, 'The health check failed.'));
+      setHealthError(describeToolError(err, at('The health check failed.')));
     } finally {
       setHealthChecking(false);
     }
@@ -115,7 +117,7 @@ function DashboardOverview() {
     try {
       setLocaleAuditResult(await auditOrphanedLocaleKeys());
     } catch (err: any) {
-      setLocaleAuditError(describeToolError(err, 'The locale audit failed.'));
+      setLocaleAuditError(describeToolError(err, at('The locale audit failed.')));
     } finally {
       setLocaleAuditRunning(false);
     }
@@ -128,7 +130,7 @@ function DashboardOverview() {
       const result = await purgeSystemJunk();
       setJunkToast(`🧹 ${result.message}`);
     } catch (err: any) {
-      setJunkError(describeToolError(err, 'Purging system junk failed.'));
+      setJunkError(describeToolError(err, at('Purging system junk failed.')));
     } finally {
       setJunkPurging(false);
     }
@@ -140,6 +142,7 @@ function DashboardOverview() {
     return () => clearTimeout(timer);
   }, [junkToast]);
 
+  const canSeeMoney = useCanSeeMoney();
   const loadStats = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -147,7 +150,7 @@ function DashboardOverview() {
       const data = await getDashboardStats();
       setStats(data);
     } catch {
-      setError('Unable to load dashboard stats. Please try again.');
+      setError(at("Unable to load dashboard stats. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -160,13 +163,13 @@ function DashboardOverview() {
   return (
     <>
       <Head>
-        <title>Dashboard Overview | Admin</title>
+        <title>{at("Dashboard Overview | Admin")}</title>
       </Head>
       <div>
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Dashboard Overview</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{at("Dashboard Overview")}</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Welcome back, {user?.name}. Here's what's happening on the platform.
+            {at("Welcome back,")}{" "}{user?.name}{at(". Here's what's happening on the platform.")}
           </p>
         </div>
 
@@ -177,32 +180,32 @@ function DashboardOverview() {
         )}
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">{at("Loading…")}</p>
         ) : stats ? (
           <div className="space-y-8">
             <section>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Users</h2>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">{at("Users")}</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard label="Total Users" value={stats.users.total} icon="👥" accent="cyan" />
+                <StatCard label={at("Total Users")} value={stats.users.total} icon="👥" accent="cyan" />
                 <StatCard
-                  label="Pending Approval"
+                  label={at("Pending Approval")}
                   value={stats.users.pendingApproval}
                   icon="⏳"
                   accent="amber"
                 />
-                <StatCard label="Students" value={stats.users.students} icon="🎓" accent="purple" />
-                <StatCard label="Banned" value={stats.users.banned} icon="🚫" accent="rose" />
+                <StatCard label={at("Students")} value={stats.users.students} icon="🎓" accent="purple" />
+                <StatCard label={at("Banned")} value={stats.users.banned} icon="🚫" accent="rose" />
               </div>
             </section>
 
             <section>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Gigs & Vacancies</h2>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">{at("Gigs & Vacancies")}</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard label="Active Gigs" value={stats.gigs.active} icon="💼" accent="emerald" />
-                <StatCard label="Total Gigs" value={stats.gigs.total} icon="📋" accent="cyan" />
-                <StatCard label="Total Vacancies" value={stats.vacancies.total} icon="🏢" accent="purple" />
+                <StatCard label={at("Active Gigs")} value={stats.gigs.active} icon="💼" accent="emerald" />
+                <StatCard label={at("Total Gigs")} value={stats.gigs.total} icon="📋" accent="cyan" />
+                <StatCard label={at("Total Vacancies")} value={stats.vacancies.total} icon="🏢" accent="purple" />
                 <StatCard
-                  label="Clients"
+                  label={at("Clients")}
                   value={stats.users.clients}
                   icon="🏬"
                   accent="amber"
@@ -210,30 +213,33 @@ function DashboardOverview() {
               </div>
             </section>
 
+            {/* Money KPIs — SUPER_ADMIN only (the API omits `volume` for other tiers). */}
+            {canSeeMoney && stats.volume && (
             <section>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Platform Volume</h2>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">{at("Platform Volume")}</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard
-                  label="Total Gross Volume"
+                  label={at("Total Gross Volume")}
                   value={formatMoney(stats.volume.totalGrossAmount)}
                   icon="💰"
                   accent="emerald"
-                  sublabel={`${stats.volume.transactionCount} transaction${stats.volume.transactionCount !== 1 ? 's' : ''}`}
+                  sublabel={atf("{0} transaction{1}", stats.volume.transactionCount, stats.volume.transactionCount !== 1 ? 's' : '')}
                 />
                 <StatCard
-                  label="Platform Commission"
+                  label={at("Platform Commission")}
                   value={formatMoney(stats.volume.totalCommissionAmount)}
                   icon="📈"
                   accent="cyan"
                 />
                 <StatCard
-                  label="Net Paid to Freelancers"
+                  label={at("Net Paid to Freelancers")}
                   value={formatMoney(stats.volume.totalNetAmount)}
                   icon="🤝"
                   accent="purple"
                 />
               </div>
             </section>
+            )}
 
             {/* Day-to-day ops queue — the three things someone running the
                 pilot needs to check without hunting through five separate
@@ -243,21 +249,26 @@ function DashboardOverview() {
                 in the last week — the number that matters most to a B2B
                 partner asking "can I trust this screening?"). */}
             <section>
-              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Needs Attention</h2>
+              <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">{at("Needs Attention")}</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Link href="/admin/disputes" className="no-underline text-current">
-                  <StatCard label="Open Disputes" value={stats.disputes.open} icon="⚖️" accent="rose" />
-                </Link>
-                <Link href="/admin/finance/payouts" className="no-underline text-current">
-                  <StatCard label="Pending Payouts" value={stats.payouts.pending} icon="🏦" accent="amber" />
-                </Link>
+                {/* Disputes (escrow) and payouts are money queues — SUPER_ADMIN only. */}
+                {canSeeMoney && (
+                  <Link href="/admin/disputes" className="no-underline text-current">
+                    <StatCard label={at("Open Disputes")} value={stats.disputes.open} icon="⚖️" accent="rose" />
+                  </Link>
+                )}
+                {canSeeMoney && stats.payouts && (
+                  <Link href="/admin/finance/payouts" className="no-underline text-current">
+                    <StatCard label={at("Pending Payouts")} value={stats.payouts.pending} icon="🏦" accent="amber" />
+                  </Link>
+                )}
                 <Link href="/admin/candidate-verifications" className="no-underline text-current">
                   <StatCard
-                    label="Flagged Candidates (7d)"
+                    label={at("Flagged Candidates (7d)")}
                     value={stats.examProctoring.flaggedLast7Days}
                     icon="🛡️"
                     accent="rose"
-                    sublabel={`${stats.examProctoring.total} total submissions`}
+                    sublabel={atf("{0} total submissions", stats.examProctoring.total)}
                   />
                 </Link>
               </div>
@@ -265,15 +276,13 @@ function DashboardOverview() {
 
             {user?.adminRole === 'SUPER_ADMIN' && (
               <section>
-                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">System Tools</h2>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">{at("System Tools")}</h2>
                 <div className="rounded-xl border border-gray-200 bg-white p-5">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">🤖 Scan &amp; Auto-Translate All Locales</p>
+                      <p className="text-sm font-semibold text-gray-900">{at("🤖 Scan & Auto-Translate All Locales")}</p>
                       <p className="text-xs text-gray-500 mt-1 max-w-xl">
-                        Scans public/locales/*/*.json for keys missing (or empty) vs. en/, drafts translations via
-                        Gemini, and commits the patch to a new local git branch for you to review — it never pushes
-                        or touches main directly.
+                        {at("Scans public/locales/*/*.json for keys missing (or empty) vs. en/, drafts translations via Gemini, and commits the patch to a new local git branch for you to review — it never pushes or touches main directly.")}
                       </p>
                     </div>
                     <button
@@ -282,7 +291,7 @@ function DashboardOverview() {
                       disabled={i18nAgentRunning}
                       className="shrink-0 text-sm font-bold text-white bg-gradient-to-r from-purple-500 to-cyan-600 px-4 py-2.5 rounded-lg border-none cursor-pointer disabled:opacity-60"
                     >
-                      {i18nAgentRunning ? 'Scanning…' : '🤖 Scan & Auto-Translate All Locales'}
+                      {i18nAgentRunning ? at("Scanning…") : at("🤖 Scan & Auto-Translate All Locales")}
                     </button>
                   </div>
 
@@ -297,14 +306,14 @@ function DashboardOverview() {
                         <ul className="list-disc list-inside text-xs text-gray-600">
                           {i18nAgentResult.patchedGroups.map((g) => (
                             <li key={`${g.locale}-${g.namespace}`}>
-                              {g.locale}/{g.namespace}: {g.keysPatched} key{g.keysPatched === 1 ? '' : 's'}
+                              {g.locale}/{g.namespace}: {atf("{0} key(s)", g.keysPatched)}
                             </li>
                           ))}
                         </ul>
                       )}
                       {i18nAgentResult.skippedNonStringKeys.length > 0 && (
                         <p className="text-xs text-amber-700">
-                          {i18nAgentResult.skippedNonStringKeys.length} key(s) need manual review (non-string values the agent never auto-translates).
+                          {i18nAgentResult.skippedNonStringKeys.length} {at("key(s) need manual review (non-string values the agent never auto-translates).")}
                         </p>
                       )}
                     </div>
@@ -315,10 +324,9 @@ function DashboardOverview() {
                 <div className="rounded-xl border border-gray-200 bg-white p-5 mt-4">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">🧹 Clear &amp; Refresh Application Cache</p>
+                      <p className="text-sm font-semibold text-gray-900">{at("🧹 Clear & Refresh Application Cache")}</p>
                       <p className="text-xs text-gray-500 mt-1 max-w-xl">
-                        Clears in-memory response caches instantly — currently just the Course Tutor's cached replies
-                        (Blog generation and translations aren't cached anywhere, so there's nothing to clear there).
+                        {at("Clears in-memory response caches instantly — currently just the Course Tutor's cached replies (Blog generation and translations aren't cached anywhere, so there's nothing to clear there).")}
                       </p>
                     </div>
                     <button
@@ -327,7 +335,7 @@ function DashboardOverview() {
                       disabled={cacheClearing}
                       className="shrink-0 text-sm font-bold text-white bg-gradient-to-r from-orange-500 to-red-500 px-4 py-2.5 rounded-lg border-none cursor-pointer disabled:opacity-60"
                     >
-                      {cacheClearing ? 'Clearing…' : '🧹 Clear Cache'}
+                      {cacheClearing ? at("Clearing…") : at("🧹 Clear Cache")}
                     </button>
                   </div>
                   {cacheError && (
@@ -337,7 +345,7 @@ function DashboardOverview() {
                     <div className="mt-4 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-700 space-y-1">
                       {cacheResult.cleared.map((c) => (
                         <p key={c.name}>
-                          ✓ {c.name}: {c.entriesCleared} entr{c.entriesCleared === 1 ? 'y' : 'ies'} cleared
+                          ✓ {c.name}: {atf("{0} entries cleared", c.entriesCleared)}
                         </p>
                       ))}
                       <p className="text-xs text-gray-400">{cacheResult.note}</p>
@@ -349,10 +357,9 @@ function DashboardOverview() {
                 <div className="rounded-xl border border-gray-200 bg-white p-5 mt-4">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">🩺 System Health Diagnostic &amp; AI Connectivity Test</p>
+                      <p className="text-sm font-semibold text-gray-900">{at("🩺 System Health Diagnostic & AI Connectivity Test")}</p>
                       <p className="text-xs text-gray-500 mt-1 max-w-xl">
-                        Pings Primary Azure OpenAI, Secondary Azure OpenAI, and Gemini directly (never through the
-                        automatic failover) so each provider's real status shows independently.
+                        {at("Pings Primary Azure OpenAI, Secondary Azure OpenAI, and Gemini directly (never through the automatic failover) so each provider's real status shows independently.")}
                       </p>
                     </div>
                     <button
@@ -361,7 +368,7 @@ function DashboardOverview() {
                       disabled={healthChecking}
                       className="shrink-0 text-sm font-bold text-white bg-gradient-to-r from-emerald-500 to-teal-600 px-4 py-2.5 rounded-lg border-none cursor-pointer disabled:opacity-60"
                     >
-                      {healthChecking ? 'Checking…' : '🩺 Run Diagnostic'}
+                      {healthChecking ? at("Checking…") : at("🩺 Run Diagnostic")}
                     </button>
                   </div>
                   {healthError && (
@@ -386,7 +393,7 @@ function DashboardOverview() {
                             <span className="text-xs font-bold text-gray-900">{label}</span>
                           </div>
                           <p className="text-[11px] text-gray-500 mt-1">
-                            {!status.configured ? 'Not configured' : status.ok ? `OK — ${status.latencyMs}ms` : status.message}
+                            {!status.configured ? at("Not configured") : status.ok ? atf("OK — {0}ms", status.latencyMs) : status.message}
                           </p>
                         </div>
                       ))}
@@ -398,11 +405,9 @@ function DashboardOverview() {
                 <div className="rounded-xl border border-gray-200 bg-white p-5 mt-4">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">🌐 Missing Locales Audit &amp; Cleanup</p>
+                      <p className="text-sm font-semibold text-gray-900">{at("🌐 Missing Locales Audit & Cleanup")}</p>
                       <p className="text-xs text-gray-500 mt-1 max-w-xl">
-                        Audits every locale file for orphaned keys — present in a translation but no longer in the
-                        en/ reference (stale leftovers from a renamed/removed key). Read-only; review before editing
-                        the files by hand.
+                        {at("Audits every locale file for orphaned keys — present in a translation but no longer in the en/ reference (stale leftovers from a renamed/removed key). Read-only; review before editing the files by hand.")}
                       </p>
                     </div>
                     <button
@@ -411,7 +416,7 @@ function DashboardOverview() {
                       disabled={localeAuditRunning}
                       className="shrink-0 text-sm font-bold text-white bg-gradient-to-r from-indigo-500 to-blue-600 px-4 py-2.5 rounded-lg border-none cursor-pointer disabled:opacity-60"
                     >
-                      {localeAuditRunning ? 'Auditing…' : '🌐 Run Audit'}
+                      {localeAuditRunning ? at("Auditing…") : at("🌐 Run Audit")}
                     </button>
                   </div>
                   {localeAuditError && (
@@ -420,10 +425,10 @@ function DashboardOverview() {
                   {localeAuditResult && (
                     <div className="mt-4 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-700">
                       {localeAuditResult.totalOrphanedKeys === 0 ? (
-                        <p>✓ No orphaned keys found — every locale file only contains keys present in en/.</p>
+                        <p>{at("✓ No orphaned keys found — every locale file only contains keys present in en/.")}</p>
                       ) : (
                         <>
-                          <p className="font-semibold mb-2">{localeAuditResult.totalOrphanedKeys} orphaned key(s) found:</p>
+                          <p className="font-semibold mb-2">{localeAuditResult.totalOrphanedKeys} {at("orphaned key(s) found:")}</p>
                           <ul className="space-y-1 text-xs text-gray-600 max-h-64 overflow-y-auto">
                             {localeAuditResult.groups.map((g) => (
                               <li key={`${g.locale}-${g.namespace}`}>
@@ -444,10 +449,9 @@ function DashboardOverview() {
                 <div className="rounded-xl border border-gray-200 bg-white p-5 mt-4">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">🧹 Purge Temporary Junk &amp; Cache</p>
+                      <p className="text-sm font-semibold text-gray-900">{at("🧹 Purge Temporary Junk & Cache")}</p>
                       <p className="text-xs text-gray-500 mt-1 max-w-xl">
-                        Cleans temporary runtime cache, leftover log files, and OS junk to optimize server
-                        performance. Never touches .env files, the database, or uploaded user assets.
+                        {at("Cleans temporary runtime cache, leftover log files, and OS junk to optimize server performance. Never touches .env files, the database, or uploaded user assets.")}
                       </p>
                     </div>
                     <button
@@ -456,7 +460,7 @@ function DashboardOverview() {
                       disabled={junkPurging}
                       className="shrink-0 text-sm font-bold text-white bg-gradient-to-r from-slate-600 to-slate-800 px-4 py-2.5 rounded-lg border-none cursor-pointer disabled:opacity-60"
                     >
-                      {junkPurging ? 'Purging…' : '🧹 Purge System Junk'}
+                      {junkPurging ? at("Purging…") : at("🧹 Purge System Junk")}
                     </button>
                   </div>
                   {junkError && (

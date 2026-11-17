@@ -7,6 +7,7 @@ import { AdminRole } from '../../src/types/auth';
 import { TeamMember } from '../../src/types/adminPanel';
 import { getTeam, addTeamMember, updateTeamMemberRole, removeTeamMember } from '../../src/services/adminPanelService';
 
+import { at } from '../../src/i18n/admin';
 const TIER_BADGE: Record<AdminRole, string> = {
   SUPER_ADMIN: 'bg-gradient-to-r from-amber-400 to-orange-500 text-white',
   MANAGER: 'bg-gradient-to-r from-cyan-500 to-sky-600 text-white',
@@ -35,7 +36,7 @@ function TeamManagement() {
       const data = await getTeam();
       setTeam(data);
     } catch {
-      setError('Unable to load the admin team.');
+      setError(at("Unable to load the admin team."));
     } finally {
       setLoading(false);
     }
@@ -55,7 +56,7 @@ function TeamManagement() {
       setEmail('');
       setNewRole('MODERATOR');
     } catch (err: any) {
-      setAddError(err?.response?.data?.message ?? 'Unable to add this team member.');
+      setAddError(err?.response?.data?.message ?? at("Unable to add this team member."));
     } finally {
       setAdding(false);
     }
@@ -68,21 +69,21 @@ function TeamManagement() {
       const updated = await updateTeamMemberRole(userId, adminRole);
       setTeam((prev) => prev.map((m) => (m.id === userId ? updated : m)));
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Unable to update this role.');
+      setError(err?.response?.data?.message ?? at("Unable to update this role."));
     } finally {
       setActioningId(null);
     }
   };
 
   const handleRemove = async (userId: string) => {
-    if (!window.confirm('Remove this person from the admin team?')) return;
+    if (!window.confirm(at("Remove this person from the admin team?"))) return;
     setActioningId(userId);
     setError(null);
     try {
       await removeTeamMember(userId);
       setTeam((prev) => prev.filter((m) => m.id !== userId));
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Unable to remove this team member.');
+      setError(err?.response?.data?.message ?? at("Unable to remove this team member."));
     } finally {
       setActioningId(null);
     }
@@ -91,18 +92,18 @@ function TeamManagement() {
   return (
     <>
       <Head>
-        <title>Team & Permissions | Admin</title>
+        <title>{at("Team & Permissions | Admin")}</title>
       </Head>
       <div>
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Team & Permissions</h1>
-          <p className="text-sm text-gray-500 mt-1">Restricted to SuperAdmin.</p>
+          <h1 className="text-2xl font-semibold text-gray-900">{at("Team & Permissions")}</h1>
+          <p className="text-sm text-gray-500 mt-1">{at("Restricted to SuperAdmin.")}</p>
         </div>
 
         <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-md shadow-slate-200/40 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 p-6 mb-8 max-w-xl">
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Add Team Member</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-4">{at("Add Team Member")}</h2>
           <p className="text-xs text-gray-500 mb-4">
-            The user must already have a platform account — this promotes an existing account to an admin tier.
+            {at("The user must already have a platform account — this promotes an existing account to an admin tier.")}
           </p>
           {addError && (
             <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
@@ -115,7 +116,7 @@ function TeamManagement() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="teammate@cdc.ge"
+              placeholder={at("teammate@cdc.ge")}
               className="flex-1 rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
             <select
@@ -134,7 +135,7 @@ function TeamManagement() {
               disabled={adding}
               className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
             >
-              {adding ? 'Adding…' : 'Add'}
+              {adding ? at("Adding…") : at("Add")}
             </button>
           </form>
         </div>
@@ -144,17 +145,17 @@ function TeamManagement() {
         )}
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">{at("Loading…")}</p>
         ) : team.length === 0 ? (
-          <p className="text-sm text-gray-500">No admin team members yet.</p>
+          <p className="text-sm text-gray-500">{at("No admin team members yet.")}</p>
         ) : (
           <div className="bg-white/95 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-md shadow-slate-200/40 transition-all duration-300 hover:border-cyan-400/50 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-gray-500 border-b border-gray-100 bg-gray-50">
-                  <th className="px-4 py-3 font-medium">Member</th>
-                  <th className="px-4 py-3 font-medium">Tier</th>
-                  <th className="px-4 py-3 font-medium text-right">Actions</th>
+                  <th className="px-4 py-3 font-medium">{at("Member")}</th>
+                  <th className="px-4 py-3 font-medium">{at("Tier")}</th>
+                  <th className="px-4 py-3 font-medium text-right">{at("Actions")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -165,7 +166,7 @@ function TeamManagement() {
                     <tr key={member.id}>
                       <td className="px-4 py-3">
                         <div className="font-medium text-gray-900">
-                          {member.name} {isSelf && <span className="text-xs text-gray-400">(you)</span>}
+                          {member.name} {isSelf && <span className="text-xs text-gray-400">{at("(you)")}</span>}
                         </div>
                         <div className="text-xs text-gray-400">{member.email}</div>
                       </td>
@@ -195,7 +196,7 @@ function TeamManagement() {
                             onClick={() => handleRemove(member.id)}
                             className="text-xs font-medium text-rose-700 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 px-2.5 py-1.5 rounded-lg disabled:opacity-40"
                           >
-                            Remove
+                            {at("Remove")}
                           </button>
                         </div>
                       </td>

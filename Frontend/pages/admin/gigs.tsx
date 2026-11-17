@@ -12,6 +12,7 @@ import {
   restoreVacancy,
 } from '../../src/services/adminPanelService';
 
+import { at, atEnum } from '../../src/i18n/admin';
 function GigsVacanciesModeration() {
   const [listings, setListings] = useState<ModeratedListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +28,7 @@ function GigsVacanciesModeration() {
       const data = await getListings(filter ? { moderationStatus: filter } : undefined);
       setListings(data);
     } catch {
-      setError('Unable to load listings. Please try again.');
+      setError(at("Unable to load listings. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -49,7 +50,7 @@ function GigsVacanciesModeration() {
       }
       await loadListings();
     } catch {
-      setError('Unable to remove this listing. Please try again.');
+      setError(at("Unable to remove this listing. Please try again."));
     } finally {
       setActioningId(null);
     }
@@ -66,7 +67,7 @@ function GigsVacanciesModeration() {
       }
       await loadListings();
     } catch {
-      setError('Unable to restore this listing. Please try again.');
+      setError(at("Unable to restore this listing. Please try again."));
     } finally {
       setActioningId(null);
     }
@@ -75,14 +76,13 @@ function GigsVacanciesModeration() {
   return (
     <>
       <Head>
-        <title>Gigs & Vacancies Moderation | Admin</title>
+        <title>{at("Gigs & Vacancies Moderation | Admin")}</title>
       </Head>
       <div>
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Gigs & Vacancies Moderation</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{at("Gigs & Vacancies Moderation")}</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-            Listings go live immediately when posted — remove one here to take it down from public browsing, or
-            restore it.
+            {at("Listings go live immediately when posted — remove one here to take it down from public browsing, or restore it.")}
           </p>
         </div>
 
@@ -95,7 +95,7 @@ function GigsVacanciesModeration() {
                 filter === f ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-gray-300 dark:border-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800'
               }`}
             >
-              {f === '' ? 'All' : f === 'approved' ? 'Live' : 'Removed'}
+              {f === '' ? at("All") : f === 'approved' ? at("Live") : at("Removed")}
             </button>
           ))}
         </div>
@@ -105,9 +105,9 @@ function GigsVacanciesModeration() {
         )}
 
         {loading ? (
-          <p className="text-sm text-gray-400 dark:text-slate-500">Loading…</p>
+          <p className="text-sm text-gray-400 dark:text-slate-500">{at("Loading…")}</p>
         ) : listings.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-slate-400">No listings match this filter.</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{at("No listings match this filter.")}</p>
         ) : (
           <div className="space-y-3">
             {listings.map((listing) => {
@@ -128,19 +128,19 @@ function GigsVacanciesModeration() {
                               : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 shadow-emerald-400/30 dark:shadow-emerald-500/20'
                           }`}
                         >
-                          {listing.moderationStatus}
+                          {atEnum(listing.moderationStatus)}
                         </span>
                         <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-gray-50 dark:bg-slate-800/60 text-gray-500 dark:text-slate-400">
-                          {listing.status}
+                          {atEnum(listing.status)}
                         </span>
                       </div>
                       <h3 className="font-semibold text-sm text-gray-900 dark:text-white mt-1.5 truncate">{listing.title}</h3>
                       <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 line-clamp-2">{stripMarkdown(listing.description)}</p>
                       <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
-                        Posted by {listing.postedBy.name} ({listing.postedBy.email})
+                        {at("Posted by")}{" "}{listing.postedBy.name} ({listing.postedBy.email})
                       </p>
                       {isRemoved && listing.moderationReason && (
-                        <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">Reason: {listing.moderationReason}</p>
+                        <p className="text-xs text-rose-600 dark:text-rose-400 mt-1">{at("Reason:")}{" "}{listing.moderationReason}</p>
                       )}
                     </div>
 
@@ -151,7 +151,7 @@ function GigsVacanciesModeration() {
                           onClick={() => handleRestore(listing)}
                           className="text-xs font-medium text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 px-3 py-1.5 rounded-lg disabled:opacity-50"
                         >
-                          Restore
+                          {at("Restore")}
                         </button>
                       ) : (
                         <div className="flex flex-col items-end gap-1.5 w-48">
@@ -159,7 +159,7 @@ function GigsVacanciesModeration() {
                             type="text"
                             value={reasonDraft[listing.id] ?? ''}
                             onChange={(e) => setReasonDraft((prev) => ({ ...prev, [listing.id]: e.target.value }))}
-                            placeholder="Reason (optional)"
+                            placeholder={at("Reason (optional)")}
                             className="w-full text-xs rounded-lg border border-gray-300 dark:border-slate-700 dark:bg-slate-900/60 dark:text-white dark:placeholder-slate-500 px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-rose-400"
                           />
                           <button
@@ -167,7 +167,7 @@ function GigsVacanciesModeration() {
                             onClick={() => handleRemove(listing)}
                             className="text-xs font-medium text-rose-700 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-300 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 px-3 py-1.5 rounded-lg disabled:opacity-50"
                           >
-                            Remove
+                            {at("Remove")}
                           </button>
                         </div>
                       )}

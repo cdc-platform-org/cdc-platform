@@ -10,6 +10,7 @@ import {
   FeeScheduleRow,
 } from '../../src/services/adminCommissionsService';
 
+import { at } from '../../src/i18n/admin';
 const SERVICE_TYPE_LABEL: Record<PlatformFeeServiceType, string> = {
   GIG_UNVERIFIED: 'შეკვეთა/გიგი — არავერიფიცირებული ფრილანსერი',
   GIG_VERIFIED: 'შეკვეთა/გიგი — ვერიფიცირებული ფრილანსერი',
@@ -161,11 +162,11 @@ export default function AdminCommissionsPage() {
     <AdminGuard requiredTiers={['SUPER_ADMIN']}>
       <AdminLayout>
         <Head>
-          <title>Commissions & Limits | Admin</title>
+          <title>{at("Commissions & Limits | Admin")}</title>
         </Head>
         <div className="mb-8">
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">საკომისიოები & გამოქვეყნების ლიმიტები</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Restricted to SuperAdmin.</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{at("Restricted to SuperAdmin.")}</p>
         </div>
 
         {loading ? (

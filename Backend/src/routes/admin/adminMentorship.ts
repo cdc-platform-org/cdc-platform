@@ -26,6 +26,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { mentorAvailabilityRuleSchema, mentorProfileSchema, attachRecordingSchema } from '../../schemas/adminSchemas';
 import { resolveMentorshipDisputeSchema } from '../../schemas/mentorshipSchemas';
 import { uploadImage } from '../../services/integrations/imageStorage';
@@ -35,7 +36,7 @@ import { resolveMentorshipDispute, MentorshipEscrowError } from '../../services/
 import { logAdminAction } from '../../services/account/auditLogService';
 
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'));
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'), hideMoneyFromNonSuperAdmin);
 
 const userSelect = { select: { id: true, name: true, email: true } };
 
@@ -366,7 +367,15 @@ router.get('/bookings', async (_req: Request, res: Response) => {
     },
     orderBy: { scheduledAt: 'desc' },
   });
-  res.json({ data: bookings });
+  // sessionStatus carries the "is this session confirmed" signal without any
+  // money detail, so it survives hideMoneyFromNonSuperAdmin (which strips
+  // bogPayment/stripePayment for non-SUPER_ADMIN tiers). Stripe-paid
+  // bookings have no bogPayment, hence the fallback chain.
+  const data = bookings.map((b) => ({
+    ...b,
+    sessionStatus: b.bogPayment?.status ?? b.stripePayment?.status ?? 'PENDING',
+  }));
+  res.json({ data });
 });
 
 // Attach/replace a pasted recording link — emails the student once, the
@@ -391,7 +400,8 @@ router.patch('/bookings/:id/recording', async (req: Request, res: Response) => {
 // confirmed the session; REFUND locks the funds without crediting anyone
 // (the real bank refund to the student still happens by hand through
 // BOG/Stripe's dashboard, same posture as gig dispute resolution).
-router.post('/bookings/:id/resolve-dispute', async (req: Request, res: Response) => {
+// Releases or locks escrowed money — SUPER_ADMIN only (money actions).
+router.post('/bookings/:id/resolve-dispute', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
   const result = resolveMentorshipDisputeSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 

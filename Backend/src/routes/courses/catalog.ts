@@ -8,6 +8,7 @@ import multer from 'multer';
 import path from 'path';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { uploadImage, deleteManagedImage } from '../../services/integrations/imageStorage';
 import { BunnyStorageUploadError } from '../../services/integrations/bunnyStorage';
 import { courseCreateSchema, courseUpdateSchema } from '../../schemas/courseSchemas';
@@ -128,7 +129,14 @@ router.get('/:id/syllabus', async (req, res) => {
   });
 });
 
-router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req, res) => {
+router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin, async (req, res) => {
+  // Prices are SUPER_ADMIN-only (moneyVisibility.ts already dropped any
+  // price the caller sent). A lower tier's course starts unpriced and as a
+  // DRAFT, so it can't go live as an accidental free course.
+  if (req.adminRole !== 'SUPER_ADMIN' && req.body && typeof req.body === 'object') {
+    req.body.originalPrice = 0;
+    req.body.status = 'DRAFT';
+  }
   const result = courseCreateSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
@@ -147,7 +155,7 @@ router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async
   res.status(201).json({ data: withCurrentPrice(course) });
 });
 
-router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req, res) => {
+router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin, async (req, res) => {
   const result = courseUpdateSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });
@@ -165,6 +173,17 @@ router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), asy
     result.data.isOnSale ?? existing.isOnSale
   );
   if (discountError) return res.status(400).json({ message: discountError });
+
+  // Publishing a still-unpriced course is a pricing decision — only
+  // SUPER_ADMIN may do it (already-published free courses stay editable).
+  if (
+    req.adminRole !== 'SUPER_ADMIN' &&
+    result.data.status === 'PUBLISHED' &&
+    existing.status !== 'PUBLISHED' &&
+    existing.originalPrice === 0
+  ) {
+    return res.status(403).json({ message: 'Only a Super Admin can publish a course that has no price yet.' });
+  }
 
   try {
     const course = await prisma.course.update({
@@ -184,7 +203,7 @@ router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), asy
   }
 });
 
-router.delete('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req, res) => {
+router.delete('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin, async (req, res) => {
   try {
     await prisma.course.delete({ where: { id: req.params.id } });
     res.status(204).send();
@@ -208,7 +227,7 @@ const thumbnailUpload = multer({
 router.post(
   '/:id/thumbnail',
   authenticate,
-  requireAdminRole('SUPER_ADMIN', 'MANAGER'),
+  requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin,
   (req: Request, res: Response, next: NextFunction) => {
     thumbnailUpload.single('thumbnail')(req, res, (err: any) => {
       if (!err) return next();
@@ -248,7 +267,7 @@ router.post(
 router.post(
   '/:id/cover-image',
   authenticate,
-  requireAdminRole('SUPER_ADMIN', 'MANAGER'),
+  requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin,
   (req: Request, res: Response, next: NextFunction) => {
     thumbnailUpload.single('coverImage')(req, res, (err: any) => {
       if (!err) return next();
@@ -288,7 +307,7 @@ router.post(
 router.post(
   '/:id/mentor-avatar',
   authenticate,
-  requireAdminRole('SUPER_ADMIN', 'MANAGER'),
+  requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin,
   (req: Request, res: Response, next: NextFunction) => {
     thumbnailUpload.single('mentorAvatar')(req, res, (err: any) => {
       if (!err) return next();

@@ -14,12 +14,13 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { logAdminAction } from '../../services/account/auditLogService';
 import { sendBusinessVerifiedEmail, sendBusinessRejectedEmail } from '../../services/integrations/emailService';
 import { resolveVerificationDocDeliveryUrl } from '../../services/account/verificationDocDelivery';
 
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin);
 
 const companySelect = {
   id: true,

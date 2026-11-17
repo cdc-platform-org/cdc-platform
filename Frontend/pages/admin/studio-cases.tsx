@@ -18,6 +18,7 @@ import {
   StudioCasePayload,
 } from '../../src/services/studioCaseService';
 
+import { at } from '../../src/i18n/admin';
 const emptyForm: StudioCasePayload = {
   title: '',
   clientName: '',
@@ -344,7 +345,7 @@ function AdminStudioCasesDashboard() {
                   value={form.category}
                   onChange={(e) => setForm({ ...form, category: e.target.value })}
                   className={inputClass}
-                  placeholder="Web Development"
+                  placeholder={at("Web Development")}
                 />
               </div>
             </div>
@@ -362,7 +363,7 @@ function AdminStudioCasesDashboard() {
                         : 'border-transparent text-gray-400 hover:text-gray-600'
                     }`}
                   >
-                    {tab === 'ka' ? '🇬🇪 ქართული' : '🇬🇧 English'}
+                    {tab === 'ka' ? '🇬🇪 ქართული' : at("🇬🇧 English")}
                   </button>
                 ))}
               </div>
@@ -405,33 +406,33 @@ function AdminStudioCasesDashboard() {
             ) : (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Title (EN)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{at("Title (EN)")}</label>
                   <input
                     type="text"
                     value={form.titleEn ?? ''}
                     onChange={(e) => setForm({ ...form, titleEn: e.target.value })}
                     className={inputClass}
-                    placeholder="Online Store Design"
+                    placeholder={at("Online Store Design")}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Short Description (EN)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{at("Short Description (EN)")}</label>
                   <RichTextEditor
                     rows={2}
                     value={form.descriptionEn ?? ''}
                     onChange={(value) => setForm({ ...form, descriptionEn: value })}
-                    placeholder="Short description shown on the card..."
+                    placeholder={at("Short description shown on the card...")}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                    Full Story (EN) <span className="text-gray-400 font-normal">(optional)</span>
+                    {at("Full Story (EN)")}{" "}<span className="text-gray-400 font-normal">{at("(optional)")}</span>
                   </label>
                   <RichTextEditor
                     rows={5}
                     value={form.fullStoryEn ?? ''}
                     onChange={(value) => setForm({ ...form, fullStoryEn: value })}
-                    placeholder="Detailed description of the project, challenges, and results..."
+                    placeholder={at("Detailed description of the project, challenges, and results...")}
                   />
                 </div>
               </>
@@ -500,7 +501,7 @@ function AdminStudioCasesDashboard() {
             </div>
           )}
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-gray-400">{at("Loading…")}</p>
           ) : cases.length === 0 ? (
             <p className="text-sm text-gray-500">ქეისები ჯერ არ არის დამატებული.</p>
           ) : (
@@ -522,7 +523,7 @@ function AdminStudioCasesDashboard() {
                       )}
                       {item.isFeatured && (
                         <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded flex items-center gap-1">
-                          <Star size={10} fill="currentColor" /> Featured
+                          <Star size={10} fill="currentColor" /> {at("Featured")}
                         </span>
                       )}
                     </div>

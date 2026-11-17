@@ -42,6 +42,8 @@ import { formatPrice } from '../../src/utils/coursePricing';
 import ProductTemplatePanel from '../../src/components/admin/ProductTemplatePanel';
 import ProductPricingPanel from '../../src/components/admin/ProductPricingPanel';
 
+import { adminLocale, at, atEnum, atf, getAdminLang } from '../../src/i18n/admin';
+import { useCanSeeMoney } from '../../src/components/admin/useCanSeeMoney';
 // Bilingual because this admin page is English-only while its editors work in
 // Georgian. Why 4:3 + centre: the store detail gallery is 4:3 and the store
 // card is 16:9 (crops top/bottom) — see imageRatioCheck.ts.
@@ -98,43 +100,43 @@ function BilingualTitleDescriptionFields({
                 tab === t ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-400 hover:text-gray-600'
               }`}
             >
-              {t === 'ka' ? '🇬🇪 Title/Description (KA)' : '🇬🇧 Title/Description (EN)'}
-              {t === 'en' && hasEnglishContent && <span className="ml-1 text-emerald-500" title="English content set">●</span>}
+              {t === 'ka' ? at("🇬🇪 Title/Description (KA)") : at("🇬🇧 Title/Description (EN)")}
+              {t === 'en' && hasEnglishContent && <span className="ml-1 text-emerald-500" title={at("English content set")}>●</span>}
             </button>
           ))}
         </div>
-        <AITranslateButton onClick={onTranslate} loading={translating} label="✨ Auto Translate to English" loadingLabel="Translating…" className="mb-0" />
+        <AITranslateButton onClick={onTranslate} loading={translating} label={at("✨ Auto Translate to English")} loadingLabel="Translating…" className="mb-0" />
       </div>
       {translateError && <p className="text-xs text-red-600 mb-2">{translateError}</p>}
       {tab === 'ka' ? (
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Title (KA)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{at("Title (KA)")}</label>
             <input required={titleRequired} value={title} onChange={(e) => onTitleChange(e.target.value)} className={inputClassName} />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Description (KA)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{at("Description (KA)")}</label>
             <RichTextEditor required={descriptionRequired} rows={3} value={description} onChange={onDescriptionChange} />
           </div>
         </div>
       ) : (
         <div className="space-y-3">
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Title (EN)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{at("Title (EN)")}</label>
             <input
               value={titleEn}
               onChange={(e) => onTitleEnChange(e.target.value)}
-              placeholder="Falls back to the Georgian title on the storefront if left blank"
+              placeholder={at("Falls back to the Georgian title on the storefront if left blank")}
               className={inputClassName}
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Description (EN)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{at("Description (EN)")}</label>
             <RichTextEditor
               rows={3}
               value={descriptionEn}
               onChange={onDescriptionEnChange}
-              placeholder="Falls back to the Georgian description on the storefront if left blank"
+              placeholder={at("Falls back to the Georgian description on the storefront if left blank")}
             />
           </div>
         </div>
@@ -183,7 +185,7 @@ function ProductFilesEditor({
       const uploaded = await uploadProductFile(file);
       onChange(target === 'new' ? [...files, uploaded] : files.map((f, i) => (i === target ? uploaded : f)));
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'File upload failed.');
+      setError(err?.response?.data?.message ?? at("File upload failed."));
     } finally {
       setUploading(null);
       onBusyChange(false);
@@ -217,7 +219,7 @@ function ProductFilesEditor({
       }
     } catch (err: any) {
       tab?.close();
-      setError(err?.response?.data?.message ?? 'Could not open the file.');
+      setError(err?.response?.data?.message ?? at("Could not open the file."));
     } finally {
       setOpening(null);
     }
@@ -225,26 +227,26 @@ function ProductFilesEditor({
 
   const remove = (index: number) => {
     if (files.length <= 1) return;
-    if (!window.confirm(`Remove "${files[index].name}" from this product? Buyers will no longer get it (after you click Save).`)) return;
+    if (!window.confirm(atf("Remove \"{0}\" from this product? Buyers will no longer get it (after you click Save).", files[index].name))) return;
     onChange(files.filter((_, i) => i !== index));
   };
 
   return (
     <div>
       <label className="block text-xs font-medium text-gray-700 mb-1">
-        Product Files <span className="text-gray-400">({files.length})</span>
+        {at("Product Files")}{" "}<span className="text-gray-400">({files.length})</span>
       </label>
       <p className="text-[11px] text-gray-400 mb-2">
-        What buyers download after purchase (e.g. the printable file). The first one is the main file. Changes apply after Save.
+        {at("What buyers download after purchase (e.g. the printable file). The first one is the main file. Changes apply after Save.")}
       </p>
       {files.length === 0 && (
-        <p className="text-xs text-amber-600 mb-2">No file attached — upload one below before saving.</p>
+        <p className="text-xs text-amber-600 mb-2">{at("No file attached — upload one below before saving.")}</p>
       )}
       <ul className="space-y-1.5 mb-2">
         {files.map((f, i) => (
           <li key={`${i}-${f.url}`} className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 px-3 py-2">
             <span className="min-w-0 flex-1 truncate text-xs text-gray-800" title={f.name}>
-              {i === 0 && <span className="mr-1.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600">MAIN</span>}
+              {i === 0 && <span className="mr-1.5 rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-600">{at("MAIN")}</span>}
               {f.name}
             </span>
             <button
@@ -253,7 +255,7 @@ function ProductFilesEditor({
               disabled={opening !== null}
               className="text-[11px] font-medium text-gray-700 border border-gray-200 px-2 py-1 rounded-md hover:bg-gray-50 disabled:opacity-60"
             >
-              {opening === i ? 'Opening…' : 'View'}
+              {opening === i ? at("Opening…") : at("View")}
             </button>
             <button
               type="button"
@@ -261,16 +263,16 @@ function ProductFilesEditor({
               disabled={uploading !== null}
               className="text-[11px] font-medium text-indigo-700 border border-indigo-200 px-2 py-1 rounded-md hover:bg-indigo-50 disabled:opacity-60"
             >
-              {uploading === i ? 'Uploading…' : 'Replace'}
+              {uploading === i ? at("Uploading…") : at("Replace")}
             </button>
             <button
               type="button"
               onClick={() => remove(i)}
               disabled={files.length <= 1 || uploading !== null}
-              title={files.length <= 1 ? 'A product needs at least one file — use Replace instead.' : undefined}
+              title={files.length <= 1 ? at("A product needs at least one file — use Replace instead.") : undefined}
               className="text-[11px] font-medium text-red-600 border border-red-200 px-2 py-1 rounded-md hover:bg-red-50 disabled:opacity-40"
             >
-              Delete
+              {at("Delete")}
             </button>
           </li>
         ))}
@@ -281,8 +283,8 @@ function ProductFilesEditor({
           uploading={uploading === 'new'}
           selectedFileName={null}
           onFile={(file) => upload(file, 'new')}
-          label="Add another file — drag & drop or click to browse"
-          hint="ZIP, PDF, EPUB, RAR, 7Z, FIG, SKETCH, PSD, AI, DOC, DOCX, MP4, or MOV — up to 200MB"
+          label={at("Add another file — drag & drop or click to browse")}
+          hint={at("ZIP, PDF, EPUB, RAR, 7Z, FIG, SKETCH, PSD, AI, DOC, DOCX, MP4, or MOV — up to 200MB")}
           uploadingLabel="Uploading…"
         />
       )}
@@ -324,11 +326,14 @@ function ModerationProductCard({
   const [editVideoUrl, setEditVideoUrl] = useState(p.previewVideoUrl ?? '');
   const [editVideoUploading, setEditVideoUploading] = useState(false);
   const [editToolRoute, setEditToolRoute] = useState(p.toolRoute ?? '');
-  const [editPrice, setEditPrice] = useState((p.price / 100).toFixed(2));
+  // Prices are SUPER_ADMIN-only: other tiers get products without `price`
+  // from the API and never see or send a price.
+  const canSeeMoney = useCanSeeMoney();
+  const [editPrice, setEditPrice] = useState(p.price != null ? (p.price / 100).toFixed(2) : '');
   const editPriceMinor = Math.round(Number(editPrice) * 100);
-  const priceError = !editPrice.trim() || !Number.isFinite(Number(editPrice)) || Number(editPrice) < 0
+  const priceError = !canSeeMoney ? null : !editPrice.trim() || !Number.isFinite(Number(editPrice)) || Number(editPrice) < 0
     || !Number.isSafeInteger(editPriceMinor) || editPriceMinor > 2147483647
-    ? 'Enter a valid non-negative price in GEL.'
+    ? at('Enter a valid non-negative price in GEL.')
     : null;
   const [editFiles, setEditFiles] = useState<ProductFile[]>(() => productFilesOf(p));
   const [editFilesBusy, setEditFilesBusy] = useState(false);
@@ -368,7 +373,7 @@ function ModerationProductCard({
     setEditPreviewImages(p.previewImages);
     setEditVideoUrl(p.previewVideoUrl ?? '');
     setEditToolRoute(p.toolRoute ?? '');
-    setEditPrice((p.price / 100).toFixed(2));
+    setEditPrice(p.price != null ? (p.price / 100).toFixed(2) : '');
     setEditFiles(productFilesOf(p));
     setUseCustomSteps(!!p.howItWorksSteps);
     setSteps(p.howItWorksSteps ?? [emptyHowItWorksStep(), emptyHowItWorksStep(), emptyHowItWorksStep()]);
@@ -378,10 +383,10 @@ function ModerationProductCard({
   const handleAutoTranslate = async () => {
     setTranslateError(null);
     if (!title.trim() || !description.trim()) {
-      setTranslateError('Enter a Georgian title and description before translating.');
+      setTranslateError(at("Enter a Georgian title and description before translating."));
       return;
     }
-    if ((titleEn.trim() || descriptionEn.trim()) && !window.confirm('This will overwrite the existing English title/description. Continue?')) {
+    if ((titleEn.trim() || descriptionEn.trim()) && !window.confirm(at("This will overwrite the existing English title/description. Continue?"))) {
       return;
     }
     setTranslating(true);
@@ -391,7 +396,7 @@ function ModerationProductCard({
       setDescriptionEn(translated.descriptionEn);
     } catch (err: any) {
       // Existing titleEn/descriptionEn are left exactly as they were.
-      setTranslateError(err?.response?.data?.message ?? 'Translation failed. Please try again.');
+      setTranslateError(err?.response?.data?.message ?? at("Translation failed. Please try again."));
     } finally {
       setTranslating(false);
     }
@@ -403,7 +408,7 @@ function ModerationProductCard({
     setSaving(true);
     try {
       await onSave({
-        priceMinor: editPriceMinor,
+        ...(canSeeMoney ? { priceMinor: editPriceMinor } : {}),
         title,
         description,
         titleEn: titleEn.trim() || null,
@@ -446,9 +451,9 @@ function ModerationProductCard({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-600">{p.category}</span>
-          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${STATUS_BADGE[p.status ?? 'PENDING']}`}>{p.status}</span>
+          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${STATUS_BADGE[p.status ?? 'PENDING']}`}>{atEnum(p.status)}</span>
           {p.createdByAgent && (
-            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-indigo-600 text-white" title="Created by the AI product agent — see /admin/product-agent">
+            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-indigo-600 text-white" title={at("Created by the AI product agent — see /admin/product-agent")}>
               AI აგენტი
             </span>
           )}
@@ -473,23 +478,23 @@ function ModerationProductCard({
               recommendedSize={PRODUCT_IMAGE_SIZE}
               bilingualWarnings
               labels={{
-                coverLabel: 'Cover Image',
-                coverHint: 'Click or drop to replace',
+                coverLabel: at('Cover Image'),
+                coverHint: at('Click or drop to replace'),
                 coverSizeHint: COVER_SIZE_HINT,
-                galleryLabel: 'Screenshots',
+                galleryLabel: at('Screenshots'),
                 gallerySizeHint: GALLERY_SIZE_HINT,
-                addMore: 'Add more',
+                addMore: at('Add more'),
                 uploading: 'Uploading…',
                 remove: 'Remove',
-                uploadFailed: 'Upload failed.',
+                uploadFailed: at('Upload failed.'),
               }}
             />
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Demo Video (optional)</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{at("Demo Video (optional)")}</label>
               <input
                 value={editVideoUrl}
                 onChange={(e) => setEditVideoUrl(e.target.value)}
-                placeholder="YouTube/Vimeo link, or upload a file below"
+                placeholder={at("YouTube/Vimeo link, or upload a file below")}
                 className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm mb-2"
               />
               <FileDropzone
@@ -497,16 +502,17 @@ function ModerationProductCard({
                 uploading={editVideoUploading}
                 selectedFileName={editVideoUrl ? assetFilenameFromUrl(editVideoUrl) : null}
                 onFile={handleEditVideoFile}
-                label="Upload video"
-                hint="MP4 or MOV, up to 50MB"
+                label={at("Upload video")}
+                hint={at("MP4 or MOV, up to 50MB")}
                 uploadingLabel="Uploading…"
               />
             </div>
 
             <ProductFilesEditor files={editFiles} onChange={setEditFiles} onBusyChange={setEditFilesBusy} />
 
+            {canSeeMoney && (
             <div>
-              <label htmlFor={`product-price-${p.id}`} className="block text-xs font-medium text-gray-700 mb-1">Price (₾ / GEL)</label>
+              <label htmlFor={`product-price-${p.id}`} className="block text-xs font-medium text-gray-700 mb-1">{at("Price (₾ / GEL)")}</label>
               <input
                 id={`product-price-${p.id}`}
                 type="number"
@@ -522,33 +528,34 @@ function ModerationProductCard({
               />
               {priceError && <p id={`product-price-error-${p.id}`} role="alert" className="text-xs text-red-600 mt-1">{priceError}</p>}
             </div>
+            )}
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Tool Route (optional)</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">{at("Tool Route (optional)")}</label>
               <input
                 value={editToolRoute}
                 onChange={(e) => setEditToolRoute(e.target.value)}
-                placeholder="e.g. /dashboard/tools/chatbot-builder — leave blank for a normal downloadable file"
+                placeholder={at("e.g. /dashboard/tools/chatbot-builder — leave blank for a normal downloadable file")}
                 className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
               />
               <p className="text-[11px] text-gray-400 mt-1">
-                If set, the storefront page shows a "Launch Tool" button linking here instead of a download, once purchased.
+                {at("If set, the storefront page shows a \"Launch Tool\" button linking here instead of a download, once purchased.")}
               </p>
             </div>
 
             <div className="rounded-lg border border-gray-200 p-3">
               <label className="flex items-center gap-2 text-xs font-semibold text-gray-700 mb-1 cursor-pointer">
                 <input type="checkbox" checked={useCustomSteps} onChange={(e) => setUseCustomSteps(e.target.checked)} />
-                Custom "How it Works" steps for this listing
+                {at("Custom \"How it Works\" steps for this listing")}
               </label>
               <p className="text-[11px] text-gray-400 mb-3">
-                Unchecked = the storefront page's generic 3-step copy. Checked = exactly these 3 steps, both languages.
+                {at("Unchecked = the storefront page's generic 3-step copy. Checked = exactly these 3 steps, both languages.")}
               </p>
               {useCustomSteps && (
                 <div className="space-y-3">
                   {steps.map((step, i) => (
                     <div key={i} className="rounded-lg bg-gray-50 border border-gray-200 p-3 space-y-2">
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] font-bold text-gray-400 shrink-0">STEP {i + 1}</span>
+                        <span className="text-[11px] font-bold text-gray-400 shrink-0">{at("STEP")}{" "}{i + 1}</span>
                         <select
                           value={step.icon}
                           onChange={(e) => updateStep(i, { icon: e.target.value as HowItWorksStep['icon'] })}
@@ -569,7 +576,7 @@ function ModerationProductCard({
                         <input
                           value={step.titleEn}
                           onChange={(e) => updateStep(i, { titleEn: e.target.value })}
-                          placeholder="Title (EN)"
+                          placeholder={at("Title (EN)")}
                           className="rounded-md border border-gray-300 px-2.5 py-1.5 text-xs"
                         />
                       </div>
@@ -584,14 +591,14 @@ function ModerationProductCard({
                         <textarea
                           value={step.bodyEn}
                           onChange={(e) => updateStep(i, { bodyEn: e.target.value })}
-                          placeholder="Description (EN)"
+                          placeholder={at("Description (EN)")}
                           rows={2}
                           className="rounded-md border border-gray-300 px-2.5 py-1.5 text-xs"
                         />
                       </div>
                     </div>
                   ))}
-                  {!stepsValid && <p className="text-[11px] text-red-600">All 3 steps need both a title and description in both languages.</p>}
+                  {!stepsValid && <p className="text-[11px] text-red-600">{at("All 3 steps need both a title and description in both languages.")}</p>}
                 </div>
               )}
             </div>
@@ -603,10 +610,10 @@ function ModerationProductCard({
                 disabled={saving || !!priceError || editFilesBusy || editFiles.length === 0 || (useCustomSteps && !stepsValid)}
                 className="text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
               >
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? at("Saving…") : at("Save")}
               </button>
               <button type="button" onClick={() => setEditing(false)} className="text-xs font-medium text-gray-600 px-3 py-1.5 rounded-lg border border-gray-200">
-                Cancel
+                {at("Cancel")}
               </button>
             </div>
           </div>
@@ -618,8 +625,8 @@ function ModerationProductCard({
         )}
 
         <p className="text-xs text-gray-500">
-          {p.price === 0 ? (
-            'Free'
+          {!canSeeMoney ? null : p.price === 0 ? (
+            at("Free")
           ) : p.saleActive ? (
             <>
               <s className="text-gray-400">{formatPrice(p.price)}</s> {formatPrice(p.currentPrice)}{' '}
@@ -627,39 +634,38 @@ function ModerationProductCard({
             </>
           ) : (
             formatPrice(p.price)
-          )}{' '}
-          · {p.downloadsCount} downloads · {LICENSE_LABELS[p.licenseType].en}
-          {p.submittedBy && <> · Submitted by {p.submittedBy.name} ({p.submittedBy.email})</>}
+          )}{canSeeMoney ? ' · ' : ''}{p.downloadsCount} {at("downloads ·")}{" "}{getAdminLang() === 'ka' ? LICENSE_LABELS[p.licenseType].ka : LICENSE_LABELS[p.licenseType].en}
+          {p.submittedBy && <> {at("· Submitted by")}{" "}{p.submittedBy.name} ({p.submittedBy.email})</>}
         </p>
-        {p.status === 'REJECTED' && p.rejectionReason && <p className="text-xs text-red-500 mt-1">Reason: {p.rejectionReason}</p>}
-        {p.status === 'NEEDS_REVISION' && p.rejectionReason && <p className="text-xs text-orange-600 mt-1">Requested changes: {p.rejectionReason}</p>}
+        {p.status === 'REJECTED' && p.rejectionReason && <p className="text-xs text-red-500 mt-1">{at("Reason:")}{" "}{p.rejectionReason}</p>}
+        {p.status === 'NEEDS_REVISION' && p.rejectionReason && <p className="text-xs text-orange-600 mt-1">{at("Requested changes:")}{" "}{p.rejectionReason}</p>}
         {p.aiReviewedAt && (
           <div className="mt-1.5 rounded-lg bg-indigo-50 border border-indigo-100 px-2.5 py-1.5">
             <p className="text-[10px] font-bold uppercase tracking-wide text-indigo-500 mb-0.5">
-              🤖 AI Review — Score {p.aiReviewScore} · Confidence {p.aiReviewConfidence}
+              {at("🤖 AI Review — Score")}{" "}{p.aiReviewScore} {at("· Confidence")}{" "}{p.aiReviewConfidence}
             </p>
             <p className="text-[11px] text-indigo-700">{p.aiReviewReasoning}</p>
           </div>
         )}
 
-        {showPurchases && (
+        {canSeeMoney && showPurchases && (
           <div className="mt-2 rounded-lg border border-gray-200 p-2">
             {loadingPurchases ? (
-              <p className="text-xs text-gray-400">Loading…</p>
+              <p className="text-xs text-gray-400">{at("Loading…")}</p>
             ) : !purchases || purchases.length === 0 ? (
-              <p className="text-xs text-gray-400">No purchases yet.</p>
+              <p className="text-xs text-gray-400">{at("No purchases yet.")}</p>
             ) : (
               <table className="w-full text-xs">
                 <tbody>
                   {purchases.map((pu) => (
                     <tr key={pu.id} className="border-b last:border-0 border-gray-100">
                       <td className="py-1 pr-2 text-gray-700">{pu.user.name} ({pu.user.email})</td>
-                      <td className="py-1 pr-2 text-gray-500">{pu.paymentStatus}</td>
+                      <td className="py-1 pr-2 text-gray-500">{atEnum(pu.paymentStatus)}</td>
                       <td className="py-1 text-right font-medium">
                         {pu.downloadedAt ? (
-                          <span className="text-emerald-600">Downloaded {new Date(pu.downloadedAt).toLocaleDateString()}</span>
+                          <span className="text-emerald-600">{at("Downloaded")}{" "}{new Date(pu.downloadedAt).toLocaleDateString(adminLocale())}</span>
                         ) : (
-                          <span className="text-gray-400">Not downloaded</span>
+                          <span className="text-gray-400">{at("Not downloaded")}</span>
                         )}
                       </td>
                     </tr>
@@ -670,33 +676,37 @@ function ModerationProductCard({
           </div>
         )}
         {showTemplate && <ProductTemplatePanel productId={p.id} />}
-        {showPricing && <ProductPricingPanel product={p} onSave={onSave} onClose={() => setShowPricing(false)} />}
+        {canSeeMoney && showPricing && <ProductPricingPanel product={p} onSave={onSave} onClose={() => setShowPricing(false)} />}
       </div>
       {!editing && (
         <div className="flex flex-col gap-2 shrink-0 justify-center">
           <button type="button" onClick={startEdit} disabled={acting} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 disabled:opacity-60">
-            Edit
+            {at("Edit")}
           </button>
-          <button
-            type="button"
-            onClick={() => setShowPricing((v) => !v)}
-            disabled={acting}
-            className="text-xs font-medium text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 disabled:opacity-60"
-          >
-            ფასი / ფასდაკლება
-          </button>
-          <button type="button" onClick={togglePurchases} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
-            {showPurchases ? 'Hide Purchases' : 'Purchases'}
-          </button>
+          {canSeeMoney && (
+            <>
+              <button
+                type="button"
+                onClick={() => setShowPricing((v) => !v)}
+                disabled={acting}
+                className="text-xs font-medium text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg hover:bg-indigo-50 disabled:opacity-60"
+              >
+                {at("Price / Discount")}
+              </button>
+              <button type="button" onClick={togglePurchases} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
+                {showPurchases ? at("Hide Purchases") : at("Purchases")}
+              </button>
+            </>
+          )}
           <button type="button" onClick={() => setShowTemplate((v) => !v)} className="text-xs font-medium text-gray-700 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50">
-            {showTemplate ? 'Hide Template' : 'Editable Template'}
+            {showTemplate ? at("Hide Template") : at("Editable Template")}
           </button>
           <button
             type="button"
             onClick={() => setShowLaunchKit(true)}
             className="flex items-center justify-center gap-1 text-xs font-medium text-white bg-gradient-to-r from-cyan-500 to-purple-600 px-3 py-1.5 rounded-lg hover:opacity-90"
           >
-            <Sparkles className="w-3.5 h-3.5" /> Launch Kit
+            <Sparkles className="w-3.5 h-3.5" /> {at("Launch Kit")}
           </button>
           {p.status === 'ARCHIVED' ? (
             <button
@@ -725,7 +735,7 @@ function ModerationProductCard({
                 disabled={acting}
                 className="text-xs font-medium text-white bg-emerald-600 px-3 py-1.5 rounded-lg hover:bg-emerald-700 disabled:opacity-60"
               >
-                Approve
+                {at("Approve")}
               </button>
               <button
                 type="button"
@@ -733,7 +743,7 @@ function ModerationProductCard({
                 disabled={acting}
                 className="text-xs font-medium text-white bg-orange-500 px-3 py-1.5 rounded-lg hover:bg-orange-600 disabled:opacity-60"
               >
-                Request Changes
+                {at("Request Changes")}
               </button>
               <button
                 type="button"
@@ -741,7 +751,7 @@ function ModerationProductCard({
                 disabled={acting}
                 className="text-xs font-medium text-white bg-red-600 px-3 py-1.5 rounded-lg hover:bg-red-700 disabled:opacity-60"
               >
-                Reject
+                {at("Reject")}
               </button>
             </>
           )}
@@ -753,6 +763,7 @@ function ModerationProductCard({
 }
 
 function AdminProductsDashboard() {
+  const canSeeMoney = useCanSeeMoney();
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('PENDING');
@@ -783,7 +794,7 @@ function AdminProductsDashboard() {
       });
       setThresholdsSaved(true);
     } catch (err: any) {
-      setActionError(err?.response?.data?.message ?? 'Failed to save AI thresholds.');
+      setActionError(err?.response?.data?.message ?? at("Failed to save AI thresholds."));
     } finally {
       setSavingThresholds(false);
     }
@@ -846,10 +857,10 @@ function AdminProductsDashboard() {
   const handleAutoTranslate = async () => {
     setTranslateError(null);
     if (!title.trim() || !description.trim()) {
-      setTranslateError('Enter a Georgian title and description before translating.');
+      setTranslateError(at("Enter a Georgian title and description before translating."));
       return;
     }
-    if ((titleEn.trim() || descriptionEn.trim()) && !window.confirm('This will overwrite the existing English title/description. Continue?')) {
+    if ((titleEn.trim() || descriptionEn.trim()) && !window.confirm(at("This will overwrite the existing English title/description. Continue?"))) {
       return;
     }
     setTranslating(true);
@@ -859,7 +870,7 @@ function AdminProductsDashboard() {
       setDescriptionEn(translated.descriptionEn);
     } catch (err: any) {
       // Existing titleEn/descriptionEn are left exactly as they were.
-      setTranslateError(err?.response?.data?.message ?? 'Translation failed. Please try again.');
+      setTranslateError(err?.response?.data?.message ?? at("Translation failed. Please try again."));
     } finally {
       setTranslating(false);
     }
@@ -901,7 +912,7 @@ function AdminProductsDashboard() {
       setSaleEndsAt('');
       await load();
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? 'Failed to create product.');
+      setError(err?.response?.data?.message ?? at("Failed to create product."));
     } finally {
       setSubmitting(false);
     }
@@ -915,7 +926,7 @@ function AdminProductsDashboard() {
       setFileUrl(uploaded.url);
       setFileName(uploaded.name);
     } catch (err: any) {
-      setFileUploadError(err?.response?.data?.message ?? 'File upload failed.');
+      setFileUploadError(err?.response?.data?.message ?? at("File upload failed."));
     } finally {
       setFileUploading(false);
     }
@@ -928,14 +939,14 @@ function AdminProductsDashboard() {
       const updated = await approveProduct(id);
       setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
     } catch (err: any) {
-      setActionError(err?.response?.data?.message ?? 'Failed to approve.');
+      setActionError(err?.response?.data?.message ?? at("Failed to approve."));
     } finally {
       setActingId(null);
     }
   };
 
   const handleReject = async (id: string) => {
-    const reason = window.prompt('Rejection reason (shown to the submitter):');
+    const reason = window.prompt(at("Rejection reason (shown to the submitter):"));
     if (!reason) return;
     setActionError(null);
     setActingId(id);
@@ -943,14 +954,14 @@ function AdminProductsDashboard() {
       const updated = await rejectProduct(id, reason);
       setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
     } catch (err: any) {
-      setActionError(err?.response?.data?.message ?? 'Failed to reject.');
+      setActionError(err?.response?.data?.message ?? at("Failed to reject."));
     } finally {
       setActingId(null);
     }
   };
 
   const handleRequestChanges = async (id: string) => {
-    const feedback = window.prompt('What needs to change? (shown to the submitter, e.g. "Fix cover image resolution")');
+    const feedback = window.prompt(at("What needs to change? (shown to the submitter, e.g. \"Fix cover image resolution\")"));
     if (!feedback) return;
     setActionError(null);
     setActingId(id);
@@ -958,7 +969,7 @@ function AdminProductsDashboard() {
       const updated = await requestProductChanges(id, feedback);
       setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
     } catch (err: any) {
-      setActionError(err?.response?.data?.message ?? 'Failed to request changes.');
+      setActionError(err?.response?.data?.message ?? at("Failed to request changes."));
     } finally {
       setActingId(null);
     }
@@ -982,7 +993,7 @@ function AdminProductsDashboard() {
       const updated = await archiveProduct(p.id);
       setProducts((prev) => prev.map((x) => (x.id === p.id ? { ...x, ...updated } : x)));
     } catch (err: any) {
-      setActionError(err?.response?.data?.message ?? 'Failed to archive.');
+      setActionError(err?.response?.data?.message ?? at("Failed to archive."));
     } finally {
       setActingId(null);
     }
@@ -996,7 +1007,7 @@ function AdminProductsDashboard() {
       const updated = await restoreProduct(id);
       setProducts((prev) => prev.map((x) => (x.id === id ? { ...x, ...updated } : x)));
     } catch (err: any) {
-      setActionError(err?.response?.data?.message ?? 'Failed to restore.');
+      setActionError(err?.response?.data?.message ?? at("Failed to restore."));
     } finally {
       setActingId(null);
     }
@@ -1009,7 +1020,7 @@ function AdminProductsDashboard() {
       const updated = await updateProductAdmin(id, patch);
       setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
     } catch (err: any) {
-      setActionError(err?.response?.data?.message ?? 'Failed to save changes.');
+      setActionError(err?.response?.data?.message ?? at("Failed to save changes."));
       throw err;
     } finally {
       setActingId(null);
@@ -1019,24 +1030,24 @@ function AdminProductsDashboard() {
   return (
     <>
       <Head>
-        <title>Digital Store | Admin</title>
+        <title>{at("Digital Store | Admin")}</title>
       </Head>
       <div className="max-w-5xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Digital Store</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{at("Digital Store")}</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Review graduate/freelancer submissions, or list a new product directly (published immediately).
+            {at("Review graduate/freelancer submissions, or list a new product directly (published immediately).")}
           </p>
         </div>
 
         <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 mb-8">
-          <p className="text-sm font-semibold text-indigo-900 mb-1">🤖 AI Moderation Sensitivity</p>
+          <p className="text-sm font-semibold text-indigo-900 mb-1">{at("🤖 AI Moderation Sensitivity")}</p>
           <p className="text-xs text-indigo-700 mb-3">
-            New/resubmitted products are auto-reviewed by Gemini. Auto-APPROVE only fires when the verdict AND both thresholds below are met — otherwise it falls back to NEEDS_REVISION or a normal PENDING human review. Raising either threshold makes auto-approval rarer (the safer direction).
+            {at("New/resubmitted products are auto-reviewed by Gemini. Auto-APPROVE only fires when the verdict AND both thresholds below are met — otherwise it falls back to NEEDS_REVISION or a normal PENDING human review. Raising either threshold makes auto-approval rarer (the safer direction).")}
           </p>
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <label className="block text-[11px] font-medium text-indigo-700 mb-1">Min. Score (0-100)</label>
+              <label className="block text-[11px] font-medium text-indigo-700 mb-1">{at("Min. Score (0-100)")}</label>
               <input
                 type="number"
                 min="0"
@@ -1047,7 +1058,7 @@ function AdminProductsDashboard() {
               />
             </div>
             <div>
-              <label className="block text-[11px] font-medium text-indigo-700 mb-1">Min. Confidence (0-100)</label>
+              <label className="block text-[11px] font-medium text-indigo-700 mb-1">{at("Min. Confidence (0-100)")}</label>
               <input
                 type="number"
                 min="0"
@@ -1063,13 +1074,13 @@ function AdminProductsDashboard() {
               disabled={savingThresholds}
               className="text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg disabled:opacity-60"
             >
-              {savingThresholds ? 'Saving…' : thresholdsSaved ? 'Saved ✓' : 'Save'}
+              {savingThresholds ? at("Saving…") : thresholdsSaved ? at("Saved ✓") : at("Save")}
             </button>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-xl p-6 mb-8 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-900">Add Product Directly (Admin)</h2>
+          <h2 className="text-sm font-semibold text-gray-900">{at("Add Product Directly (Admin)")}</h2>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <BilingualTitleDescriptionFields
             title={title} description={description} titleEn={titleEn} descriptionEn={descriptionEn}
@@ -1080,17 +1091,21 @@ function AdminProductsDashboard() {
             inputClassName="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
           />
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{at("Category")}</label>
             <input
               required
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              placeholder="UI Kits / AI Prompts / Templates / E-Books"
+              placeholder={at("UI Kits / AI Prompts / Templates / E-Books")}
               className="w-full sm:w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
+          {!canSeeMoney && (
+            <p className="text-xs text-gray-500">{at("Price is set by a Super Admin. New products wait in Pending until it is set.")}</p>
+          )}
+          {canSeeMoney && (
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Price (GEL, 0 = free)</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">{at("Price (GEL, 0 = free)")}</label>
             <input
               required
               type="number"
@@ -1101,6 +1116,7 @@ function AdminProductsDashboard() {
               className="w-full sm:w-48 rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
+          )}
 
           <ImageGalleryUploader
             coverUrl={imageUrl}
@@ -1112,63 +1128,64 @@ function AdminProductsDashboard() {
             recommendedSize={PRODUCT_IMAGE_SIZE}
             bilingualWarnings
             labels={{
-              coverLabel: 'Main Cover Image (required)',
-              coverHint: imageUrl ? 'Click or drop to replace' : 'Click or drop an image',
+              coverLabel: at('Main Cover Image (required)'),
+              coverHint: imageUrl ? at('Click or drop to replace') : at('Click or drop an image'),
               coverSizeHint: COVER_SIZE_HINT,
-              galleryLabel: 'Additional Screenshots',
+              galleryLabel: at('Additional Screenshots'),
               gallerySizeHint: GALLERY_SIZE_HINT,
-              addMore: 'Add',
+              addMore: at('Add'),
               uploading: 'Uploading…',
               remove: 'Remove',
-              uploadFailed: 'Upload failed.',
+              uploadFailed: at('Upload failed.'),
             }}
           />
-          {!imageUrl && <p className="text-xs text-amber-600">Cover image is required.</p>}
+          {!imageUrl && <p className="text-xs text-amber-600">{at("Cover image is required.")}</p>}
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">Downloadable Product File</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">{at("Downloadable Product File")}</label>
             <FileDropzone
               accept={ASSET_ACCEPT}
               uploading={fileUploading}
               selectedFileName={fileName || assetFilenameFromUrl(fileUrl)}
               onFile={handleAssetFile}
-              label="Drag & drop the product file here, or click to browse"
-              hint="ZIP, PDF, EPUB, RAR, 7Z, FIG, SKETCH, PSD, AI, DOC, DOCX, MP4, or MOV — up to 200MB"
+              label={at("Drag & drop the product file here, or click to browse")}
+              hint={at("ZIP, PDF, EPUB, RAR, 7Z, FIG, SKETCH, PSD, AI, DOC, DOCX, MP4, or MOV — up to 200MB")}
               uploadingLabel="Uploading…"
             />
             {fileUploadError && <p className="text-xs text-red-600 mt-1">{fileUploadError}</p>}
-            {!fileUrl && !fileUploading && <p className="text-xs text-amber-600 mt-1">Required — only revealed to buyers after purchase</p>}
+            {!fileUrl && !fileUploading && <p className="text-xs text-amber-600 mt-1">{at("Required — only revealed to buyers after purchase")}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">License</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">{at("License")}</label>
             <select
               value={licenseType}
               onChange={(e) => setLicenseType(e.target.value as ProductLicenseType)}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             >
               {(Object.keys(LICENSE_LABELS) as ProductLicenseType[]).map((key) => (
-                <option key={key} value={key}>{LICENSE_LABELS[key].en}</option>
+                <option key={key} value={key}>{getAdminLang() === 'ka' ? LICENSE_LABELS[key].ka : LICENSE_LABELS[key].en}</option>
               ))}
             </select>
-            <p className="text-xs text-gray-400 mt-1">{LICENSE_LABELS[licenseType].descriptionEn}</p>
+            <p className="text-xs text-gray-400 mt-1">{getAdminLang() === 'ka' ? LICENSE_LABELS[licenseType].descriptionKa : LICENSE_LABELS[licenseType].descriptionEn}</p>
           </div>
 
+          {canSeeMoney && (
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Discounted Price (GEL, optional)</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">{at("Discounted Price (GEL, optional)")}</label>
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 value={discountedPrice}
                 onChange={(e) => setDiscountedPrice(e.target.value)}
-                placeholder="Leave blank for no sale"
+                placeholder={at("Leave blank for no sale")}
                 className={`w-full rounded-lg border px-3 py-2 text-sm ${discountError ? 'border-red-400' : 'border-gray-300'}`}
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Sale Ends At (optional)</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">{at("Sale Ends At (optional)")}</label>
               <input
                 type="datetime-local"
                 value={saleEndsAt}
@@ -1178,6 +1195,7 @@ function AdminProductsDashboard() {
               />
             </div>
           </div>
+          )}
           {discountError && <p className="text-xs text-red-600">{discountError}</p>}
 
           <button
@@ -1185,7 +1203,7 @@ function AdminProductsDashboard() {
             disabled={submitting || !imageUrl || !fileUrl || fileUploading || !!discountError}
             className="text-sm font-medium text-white bg-indigo-600 px-5 py-2.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
           >
-            {submitting ? 'Saving…' : 'Add Product'}
+            {submitting ? at("Saving…") : at("Add Product")}
           </button>
         </form>
 
@@ -1197,7 +1215,7 @@ function AdminProductsDashboard() {
               onClick={() => setStatusFilter(s)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${statusFilter === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}
             >
-              {s || 'All'}
+              {s || at("All")}
               {s === 'PENDING' && pendingCount > 0 ? ` (${pendingCount})` : ''}
             </button>
           ))}
@@ -1206,9 +1224,9 @@ function AdminProductsDashboard() {
         {actionError && <p className="text-sm text-red-600 mb-4">{actionError}</p>}
 
         {loading ? (
-          <p className="text-sm text-gray-400">Loading…</p>
+          <p className="text-sm text-gray-400">{at("Loading…")}</p>
         ) : visible.length === 0 ? (
-          <p className="text-sm text-gray-500">No products here.</p>
+          <p className="text-sm text-gray-500">{at("No products here.")}</p>
         ) : (
           <div className="space-y-3">
             {visible.map((p) => (

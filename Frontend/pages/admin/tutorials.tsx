@@ -8,6 +8,7 @@ import AdminLayout from '../../src/components/admin/AdminLayout';
 import { Tutorial } from '../../src/types/tutorial';
 import { getTutorials, createTutorial, updateTutorial, deleteTutorial, getEmbedUrl, TutorialPayload } from '../../src/services/tutorialService';
 
+import { at } from '../../src/i18n/admin';
 // The public /tutorials page groups by these four exact category strings
 // into its own dedicated section — any other category still gets
 // published, just lands in that page's "სხვა/Other" catch-all instead.
@@ -174,7 +175,7 @@ function AdminTutorialsDashboard() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  ვიდეოს ბმული <span className="text-gray-400 font-normal">(YouTube / Vimeo / Loom)</span>
+                  ვიდეოს ბმული <span className="text-gray-400 font-normal">{at("(YouTube / Vimeo / Loom)")}</span>
                 </label>
                 <input
                   type="text"
@@ -198,7 +199,7 @@ function AdminTutorialsDashboard() {
                       : 'border-transparent text-gray-400 hover:text-gray-600'
                   }`}
                 >
-                  {tab === 'ka' ? '🇬🇪 ქართული' : '🇬🇧 English'}
+                  {tab === 'ka' ? '🇬🇪 ქართული' : at("🇬🇧 English")}
                 </button>
               ))}
             </div>
@@ -237,23 +238,23 @@ function AdminTutorialsDashboard() {
             ) : (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Title (EN)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{at("Title (EN)")}</label>
                   <input
                     type="text"
                     value={form.titleEn ?? ''}
                     onChange={(e) => setForm({ ...form, titleEn: e.target.value })}
                     className={inputClass}
-                    placeholder="Falls back to Georgian if left blank"
+                    placeholder={at("Falls back to Georgian if left blank")}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Description (EN)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{at("Description (EN)")}</label>
                   <textarea
                     rows={2}
                     value={form.descriptionEn ?? ''}
                     onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })}
                     className={inputClass}
-                    placeholder="Falls back to Georgian if left blank"
+                    placeholder={at("Falls back to Georgian if left blank")}
                   />
                 </div>
               </>
@@ -323,7 +324,7 @@ function AdminTutorialsDashboard() {
             </div>
           )}
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-gray-400">{at("Loading…")}</p>
           ) : tutorials.length === 0 ? (
             <p className="text-sm text-gray-500">ტუტორიალები ჯერ არ არის დამატებული.</p>
           ) : (

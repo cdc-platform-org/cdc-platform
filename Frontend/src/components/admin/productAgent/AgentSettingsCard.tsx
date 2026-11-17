@@ -6,6 +6,7 @@ import { Play, Save } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { AgentCategory, AgentCategoryKey, ProductAgentSettings } from '../../../services/adminProductAgentService';
 
+import { at } from '../../../i18n/admin';
 interface Props {
   settings: ProductAgentSettings;
   categories: AgentCategory[];
@@ -87,7 +88,7 @@ export default function AgentSettingsCard({ settings, categories, busy, configur
                 <td className="py-2 pr-3">
                   <div className="font-medium text-gray-900">{locale === 'en' ? c.labelEn : c.labelKa}</div>
                   <div className="text-xs text-gray-400">{c.storeCategory}{c.needsFactCheck ? ' · ფაქტების შემოწმება სავალდებულოა' : ''}</div>
-                  {c.key === 'VECTOR_LOGOS' && <div className="mt-1 text-xs text-gray-500">{locale === 'en' ? 'SVG + transparent PNG · editable text, colors and symbol parts' : 'SVG + გამჭვირვალე PNG · ტექსტის, ფერებისა და სიმბოლოს ნაწილების რედაქტირება'}</div>}
+                  {c.key === 'VECTOR_LOGOS' && <div className="mt-1 text-xs text-gray-500">{locale === 'en' ? at("SVG + transparent PNG · editable text, colors and symbol parts") : 'SVG + გამჭვირვალე PNG · ტექსტის, ფერებისა და სიმბოლოს ნაწილების რედაქტირება'}</div>}
                 </td>
                 <td className="py-2 pr-3">
                   <input

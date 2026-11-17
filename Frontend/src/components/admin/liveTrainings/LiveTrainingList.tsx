@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Users } from 'lucide-react';
 import { LiveTraining } from '../../../types/liveTraining';
 
+import { adminLocale, at } from '../../../i18n/admin';
 interface LiveTrainingListProps {
   trainings: LiveTraining[];
   error: string | null;
@@ -27,7 +28,7 @@ export default function LiveTrainingList({
           <h2 className="text-base font-semibold text-gray-900 mb-4">ტრენინგები ({trainings.length})</h2>
           {error && <div className="mb-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">{error}</div>}
           {loading ? (
-            <p className="text-sm text-gray-400">Loading…</p>
+            <p className="text-sm text-gray-400">{at("Loading…")}</p>
           ) : trainings.length === 0 ? (
             <p className="text-sm text-gray-500">ტრენინგები ჯერ არ არის დამატებული.</p>
           ) : (
@@ -56,7 +57,7 @@ export default function LiveTrainingList({
                       </div>
                       <h3 className="font-semibold text-sm text-gray-900 truncate mt-1">{t.title}</h3>
                       <p className="text-xs text-gray-500">
-                        {new Date(t.scheduledAt).toLocaleString()} · {t.registeredCount} / {t.maxCapacity} რეგისტრირებული
+                        {new Date(t.scheduledAt).toLocaleString(adminLocale())} · {t.registeredCount} / {t.maxCapacity} რეგისტრირებული
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2 shrink-0">

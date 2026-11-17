@@ -35,6 +35,7 @@ import MediaFields from '../../../src/components/admin/liveTrainings/MediaFields
 import IakoAssistantFields from '../../../src/components/admin/liveTrainings/IakoAssistantFields';
 import LiveTrainingList from '../../../src/components/admin/liveTrainings/LiveTrainingList';
 
+import { at } from '../../../src/i18n/admin';
 // <input type="datetime-local"> gives "YYYY-MM-DDTHH:mm" (local time, no
 // timezone) — the backend requires full ISO 8601. Same UTC-anchoring
 // reasoning as PostingForm.tsx's toIsoDatetime for a date-only input,
@@ -590,7 +591,7 @@ function AdminLiveTrainingsDashboard() {
                     activeLangTab === tab ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-gray-400 hover:text-gray-600'
                   }`}
                 >
-                  {tab === 'ka' ? '🇬🇪 ქართული' : '🇬🇧 English'}
+                  {tab === 'ka' ? '🇬🇪 ქართული' : at("🇬🇧 English")}
                 </button>
               ))}
             </div>
@@ -617,11 +618,11 @@ function AdminLiveTrainingsDashboard() {
             ) : (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Title (EN)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{at("Title (EN)")}</label>
                   <input type="text" value={form.titleEn ?? ''} onChange={(e) => setForm({ ...form, titleEn: e.target.value })} className={inputClass} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Description (EN)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{at("Description (EN)")}</label>
                   <textarea rows={3} value={form.descriptionEn ?? ''} onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })} className={inputClass} />
                 </div>
               </>

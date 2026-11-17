@@ -14,7 +14,8 @@ import { refundEscrow } from '../../services/payments/escrowService';
 import { logAdminAction } from '../../services/account/auditLogService';
 
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+// Money-only area (amounts, discounts, escrow release/refund) — SUPER_ADMIN only.
+router.use(authenticate, requireAdminRole('SUPER_ADMIN'));
 
 const userSelect = { select: { id: true, name: true, email: true } };
 
