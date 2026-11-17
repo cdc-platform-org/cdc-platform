@@ -324,6 +324,12 @@ function ModerationProductCard({
   const [editVideoUrl, setEditVideoUrl] = useState(p.previewVideoUrl ?? '');
   const [editVideoUploading, setEditVideoUploading] = useState(false);
   const [editToolRoute, setEditToolRoute] = useState(p.toolRoute ?? '');
+  const [editPrice, setEditPrice] = useState((p.price / 100).toFixed(2));
+  const editPriceMinor = Math.round(Number(editPrice) * 100);
+  const priceError = !editPrice.trim() || !Number.isFinite(Number(editPrice)) || Number(editPrice) < 0
+    || !Number.isSafeInteger(editPriceMinor) || editPriceMinor > 2147483647
+    ? 'Enter a valid non-negative price in GEL.'
+    : null;
   const [editFiles, setEditFiles] = useState<ProductFile[]>(() => productFilesOf(p));
   const [editFilesBusy, setEditFilesBusy] = useState(false);
   const [useCustomSteps, setUseCustomSteps] = useState(!!p.howItWorksSteps);
@@ -362,6 +368,7 @@ function ModerationProductCard({
     setEditPreviewImages(p.previewImages);
     setEditVideoUrl(p.previewVideoUrl ?? '');
     setEditToolRoute(p.toolRoute ?? '');
+    setEditPrice((p.price / 100).toFixed(2));
     setEditFiles(productFilesOf(p));
     setUseCustomSteps(!!p.howItWorksSteps);
     setSteps(p.howItWorksSteps ?? [emptyHowItWorksStep(), emptyHowItWorksStep(), emptyHowItWorksStep()]);
@@ -391,10 +398,12 @@ function ModerationProductCard({
   };
 
   const handleSave = async () => {
+    if (priceError) return;
     if (useCustomSteps && !stepsValid) return;
     setSaving(true);
     try {
       await onSave({
+        priceMinor: editPriceMinor,
         title,
         description,
         titleEn: titleEn.trim() || null,
@@ -497,6 +506,23 @@ function ModerationProductCard({
             <ProductFilesEditor files={editFiles} onChange={setEditFiles} onBusyChange={setEditFilesBusy} />
 
             <div>
+              <label htmlFor={`product-price-${p.id}`} className="block text-xs font-medium text-gray-700 mb-1">Price (₾ / GEL)</label>
+              <input
+                id={`product-price-${p.id}`}
+                type="number"
+                step="0.01"
+                min="0"
+                max="21474836.47"
+                required
+                value={editPrice}
+                onChange={(e) => setEditPrice(e.target.value)}
+                aria-invalid={!!priceError}
+                aria-describedby={priceError ? `product-price-error-${p.id}` : undefined}
+                className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+              />
+              {priceError && <p id={`product-price-error-${p.id}`} role="alert" className="text-xs text-red-600 mt-1">{priceError}</p>}
+            </div>
+            <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Tool Route (optional)</label>
               <input
                 value={editToolRoute}
@@ -574,7 +600,7 @@ function ModerationProductCard({
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={saving || editFilesBusy || editFiles.length === 0 || (useCustomSteps && !stepsValid)}
+                disabled={saving || !!priceError || editFilesBusy || editFiles.length === 0 || (useCustomSteps && !stepsValid)}
                 className="text-xs font-medium text-white bg-indigo-600 px-3 py-1.5 rounded-lg hover:bg-indigo-700 disabled:opacity-60"
               >
                 {saving ? 'Saving…' : 'Save'}

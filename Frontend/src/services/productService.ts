@@ -254,6 +254,8 @@ export async function getAdminProducts(): Promise<(DigitalProduct & { submittedB
 }
 
 export interface UpdateProductPayload {
+  /** Integer tetri; mutually exclusive with the legacy GEL price field. */
+  priceMinor?: number;
   title?: string;
   description?: string;
   titleEn?: string | null;

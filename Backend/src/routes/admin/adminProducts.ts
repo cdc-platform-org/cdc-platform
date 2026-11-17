@@ -262,7 +262,9 @@ const updateSchema = z.object({
   descriptionEn: z.string().min(1).max(5000).optional().nullable(),
   category: z.string().min(1).max(100).optional(),
   // Major-unit GEL, same conversion as createSchema — omit to leave price unchanged.
-  price: z.number().min(0).optional(),
+  price: z.number().finite().min(0).max(21474836.47).optional(),
+  // Integer tetri for inline edits; preserve the existing GEL price contract.
+  priceMinor: z.number().finite().int().min(0).max(2147483647).optional(),
   imageUrl: z.string().url().optional(),
   previewImages: z.array(z.string().url()).max(15).optional(),
   previewVideoUrl: z.string().url().optional().nullable(),
@@ -279,6 +281,8 @@ const updateSchema = z.object({
   saleStartsAt: z.string().datetime().optional().nullable().or(z.literal('')),
   howItWorksSteps: howItWorksStepsSchema,
   toolRoute: z.string().max(500).optional().nullable(),
+}).refine((data) => data.price === undefined || data.priceMinor === undefined, {
+  message: 'Send either price (GEL) or priceMinor (tetri), not both.', path: ['priceMinor'],
 });
 
 // Lets an admin fix typos/formatting on a graduate/freelancer submission
@@ -304,12 +308,12 @@ router.put('/:id', async (req: Request, res: Response) => {
     'adminProducts'
   );
 
-  const { price, discountedPrice, saleEndsAt, saleStartsAt, howItWorksSteps, ...rest } = result.data;
+  const { price, priceMinor: requestedPriceMinor, discountedPrice, saleEndsAt, saleStartsAt, howItWorksSteps, ...rest } = result.data;
   const effectiveStart = saleStartsAt !== undefined ? saleStartsAt : existing.saleStartsAt?.toISOString() ?? null;
   const effectiveEnd = saleEndsAt !== undefined ? saleEndsAt : existing.saleEndsAt?.toISOString() ?? null;
   const saleWindowError = validateSaleWindow(effectiveStart, effectiveEnd);
   if (saleWindowError) return res.status(400).json({ message: saleWindowError });
-  const priceMinor = price !== undefined ? Math.round(price * 100) : existing.price;
+  const priceMinor = requestedPriceMinor ?? (price !== undefined ? Math.round(price * 100) : existing.price);
   const discountedPriceMinor =
     discountedPrice !== undefined ? (discountedPrice != null ? Math.round(discountedPrice * 100) : null) : existing.discountedPrice;
   if (discountedPriceMinor !== null) {
@@ -324,7 +328,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         ...rest,
         titleEn,
         descriptionEn,
-        ...(price !== undefined ? { price: priceMinor } : {}),
+        ...(price !== undefined || requestedPriceMinor !== undefined ? { price: priceMinor } : {}),
         discountedPrice: discountedPriceMinor,
         ...(saleEndsAt !== undefined ? { saleEndsAt: toPrismaSaleEndsAt(saleEndsAt) } : {}),
         ...(saleStartsAt !== undefined ? { saleStartsAt: toPrismaSaleEndsAt(saleStartsAt) } : {}),
