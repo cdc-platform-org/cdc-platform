@@ -3,6 +3,7 @@
  * Exports: isBusinessAiChatConfigured, BusinessAiChatError, ChatTurn, GenerateAgentReplyParams,
  * GenerateAgentReplyResult, generateAgentReply.
  */
+import { GEMINI_MODEL_FALLBACK_SEQUENCE, isGeminiCapacityError } from '../../utils/geminiModels';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GEMINI_API_KEY } from '../../utils/env';
 import { GEMINI_REQUEST_OPTIONS } from '../../utils/geminiRequestOptions';
@@ -19,8 +20,7 @@ import { callAzureChatCompletionFull } from './azureChatCompletionService';
 // only Azure OpenAI (primary/secondary region failover). A business whose
 // widget visitors hit this route while BOTH Azure regions were down got a
 // hard failure even with a valid, healthy GEMINI_API_KEY configured. Fixed
-// by adding a genuine Gemini fallback (same gemini-flash-latest ->
-// gemini-flash-lite-latest -> gemini-3.5-flash cascade used by
+// by adding a genuine Gemini fallback (same gemini-2.0-flash -> gemini-1.5-flash cascade used by
 // aiAgentService.ts/examProctoringService.ts) as the real last rung.
 // ============================================================
 
@@ -64,7 +64,6 @@ export interface GenerateAgentReplyResult {
 }
 
 const geminiClient = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
-const GEMINI_MODEL_FALLBACK_SEQUENCE = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash'];
 // Bumped 2 -> 3 — see aiAgentService.ts's identical change: with
 // AZURE_OPENAI_API_KEY unset in production, Gemini is the only real
 // provider this widget has right now.
@@ -72,8 +71,7 @@ const GEMINI_ATTEMPTS_PER_MODEL = 3;
 const GEMINI_RETRY_DELAY_MS = 1500;
 
 function isRetryableGeminiError(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err);
-  return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
+  return isGeminiCapacityError(err);
 }
 
 // AUDIT NOTE (added): a widget visitor waiting on a reply is watching a
@@ -120,6 +118,8 @@ async function callGeminiChatFallback(systemInstruction: string, history: ChatTu
         lastErr = err;
         console.error(`[businessAiChatService] Gemini ${modelName} attempt ${attempt}/${GEMINI_ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
         if (isModelNotFoundError(err)) break;
+        // Move to the fallback immediately on primary model capacity errors.
+        if (modelName === GEMINI_MODEL_FALLBACK_SEQUENCE[0] && isGeminiCapacityError(err)) break;
         if (!isRetryableGeminiError(err)) break geminiLoop;
         if (attempt < GEMINI_ATTEMPTS_PER_MODEL) await new Promise((resolve) => setTimeout(resolve, GEMINI_RETRY_DELAY_MS));
       }

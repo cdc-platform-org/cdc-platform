@@ -12,6 +12,8 @@ import { clearCourseTutorCache } from '../../services/learning/courseTutorServic
 import { pingPrimaryAzure, pingSecondaryAzure, RegionPingResult } from '../../services/ai/azureChatCompletionService';
 import { purgeSystemJunk } from '../../services/account/systemJunkCleanupService';
 import { GEMINI_API_KEY } from '../../utils/env';
+import { GEMINI_MODEL_FALLBACK_SEQUENCE, isGeminiCapacityError } from '../../utils/geminiModels';
+import { GEMINI_REQUEST_OPTIONS } from '../../utils/geminiRequestOptions';
 import { logAdminAction } from '../../services/account/auditLogService';
 
 const router = Router();
@@ -60,14 +62,20 @@ router.post('/clear-cache', async (req: Request, res: Response) => {
 // would mask one region's own failure) so a real red/green status per
 // service is possible, not just "is the whole chain working."
 // ============================================================
-async function pingGemini(): Promise<RegionPingResult> {
+export async function pingGemini(): Promise<RegionPingResult> {
   if (!GEMINI_API_KEY) return { configured: false, ok: false, message: 'Not configured', latencyMs: 0 };
   const t0 = Date.now();
   try {
     const client = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = client.getGenerativeModel({ model: 'gemini-flash-latest' });
-    await model.generateContent('ping');
-    return { configured: true, ok: true, message: 'OK', latencyMs: Date.now() - t0 };
+    const [primary, fallback] = GEMINI_MODEL_FALLBACK_SEQUENCE;
+    try {
+      await client.getGenerativeModel({ model: primary }, GEMINI_REQUEST_OPTIONS).generateContent('ping');
+      return { configured: true, ok: true, message: `OK (${primary})`, latencyMs: Date.now() - t0 };
+    } catch (error) {
+      if (!isGeminiCapacityError(error)) throw error;
+      await client.getGenerativeModel({ model: fallback }, GEMINI_REQUEST_OPTIONS).generateContent('ping');
+      return { configured: true, ok: true, message: `OK (${fallback}; ${primary} unavailable)`, latencyMs: Date.now() - t0 };
+    }
   } catch (err) {
     return { configured: true, ok: false, message: err instanceof Error ? err.message : 'Unknown error', latencyMs: Date.now() - t0 };
   }

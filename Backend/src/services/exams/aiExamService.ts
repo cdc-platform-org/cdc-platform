@@ -89,14 +89,8 @@ Generate exactly ${params.questionCount} multiple-choice questions that test rea
 Respond with strict JSON matching this shape:
 {"questions": [{"topic": string, "question": string, "options": {"A": string, "B": string, "C": string, "D": string}, "correctAnswer": "A"|"B"|"C"|"D", "explanation": string}]}`;
 
-  // callTextModel() (aiAgentService.ts) already runs the full resilience
-  // chain: gemini-flash-latest → gemini-flash-lite-latest → gemini-3.5-flash
-  // (2 attempts each on a retryable 503/429), then falls through to Azure
-  // OpenAI (azureOpenAiService.ts) if that's configured and every Gemini
-  // model failed. A single Gemini hiccup — or a full Google-side outage, if
-  // Azure is set up — no longer surfaces as "გამოცდის გენერაცია ვერ
-  // მოხერხდა" here; the route's own FALLBACK_QUESTIONS static bank remains
-  // the last resort if this whole chain is exhausted or unconfigured.
+  // Shared text generation tries configured Azure providers, then Gemini
+  // (gemini-2.0-flash -> gemini-1.5-flash on 429/503 capacity errors).
   let raw: string;
   try {
     raw = await callTextModel(prompt, 0.7);

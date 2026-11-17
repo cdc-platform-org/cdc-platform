@@ -26,15 +26,8 @@ export class AiTranslateError extends Error {
   }
 }
 
-// Routes through aiAgentService.callTextModel() rather than calling Gemini
-// directly — that's the one place in this codebase with the confirmed-live
-// model fallback sequence (gemini-flash-latest -> gemini-flash-lite-latest
-// -> gemini-3.5-flash, with per-model retries), built after this exact
-// 'gemini-flash-latest' model was found intermittently 503ing ("high
-// demand") on this account. Pinning to a single alternate model instead
-// (e.g. gemini-2.5-flash) isn't viable either — that one now hard-404s
-// ("no longer available to new users"), confirmed live against this
-// project's API key.
+// Shared text generation uses gemini-2.0-flash with gemini-1.5-flash
+// fallback on capacity errors, alongside the existing Azure provider chain.
 async function generateTranslationJson(prompt: string): Promise<string> {
   try {
     return await callTextModel(prompt, 0.3);

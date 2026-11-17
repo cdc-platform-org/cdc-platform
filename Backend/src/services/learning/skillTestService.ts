@@ -11,7 +11,7 @@ import { isAzureOpenAiConfigured } from '../ai/azureOpenAiService';
 
 // Reuses the same JSON-validation posture as aiExamService.ts (the
 // course-certification exam generator) — see that file's comments for why
-// gemini-flash-latest specifically. Kept as a separate service rather than
+// gemini-2.0-flash specifically. Kept as a separate service rather than
 // extending aiExamService.ts because the question shape here is different
 // (adds a practical/open-ended question) and this also grades free-text
 // answers, which aiExamService.ts never does.
@@ -22,8 +22,7 @@ import { isAzureOpenAiConfigured } from '../ai/azureOpenAiService';
 // landing straight in the static GENERIC_FALLBACK_QUESTIONS bank (still
 // usable, but skips the AI-generated, skill-specific test unnecessarily
 // often). Now routed through aiAgentService.callTextModel(), the same
-// resilience chain (gemini-flash-latest -> gemini-flash-lite-latest ->
-// gemini-3.5-flash, then Azure OpenAI if configured) aiExamService.ts and
+// resilience chain (Azure, then gemini-2.0-flash -> gemini-1.5-flash) aiExamService.ts and
 // every other text-generation AI feature already uses.
 export function isSkillTestConfigured(): boolean {
   return !!GEMINI_API_KEY || isAzureOpenAiConfigured();

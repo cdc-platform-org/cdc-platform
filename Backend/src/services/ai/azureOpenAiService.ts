@@ -13,13 +13,8 @@ import {
   AZURE_OPENAI_DALLE_API_VERSION,
 } from '../../utils/env';
 
-// The 4th rung in the AI resilience chain — reached only after
-// examProctoringService.ts's/aiAgentService.ts's 3-model Gemini fallback
-// (gemini-flash-latest → gemini-flash-lite-latest → gemini-3.5-flash) has
-// already exhausted every model. A single-vendor outage (Google) no longer
-// takes down exam generation, grading, or the business AI agents once this
-// is configured. Deliberately a *cross-vendor* fallback, not another same-
-// vendor model — the whole point is not sharing Gemini's failure domain.
+// Cross-vendor fallback for exam proctoring after the shared Gemini pair
+// (gemini-2.0-flash -> gemini-1.5-flash) is exhausted.
 //
 // Same return shape as examProctoringService.ts's GeminiJsonResult
 // ({ raw, usage }) so callers on either side of the provider boundary don't

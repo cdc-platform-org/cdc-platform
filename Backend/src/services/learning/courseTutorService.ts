@@ -3,6 +3,7 @@
  * Exports: isCourseTutorConfigured, CourseTutorError, TutorChatTurn, GenerateTutorReplyParams,
  * clearCourseTutorCache, generateTutorReply.
  */
+import { GEMINI_MODEL_FALLBACK_SEQUENCE, isGeminiCapacityError } from '../../utils/geminiModels';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GEMINI_API_KEY } from '../../utils/env';
 import { GEMINI_REQUEST_OPTIONS } from '../../utils/geminiRequestOptions';
@@ -90,20 +91,11 @@ async function callAzureTutor(messages: ChatMessage[]): Promise<string> {
 }
 
 const geminiClient = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
-// AUDIT NOTE (fixed): this used to hit only 'gemini-flash-latest' for 2
-// total attempts — the weakest fallback of the three Gemini-cascade
-// services in this codebase (aiAgentService.ts/businessAiChatService.ts
-// both try 3 models). With AZURE_OPENAI_API_KEY unset in production (see
-// the isAzureOpenAiConfigured() skip below), Gemini is this feature's only
-// real provider, so a transient outage on gemini-flash-latest alone used to
-// take the whole tutor down with it. Same 3-model cascade as the other two
-// files now.
-const GEMINI_MODEL_FALLBACK_SEQUENCE = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash'];
+// Use the shared primary/fallback pair for interactive tutor replies.
 const GEMINI_ATTEMPTS_PER_MODEL = 3;
 
 function isRetryableGeminiError(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err);
-  return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
+  return isGeminiCapacityError(err);
 }
 
 function isModelNotFoundError(err: unknown): boolean {
@@ -138,6 +130,8 @@ async function callGeminiTutorFallback(systemInstruction: string, history: Tutor
         lastErr = err;
         console.error(`[courseTutorService] Gemini ${modelName} attempt ${attempt}/${GEMINI_ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
         if (isModelNotFoundError(err)) break;
+        // Move to the fallback immediately on primary model capacity errors.
+        if (modelName === GEMINI_MODEL_FALLBACK_SEQUENCE[0] && isGeminiCapacityError(err)) break;
         if (!isRetryableGeminiError(err)) break geminiLoop;
         if (attempt < GEMINI_ATTEMPTS_PER_MODEL) await sleep(BASE_RETRY_DELAY_MS);
       }

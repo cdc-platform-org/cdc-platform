@@ -107,7 +107,8 @@ test('summary resolves to enrolled course records', async () => {
   db.courseEnrollment.findMany.mockResolvedValue([{ courseId: 'course' }]);
   const response = await request('/readiness/my/summary');
   expect(response.status).toBe(200);
-  expect((await response.json()).records).toHaveLength(1);
+  const payload = await response.json() as { records: unknown[] };
+  expect(payload.records).toHaveLength(1);
 });
 test('students cannot assign lecturer marks', async () => {
   expect((await request('/readiness/course/lecturer-grade', { studentId: userId, lecturerScore: 100 })).status).toBe(403);
@@ -150,7 +151,8 @@ test('exam start and status enforce readiness on the server', async () => {
   expect((await request('/courses/course/exam/start', {})).status).toBe(403);
   expect(generateExamQuestions).not.toHaveBeenCalled();
   const response = await request('/courses/course/exam/status');
-  expect((await response.json()).data.canStart).toBe(false);
+  const payload = await response.json() as { data: { canStart: boolean } };
+  expect(payload.data.canStart).toBe(false);
 });
 test('server-persisted evidence, AI evaluation and faculty marks can reach 90%', async () => {
   record = { userId, courseId: 'course', aiMentorScore: 0, attendanceScore: 100, assignmentsScore: 100, lecturerScore: 100, totalScore: 75, lecturerName: 'faculty@example.com', lecturerEvaluatedById: 'faculty', updatedAt: new Date() };

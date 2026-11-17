@@ -6,6 +6,7 @@
  * PracticalGradeResult, gradePracticalAnswer, AiTextScoreResult, estimateAiTextScore,
  * StudyGuideResult, generateAdaptiveStudyGuide.
  */
+import { GEMINI_MODEL_FALLBACK_SEQUENCE, isGeminiCapacityError } from '../../utils/geminiModels';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import crypto from 'crypto';
 
@@ -62,15 +63,7 @@ export async function extractExamSourceFromImage(image: InlineImagePart): Promis
 
 const client = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
-// Same model fallback sequence as aiAgentService.callTextModel() — kept as
-// a local copy rather than calling that shared helper directly because this
-// file also needs the response's usageMetadata (for UsageRecord billing,
-// see billingService.recordExamGradingUsage), which callTextModel() doesn't
-// expose. 'gemini-flash-latest' alone was found intermittently 503ing
-// ("high demand") on this account; pinning to a single alternate model
-// isn't viable either — gemini-2.5-flash now hard-404s ("no longer
-// available to new users"), confirmed live against this project's API key.
-const MODEL_FALLBACK_SEQUENCE = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash'];
+// Uses the shared Gemini model order while retaining usage metadata for billing.
 const ATTEMPTS_PER_MODEL = 2;
 const RETRY_DELAY_MS = 1500;
 
@@ -85,8 +78,7 @@ export class ExamProctoringAiError extends Error {
 }
 
 function isRetryableGeminiError(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err);
-  return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
+  return isGeminiCapacityError(err);
 }
 
 // AUDIT NOTE (fixed): the "fail fast, don't burn through the other models"
@@ -120,7 +112,7 @@ export interface GeminiJsonResult {
 
 async function generateJson(prompt: string, temperature: number): Promise<GeminiJsonResult> {
   if (!client) {
-    // No Gemini key at all — Azure OpenAI (the 4th-rung cross-vendor
+    // No Gemini key at all — Azure OpenAI (the cross-vendor
     // fallback, see azureOpenAiService.ts) still counts as "configured" for
     // this feature if it's set up on its own, same as any Gemini model
     // succeeding would. Falls through to the identical not-configured error
@@ -131,14 +123,14 @@ async function generateJson(prompt: string, temperature: number): Promise<Gemini
 
   let lastErr: unknown;
   // A non-retryable error (bad key, quota hard-dead, etc.) stops the Gemini
-  // side immediately rather than burning through the other two models with
-  // an error that will obviously repeat identically on all three (they
+  // side immediately rather than burning through the remaining model with
+  // an error that will obviously repeat identically on both (they
   // share the same client/key) — but it still has to fall through to the
   // Azure attempt below, not throw from inside this loop, since that error
   // shape is exactly what a real Gemini-wide outage looks like in practice
   // (a 503/429 exhausting retries is the other, and both need the same
   // cross-vendor fallback).
-  geminiLoop: for (const modelName of MODEL_FALLBACK_SEQUENCE) {
+  geminiLoop: for (const modelName of GEMINI_MODEL_FALLBACK_SEQUENCE) {
     for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
       try {
         const model = client.getGenerativeModel(
@@ -159,13 +151,15 @@ async function generateJson(prompt: string, temperature: number): Promise<Gemini
         lastErr = err;
         console.error(`[examProctoringService] ${modelName} attempt ${attempt}/${ATTEMPTS_PER_MODEL} failed:`, err instanceof Error ? err.message : err);
         if (isModelNotFoundError(err)) break;
+        // Move to the fallback immediately on primary model capacity errors.
+        if (modelName === GEMINI_MODEL_FALLBACK_SEQUENCE[0] && isGeminiCapacityError(err)) break;
         if (!isRetryableGeminiError(err)) break geminiLoop;
         if (attempt < ATTEMPTS_PER_MODEL) await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
       }
     }
   }
   // Every Gemini model in the fallback chain failed — try the cross-vendor
-  // 4th rung before giving up. This is deliberately last, not first or
+  // fallback before giving up. This is deliberately last, not first or
   // interleaved: Gemini is cheaper/faster and already proven reliable
   // enough that it should win whenever it's up at all; Azure OpenAI only
   // needs to be there for the case Gemini itself (not just one model) is

@@ -6,6 +6,7 @@
  * OnboardingEmailContext, OnboardingEmailContent, generateOnboardingEmailContent, AiAgentSuiteTool,
  * generateAiAgentSuiteResponse.
  */
+import { GEMINI_MODEL_FALLBACK_SEQUENCE, isGeminiCapacityError } from '../../utils/geminiModels';
 import { z } from 'zod';
 import * as Sentry from '@sentry/node';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -168,9 +169,9 @@ function buildAzureMessageContent(parts: GeminiPart[]): string | Array<Record<st
 const MAX_ATTEMPTS = 3;
 
 // SECOND AUDIT NOTE (fixed): despite this function's name and the file-header
-// comment above claiming "text generation is Gemini" with a 3-model cascade,
+// comment above claiming "text generation is Gemini" with a two-model cascade,
 // this used to ONLY ever call Azure OpenAI — there was no Gemini SDK import
-// anywhere in this file. callTextModel()'s old "cross-vendor 4th rung"
+// anywhere in this file. callTextModel()'s old "cross-vendor fallback"
 // (generateJsonViaAzureOpenAI) made this worse, not better: that function
 // reads the exact same AZURE_OPENAI_API_KEY/ENDPOINT/DEPLOYMENT_NAME as the
 // "primary" region inside azureChatCompletionService.ts, so it silently
@@ -180,11 +181,10 @@ const MAX_ATTEMPTS = 3;
 // aiExamService.ts, the Business AI Agent Suite, onboarding/digest emails)
 // had zero real fallback despite GEMINI_API_KEY being configured and healthy.
 // Fixed by adding a genuine Gemini call below (callGeminiFallback, same
-// gemini-flash-latest -> gemini-flash-lite-latest -> gemini-3.5-flash model
+// gemini-2.0-flash -> gemini-1.5-flash model
 // cascade as examProctoringService.ts's generateJson) as the real last rung,
-// replacing the fake same-resource "4th rung" in callTextModel entirely.
+// replacing the fake same-resource "cross-vendor fallback" in callTextModel entirely.
 const geminiClient = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
-const GEMINI_MODEL_FALLBACK_SEQUENCE = ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash'];
 // Bumped 2 -> 3: with AZURE_OPENAI_API_KEY unset in production (see the
 // isAzureOpenAiConfigured() skip above), Gemini is currently the ONLY real
 // provider every AI-backed feature has — a transient 503 "high demand"
@@ -195,21 +195,11 @@ const GEMINI_MODEL_FALLBACK_SEQUENCE = ['gemini-flash-latest', 'gemini-flash-lit
 const GEMINI_ATTEMPTS_PER_MODEL = 3;
 
 function isRetryableGeminiError(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err);
-  return /\b(503|429)\b/.test(message) || /overloaded|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand/i.test(message);
+  return isGeminiCapacityError(err);
 }
 
-// AUDIT NOTE (fixed): Google periodically retires/renames a "-latest" model
-// alias (e.g. gemini-flash-latest returning "404 ... is not found for API
-// version v1beta, or is not supported for generateContent" — reproduced
-// live against the real API while investigating the English Tutor's
-// "Gemini request failed: 404 Resource not found" bug report). That 404 was
-// previously treated as a generic non-retryable failure and used to `break
-// geminiLoop` — aborting the ENTIRE Gemini fallback on the very first model
-// in GEMINI_MODEL_FALLBACK_SEQUENCE, even though the other two models in the
-// list were live and working. A model-not-found error is specific to THAT
-// model name, not the request, so it should advance to the next model in
-// the sequence instead of giving up on Gemini altogether.
+// A retired model may return 404; try the remaining model without retrying
+// the missing one. Authentication and other request errors still fail fast.
 function isModelNotFoundError(err: unknown): boolean {
   const status = (err as { status?: number })?.status;
   if (status === 404) return true;
@@ -257,6 +247,8 @@ async function callGeminiFallback(
         // next modelName — retrying the same nonexistent model wastes an
         // attempt, but the OTHER models in the sequence deserve a real shot.
         if (isModelNotFoundError(err)) break;
+        // Move to the fallback immediately on primary model capacity errors.
+        if (modelName === GEMINI_MODEL_FALLBACK_SEQUENCE[0] && isGeminiCapacityError(err)) break;
         if (!isRetryableGeminiError(err) && !(err instanceof SyntaxError)) break geminiLoop;
         if (attempt < GEMINI_ATTEMPTS_PER_MODEL) await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
       }

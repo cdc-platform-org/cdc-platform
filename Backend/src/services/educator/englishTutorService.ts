@@ -15,9 +15,8 @@ import { GEMINI_API_KEY } from '../../utils/env';
 // ============================================================
 // AI ENGLISH TUTOR — Phase 1 & 2 prompt engineering chain.
 //
-// Reuses aiAgentService.callTextModel (same gemini-flash-latest →
-// gemini-flash-lite-latest → gemini-3.5-flash → Azure OpenAI resilience
-// chain every other AI feature in this codebase goes through) rather than
+// Reuses aiAgentService.callTextModel (Azure, then the shared Gemini pair
+// gemini-2.0-flash -> gemini-1.5-flash on capacity errors) rather than
 // building a separate Gemini client — see that file's own comment for why.
 // Every generation function below validates Gemini's JSON output with zod
 // before it's ever persisted to a TutorLesson row, same "never trust raw
