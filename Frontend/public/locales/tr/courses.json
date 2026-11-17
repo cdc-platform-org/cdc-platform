@@ -3,7 +3,6 @@
   "enroll": "Şimdi Kayıt Ol →",
   "soldOut": "Kontenjan Doldu",
   "back": "Kursa dön",
-
   "title": "Kurslar",
   "subtitle": "Bir kurs seçin ve dijital bir kariyer inşa etmeye başlayın.",
   "listEnrolling": "Yükleniyor…",
@@ -36,7 +35,6 @@
   "showResultsPlural": "{{count}} sonucu göster",
   "showResultsCombined": "{{count}} kurs / aracı göster",
   "showResultsCombinedPlural": "{{count}} kurs / aracı göster",
-
   "notFound": "Kurs bulunamadı.",
   "enrollFree": "Ücretsiz Öğrenmeye Başla →",
   "detailEnrolling": "Yönlendiriliyor…",
@@ -62,7 +60,6 @@
   "promoApplied": "Promosyon kodu uygulandı",
   "promoRemove": "Kaldır",
   "promoInvalid": "Geçersiz veya süresi dolmuş kod",
-
   "overview": "Genel Bakış",
   "resources": "Kaynaklar",
   "assignment": "Ödev",
@@ -100,7 +97,6 @@
   "certLimitTitle": "Sertifika İndirme Sınırına Ulaşıldı",
   "certLimitSubtitle": "Güvenlik nedeniyle maksimum sertifika indirme sayısına ulaşıldı. Ekstra bir kopyaya ihtiyacınız varsa veya bir sorunuz varsa destek sohbetimize yazın.",
   "certLimitContactSupport": "Destek ile İletişime Geç",
-
   "notConfigured": "Bu kursun henüz bir sertifika sınavı yok.",
   "notComplete": "Sınava girmeden önce bu kursun tüm derslerini tamamlayın.",
   "goToLessons": "Derslere dön",
@@ -136,7 +132,6 @@
   "checkoutError": "Ödeme başlatılamadı. Lütfen tekrar deneyin.",
   "saleOffSuffix": "İNDİRİM",
   "signInToEnroll": "Bir kursa kayıt olmak için lütfen giriş yapın",
-
   "tabAll": "Tümü",
   "tabVideoCourses": "Video Kurslar",
   "tabLiveTrainings": "Canlı Eğitimler",
@@ -147,5 +142,80 @@
   "badgeLiveTraining": "CANLI EĞİTİM",
   "liveTrainingSeatsLeft": "{{count}} kontenjan kaldı",
   "liveTrainingSeatsLeftPlural": "{{count}} kontenjan kaldı",
-  "liveTrainingFull": "Dolu"
+  "liveTrainingFull": "Dolu",
+  "detailPage": {
+    "buy": "Satın al",
+    "watchTrailer": "Fragmanı izle",
+    "trailerUnavailable": "Fragman yakında",
+    "students": "{{count}} öğrenci",
+    "courseAccess": "Kendi hızında öğren",
+    "subscription": "Dijital Pazar'da yapay zekâ araçları",
+    "subscribe": "Yapay zekâ araçlarını keşfet",
+    "learn": "Neler öğreneceksin",
+    "instructorSoon": "Eğitmen bilgileri yakında",
+    "reviews": "Öğrenci yorumları",
+    "faq": "Sık sorulan sorular",
+    "navigation": "Kurs bölümleri",
+    "nav": {
+      "course": "Kurs",
+      "trailer": "Fragman",
+      "details": "Ayrıntılar",
+      "lessons": "Dersler",
+      "instructor": "Eğitmen"
+    },
+    "faqItems": {
+      "access": {
+        "question": "Öğrenmeye nasıl başlarım?",
+        "answer": "Giriş yap ve kursu satın al. Erişimin varsa “Öğrenmeye devam et”i seç."
+      },
+      "preview": {
+        "question": "Kursu önceden görebilir miyim?",
+        "answer": "Yukarıdaki fragmanı izle ya da müfredatta ücretsiz önizleme olarak işaretli dersleri aç."
+      },
+      "payment": {
+        "question": "Nasıl ödeme yapabilirim?",
+        "answer": "Satın alma panelinden uygun bir ödeme sağlayıcısı seç. Aktif indirimler ödemeden önce gösterilir."
+      }
+    },
+    "new": "Yeni"
+  },
+  "academy": {
+    "save": "{{title}} kaydet",
+    "unsave": "{{title}} kaydedilen kurslardan kaldır",
+    "deviceSaved": "Bu cihazda kaydedildi",
+    "cdcTeam": "CDC Academy",
+    "students": "öğrenci",
+    "featured": "Öğrencilerimiz arasında popüler",
+    "previous": "Önceki kurslar",
+    "next": "Sonraki kurslar",
+    "eyebrow": "CDC ACADEMY",
+    "headline": "Beceri kazan. Kariyerini şekillendir.",
+    "intro": "Pratik beceriler öğren, portfolyo oluştur ve dijital kariyerinde bir sonraki adıma hazırlan.",
+    "browse": "Kursları keşfet",
+    "allCategories": "Tüm kategoriler",
+    "saved": "Bu cihazda kaydedildi",
+    "projects": "Öğrenci projeleri",
+    "projectsEmpty": "Bu kurs için henüz herkese açık proje yok.",
+    "overview": "Genel bakış",
+    "curriculum": "Müfredat",
+    "reviews": "Yorumlar",
+    "courseContent": "Kurs içeriği",
+    "duration": "Süre",
+    "lessons": "Dersler",
+    "language": "Dil",
+    "level": "Seviye",
+    "levelUnknown": "Belirtilmemiş",
+    "videoUnavailable": "Bu ders için video henüz hazır değil.",
+    "play": "Oynat",
+    "pause": "Duraklat",
+    "mute": "Sesi kapat",
+    "unmute": "Sesi aç",
+    "fullscreen": "Tam ekran",
+    "seek": "Video konumu",
+    "volume": "Ses düzeyi",
+    "trailer": "Kurs fragmanı",
+    "subscriptionNote": "Tüm araçları ve erişim seçeneklerini tek yerde bul.",
+    "saleEndsIn": "İndirimin bitmesine",
+    "daysShort": "g"
+  }
 }

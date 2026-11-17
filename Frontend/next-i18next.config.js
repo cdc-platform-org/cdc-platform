@@ -12,6 +12,10 @@ module.exports = {
     // oversight.
     locales: ['ka', 'en', 'de', 'es', 'fr', 'uk', 'tr', 'hy', 'az'],
   },
+  // Missing keys in a non-Georgian locale fall back to English, never to
+  // the Georgian default locale (2026-11-17: /es/courses showed Georgian
+  // headings because 61 new `courses` keys existed only in ka/en).
+  fallbackLng: { default: ['en'], ka: ['en'] },
   defaultNS: 'auth', // tell next-i18next to use auth.json as the default namespace
   // Explicit namespace list — keep in sync with public/locales/<any
   // locale>/*.json (all 9 locales carry the exact same namespace set).
