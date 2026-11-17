@@ -56,9 +56,9 @@ body {
    tailwind.config.js's `sans` stack had its own now-dead 'GL-Kirovi' entry
    removed alongside this for the same reason. */
 
-/* Sitewide Noto Sans Georgian and the Inter fallback are bundled from
-   Fontsource in _app.tsx. The variables live on :root so all app content
-   and overlays inherit the same locally served font families. */
+/* Fontsource supplies named-family defaults on :root, including overlays.
+   _app.tsx overrides the same variables with next/font/local primary faces
+   inside the app wrapper. Both use the same locally bundled font files. */
 .app-shell {
   font-family: var(--font-georgian-safe), 'Noto Sans Georgian', var(--font-fallback), 'Inter', sans-serif;
   line-height: 1.65;

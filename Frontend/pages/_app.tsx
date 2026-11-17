@@ -50,9 +50,31 @@ const headingFont = localFont({
   display: 'swap',
 });
 
-// Inter and Noto Sans Georgian are bundled from Fontsource above. Their
-// local @font-face rules retain script-specific unicode ranges and weights
-// without fetching Google Fonts CSS or font URLs during the production build.
+// Primary faces use local WOFF2 files, never Google's build-time font loader.
+// The Fontsource CSS above supplies the same named families outside this
+// wrapper and the Latin/other-script subsets of Noto Sans Georgian. Keeping
+// that family as a fallback preserves mixed-script typography everywhere
+// --font-georgian-safe is used, including Tailwind's font-sans utilities.
+const fallbackFont = localFont({
+  src: '../node_modules/@fontsource/inter/files/inter-latin-600-normal.woff2',
+  weight: '600',
+  variable: '--font-fallback',
+  display: 'swap',
+  adjustFontFallback: false,
+});
+
+const georgianSafeFont = localFont({
+  src: [
+    { path: '../node_modules/@fontsource/noto-sans-georgian/files/noto-sans-georgian-georgian-400-normal.woff2', weight: '400' },
+    { path: '../node_modules/@fontsource/noto-sans-georgian/files/noto-sans-georgian-georgian-500-normal.woff2', weight: '500' },
+    { path: '../node_modules/@fontsource/noto-sans-georgian/files/noto-sans-georgian-georgian-600-normal.woff2', weight: '600' },
+    { path: '../node_modules/@fontsource/noto-sans-georgian/files/noto-sans-georgian-georgian-700-normal.woff2', weight: '700' },
+  ],
+  variable: '--font-georgian-safe',
+  fallback: ['Noto Sans Georgian'],
+  display: 'swap',
+  adjustFontFallback: false,
+});
 
 function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
@@ -140,7 +162,7 @@ function App({ Component, pageProps }: AppProps) {
         // script actually becomes available instead of silently giving up.
         onLoad={() => window.dispatchEvent(new Event('google-gsi-ready'))}
       />
-      <div className={`app-shell ${headingFont.variable} overflow-x-hidden px-4 sm:px-6`}>
+      <div className={`app-shell ${headingFont.variable} ${fallbackFont.variable} ${georgianSafeFont.variable} overflow-x-hidden px-4 sm:px-6`}>
         <AuthProvider>
           <AuthModalProvider>
             <VerificationDrawerProvider>
