@@ -12,6 +12,7 @@ import { onImageErrorFallback } from '../../utils/imageFallback';
 import { ABOUT_CATEGORIES, ABOUT_COPY, ABOUT_PATHS } from '../../data/aboutHubCopy';
 import { ABOUT_SEED, aboutAssetUrl, isAboutHubContent } from '../../utils/aboutHubContent';
 import type { AboutCopy, AboutEntry, AboutHubContent, AboutSection } from '../../types/aboutHub';
+import AboutVideo from './AboutVideo';
 import styles from './AboutHubPage.module.css';
 
 const sections = Object.keys(ABOUT_PATHS) as AboutSection[];
@@ -81,7 +82,9 @@ export default function AboutHubPage({ section = 'overview' }: { section?: About
             <p className="mt-6 max-w-xl text-base leading-relaxed text-cdc-muted">{text(content.overview.intro)}</p>
             <a href="#mission" className="mt-7 inline-flex items-center gap-3 text-sm font-bold text-cdc-ink no-underline">{t.explore}<ArrowDown size={18} /></a>
           </div>
-          <figure className="relative m-0 overflow-hidden rounded-xl bg-cdc-primary-soft"><Image unoptimized priority src={aboutAssetUrl(content.overview.heroImage) || '/images/heks-eper.jpg'} alt={t.eyebrow} width={1000} height={625} onError={onImageErrorFallback} className="aspect-[16/10] w-full object-cover" /><figcaption className="absolute bottom-5 left-5 rounded bg-cdc-surface/95 px-4 py-2 text-xs font-bold text-cdc-ink">CDC <span className="mx-2 text-cdc-muted">/</span> {lang === 'ka' ? 'დაარსდა 2023' : 'Est. 2023'}</figcaption></figure>
+          {/* Cover: CDC students-at-work video (AboutVideo); the CMS hero image
+              is no longer shown here but stays in content for other uses. */}
+          <AboutVideo label={lang === 'ka' ? 'CDC — ვიდეო სრულად' : 'CDC — watch the full video'} caption={<>CDC <span className="mx-2 text-cdc-muted">/</span> {lang === 'ka' ? 'დაარსდა 2023' : 'Est. 2023'}</>} />
         </section>
         {hasDemo && <p className="mb-5 flex items-start gap-2 text-xs leading-relaxed text-cdc-muted"><Sparkles size={15} className="shrink-0 text-cdc-primary-ink" />{t.demoNotice}</p>}
         <section aria-label={t.impact} className="mb-16 grid gap-5 border-y border-cdc-border py-7 sm:grid-cols-3">
