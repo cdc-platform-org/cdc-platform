@@ -31,6 +31,8 @@ import PromoCheckoutModal from '../../src/components/shared/PromoCheckoutModal';
 import FeaturedCourseRail from '../../src/components/courses/FeaturedCourseRail';
 import { CourseCardSkeleton } from '../../src/components/courses/CourseCard';
 import { isPublishedCourse } from '../../src/utils/courseCatalog';
+import { bestsellerId } from '../../src/utils/courseBadges';
+import SaleCountdownBar from '../../src/components/courses/SaleCountdownBar';
 
 type ContentTab = 'all' | 'courses' | 'live' | 'ai-teachers';
 const INTERNAL_TEST_CATEGORY = /(?:^|[^a-z0-9])(?:qa|e2e|test(?:ing)?|fixture|fixtures|demo|seed)(?:$|[^a-z0-9])/i;
@@ -106,6 +108,16 @@ export default function CoursesPage() {
   const [sort, setSort] = useState<SortMode>('recommended');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const closeFilters = useCallback(() => setFiltersOpen(false), []);
+
+  // Deep link from the home page category pills: /courses?category=X
+  useEffect(() => {
+    if (!router.isReady) return;
+    const q = router.query.category;
+    if (typeof q === 'string' && q) setCategory(q);
+  }, [router.isReady, router.query.category]);
+
+  // Bestseller badge from real enrollment counts.
+  const topId = useMemo(() => bestsellerId(courses), [courses]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -293,6 +305,7 @@ export default function CoursesPage() {
         <title>{`${t('title')} | CDC`}</title>
       </Head>
       <SiteHeader />
+      <SaleCountdownBar courses={courses} lang={lang} />
       {checkoutCourseItem && (
         <PromoCheckoutModal
           title={checkoutCourseItem.title}
@@ -413,7 +426,7 @@ export default function CoursesPage() {
               ) : (
                 <div data-testid="course-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
                   {filteredCourses.map((course) => (
-                    <CatalogCourseCard key={course.id} course={course} lang={lang} t={t} enrolling={enrollingId === course.id} onEnroll={handleEnroll} />
+                    <CatalogCourseCard key={course.id} course={course} lang={lang} t={t} enrolling={enrollingId === course.id} onEnroll={handleEnroll} bestseller={course.id === topId} />
                   ))}
                   {filteredLiveTrainings.map((tr) => (
                     <CatalogLiveTrainingCard key={tr.id} training={tr} lang={lang} t={t} />
