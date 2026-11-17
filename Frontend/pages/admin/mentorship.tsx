@@ -439,7 +439,7 @@ function MentorAvailabilitySection() {
           />
         </div>
         <div className="mb-3">
-          <label className="block text-xs font-medium text-gray-700 mb-1">Spoken Languages / საუბრის ენები</label>
+          <label className="block text-xs font-medium text-gray-700 mb-1">{at("Spoken languages")}</label>
           <div className="flex flex-wrap gap-1.5">
             {LANGUAGE_OPTIONS.map((langOption) => (
               <button
@@ -663,7 +663,7 @@ function GeneralHelpRequests() {
       <div className="mb-4">
         <h2 className="text-lg font-semibold text-gray-900">{at("General Help / Mentorship Requests")}</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Submitted via the graduate-only &quot;დახმარება / მენტორობა&quot; button on the student Dashboard.
+          {at("Submitted via the graduate-only \"Help / Mentorship\" button on the student Dashboard.")}
         </p>
       </div>
       {resolveError && (

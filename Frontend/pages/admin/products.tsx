@@ -1215,7 +1215,7 @@ function AdminProductsDashboard() {
               onClick={() => setStatusFilter(s)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${statusFilter === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}
             >
-              {s || at("All")}
+              {s ? atEnum(s) : at("All")}
               {s === 'PENDING' && pendingCount > 0 ? ` (${pendingCount})` : ''}
             </button>
           ))}

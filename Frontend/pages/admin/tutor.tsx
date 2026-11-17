@@ -361,7 +361,7 @@ function FlagsTab() {
             onClick={() => setStatus(s)}
             className={`text-xs font-bold px-3 py-1.5 rounded-full ${status === s ? 'bg-purple-600 text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'}`}
           >
-            {s}
+            {atEnum(s)}
           </button>
         ))}
       </div>

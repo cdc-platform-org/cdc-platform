@@ -325,6 +325,8 @@ export const KA_LEARNING: Record<string, string> = {
   "Hide details": "დეტალების დამალვა",
   "Inspect draft": "მონახაზის ნახვა",
   "Mark as handled": "დამუშავებულად მონიშვნა",
+  "Spoken languages": "საუბრის ენები",
+  "Submitted via the graduate-only \"Help / Mentorship\" button on the student Dashboard.": "გაიგზავნა კურსდამთავრებულის პანელის ღილაკით „დახმარება / მენტორობა“.",
   "Sunday": "კვირა",
   "Monday": "ორშაბათი",
   "Tuesday": "სამშაბათი",
