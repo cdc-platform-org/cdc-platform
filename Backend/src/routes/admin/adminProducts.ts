@@ -22,6 +22,7 @@ import { z } from 'zod';
 import { ProductLicenseType, Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { uploadImage } from '../../services/integrations/imageStorage';
 import { BunnyStorageUploadError } from '../../services/integrations/bunnyStorage';
 import { imageUpload, fileUpload, videoUpload, multerErrorHandler } from '../../middleware/productUploads';
@@ -89,7 +90,7 @@ const productFileSchema = z.object({
 const MAX_ADDITIONAL_FILES = 20;
 
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin);
 
 router.post(
   '/upload-image',
@@ -179,6 +180,11 @@ const createSchema = z.object({
 // approving their own submission — unlike products.ts's graduate-facing
 // POST /, which always lands PENDING.
 router.post('/', async (req: Request, res: Response) => {
+  // Prices are SUPER_ADMIN-only (moneyVisibility.ts already dropped any
+  // price fields). A MANAGER's product is created unpriced and PENDING, so a
+  // Super Admin sets the price before it reaches the store.
+  const canPrice = req.adminRole === 'SUPER_ADMIN';
+  if (!canPrice && req.body && typeof req.body === 'object') req.body.price = 0;
   const result = createSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 
@@ -211,7 +217,7 @@ router.post('/', async (req: Request, res: Response) => {
       saleEndsAt: toPrismaSaleEndsAt(saleEndsAt) ?? null,
       saleStartsAt: toPrismaSaleEndsAt(saleStartsAt) ?? null,
       howItWorksSteps: toPrismaJson(howItWorksSteps),
-      status: 'APPROVED',
+      status: canPrice ? 'APPROVED' : 'PENDING',
     },
   });
   res.status(201).json({ data: withCurrentProductPrice(product) });
@@ -359,6 +365,10 @@ router.put('/:id', async (req: Request, res: Response) => {
 router.post('/:id/approve', async (req: Request, res: Response) => {
   const product = await prisma.digitalProduct.findUnique({ where: { id: req.params.id } });
   if (!product) return res.status(404).json({ message: 'Product not found.' });
+  // An unpriced product going live is a pricing decision — SUPER_ADMIN only.
+  if (req.adminRole !== 'SUPER_ADMIN' && product.price === 0) {
+    return res.status(403).json({ message: 'Only a Super Admin can approve a product that has no price yet.' });
+  }
 
   const updated = await prisma.digitalProduct.update({
     where: { id: product.id },

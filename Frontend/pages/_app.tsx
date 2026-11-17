@@ -14,6 +14,7 @@ import CookieConsentBanner from '@/src/components/layout/CookieConsentBanner';
 import BetaModeBanner from '@/src/components/layout/BetaModeBanner';
 import TermsConsentModal from '@/src/components/auth/TermsConsentModal';
 import AdminModeBar from '@/src/components/layout/AdminModeBar';
+import { useAdminLangVersion } from '@/src/i18n/admin';
 import MobileTabBar from '@/src/components/layout/MobileTabBar';
 import { resolveLocale } from '@/src/utils/locale';
 import type { AppProps } from 'next/app';
@@ -78,6 +79,8 @@ const georgianSafeFont = localFont({
 
 function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
+  const adminLangVersion = useAdminLangVersion();
+  const isAdminRoute = router.pathname.startsWith('/admin');
 
   // FloatingButtons only renders on the homepage (see FloatingButtons.tsx) —
   // a fixed bottom-6 right-6 stack of two 48px pills (96px + 12px gap =
@@ -167,7 +170,9 @@ function App({ Component, pageProps }: AppProps) {
           <AuthModalProvider>
             <VerificationDrawerProvider>
               <BetaModeBanner />
-              <Component {...pageProps} />
+              {/* Admin pages re-mount when the admin KA/EN switch flips, so
+                  every at()-translated string re-evaluates (src/i18n/admin). */}
+              <Component key={isAdminRoute ? `admin-lang-${adminLangVersion}` : undefined} {...pageProps} />
               <MobileTabBar />
               <ScrollToTop positionClassName={scrollToTopPosition} />
               <FloatingButtons />

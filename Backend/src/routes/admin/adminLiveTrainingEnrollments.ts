@@ -16,6 +16,7 @@ import { Router, Request, Response } from 'express';
 import QRCode from 'qrcode';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole, requireNotBannedOrDeleted } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { manualEnrollmentSchema, createInviteSchema } from '../../schemas/iakoSchemas';
 import { createInvite, listInvites, revokeInvite, rotateInvite, listInviteRequests, reviewInviteRequest, LiveTrainingInviteError } from '../../services/learning/liveTrainingInviteService';
 import { logAdminAction } from '../../services/account/auditLogService';
@@ -26,7 +27,7 @@ import { logAdminAction } from '../../services/account/auditLogService';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://cdc.org.ge';
 
 const router = Router();
-router.use('/:trainingId', authenticate, requireNotBannedOrDeleted, requireAdminRole('SUPER_ADMIN', 'MANAGER'), async (req, res, next) => {
+router.use('/:trainingId', authenticate, requireNotBannedOrDeleted, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin, async (req, res, next) => {
   const training = await prisma.liveTraining.findUnique({ where: { id: req.params.trainingId }, select: { id: true } });
   if (!training) return res.status(404).json({ message: 'Training not found.' });
   next();

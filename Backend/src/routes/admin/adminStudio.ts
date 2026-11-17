@@ -8,11 +8,12 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { updateStudioInquirySchema } from '../../schemas/studioSchemas';
 import { logAdminAction } from '../../services/account/auditLogService';
 
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin);
 
 router.get('/', async (req: Request, res: Response) => {
   const status = typeof req.query.status === 'string' ? req.query.status : undefined;

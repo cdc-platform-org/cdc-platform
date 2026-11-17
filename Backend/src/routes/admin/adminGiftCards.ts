@@ -13,7 +13,8 @@ import { issueComplimentaryGiftCardSchema } from '../../schemas/giftCardSchemas'
 import { logAdminAction } from '../../services/account/auditLogService';
 
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+// Money-only area (amounts, discounts, escrow release/refund) — SUPER_ADMIN only.
+router.use(authenticate, requireAdminRole('SUPER_ADMIN'));
 
 // Every gift card ever bought (except abandoned checkouts), newest first,
 // with buyer, recipient, code, remaining balance and how often it was used.

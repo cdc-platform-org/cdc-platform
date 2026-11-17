@@ -9,6 +9,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole, requireNotBannedOrDeleted } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { logAdminAction } from '../../services/account/auditLogService';
 
 // ============================================================
@@ -24,7 +25,7 @@ import { logAdminAction } from '../../services/account/auditLogService';
 // ============================================================
 
 const router = Router();
-router.use(authenticate, requireNotBannedOrDeleted, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+router.use(authenticate, requireNotBannedOrDeleted, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin);
 
 router.get('/', async (_req: Request, res: Response) => {
   const trainers = await prisma.trainerProfile.findMany({

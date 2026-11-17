@@ -7,12 +7,13 @@
  */
 import { Router, Request, Response } from 'express';
 import { authenticate, requireAdminRole, requireNotBannedOrDeleted } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { accessGrantSchema, accessGrantResourceType } from '../../schemas/iakoSchemas';
 import { createAccessGrant, listAccessGrants, revokeAccessGrant, AccessGrantError } from '../../services/account/accessGrantService';
 import { logAdminAction } from '../../services/account/auditLogService';
 
 const router = Router();
-router.use(authenticate, requireNotBannedOrDeleted, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+router.use(authenticate, requireNotBannedOrDeleted, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin);
 
 router.get('/', async (req: Request, res: Response) => {
   const resourceType = accessGrantResourceType.safeParse(req.query.resourceType);

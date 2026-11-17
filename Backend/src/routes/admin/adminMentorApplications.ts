@@ -8,13 +8,14 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { mentorApplicationRejectSchema } from '../../schemas/mentorApplicationSchemas';
 import { logAdminAction } from '../../services/account/auditLogService';
 
 const router = Router();
 // Same tier as adminMentorship.ts's promote/demote endpoints — this queue
 // ends in the identical role change, so it needs the identical permission.
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin);
 
 const applicantSelect = { select: { id: true, name: true, email: true, role: true } };
 

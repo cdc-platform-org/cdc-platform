@@ -10,6 +10,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { courseRequestRevisionSchema, courseRejectSchema } from '../../schemas/courseReviewSchemas';
 import { logAdminAction } from '../../services/account/auditLogService';
 import { getBunnyEmbedUrl, getBunnyThumbnailUrl } from '../../services/integrations/bunnyStreamService';
@@ -28,7 +29,7 @@ import { getBunnyEmbedUrl, getBunnyThumbnailUrl } from '../../services/integrati
 // ============================================================
 
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin);
 
 const instructorSelect = { select: { id: true, name: true, email: true, mentorTitle: true } };
 

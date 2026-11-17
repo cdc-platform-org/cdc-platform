@@ -26,6 +26,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { mentorAvailabilityRuleSchema, mentorProfileSchema, attachRecordingSchema } from '../../schemas/adminSchemas';
 import { resolveMentorshipDisputeSchema } from '../../schemas/mentorshipSchemas';
 import { uploadImage } from '../../services/integrations/imageStorage';
@@ -35,7 +36,7 @@ import { resolveMentorshipDispute, MentorshipEscrowError } from '../../services/
 import { logAdminAction } from '../../services/account/auditLogService';
 
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'));
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER', 'MODERATOR'), hideMoneyFromNonSuperAdmin);
 
 const userSelect = { select: { id: true, name: true, email: true } };
 
@@ -391,7 +392,8 @@ router.patch('/bookings/:id/recording', async (req: Request, res: Response) => {
 // confirmed the session; REFUND locks the funds without crediting anyone
 // (the real bank refund to the student still happens by hand through
 // BOG/Stripe's dashboard, same posture as gig dispute resolution).
-router.post('/bookings/:id/resolve-dispute', async (req: Request, res: Response) => {
+// Releases or locks escrowed money — SUPER_ADMIN only (money actions).
+router.post('/bookings/:id/resolve-dispute', requireAdminRole('SUPER_ADMIN'), async (req: Request, res: Response) => {
   const result = resolveMentorshipDisputeSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
 

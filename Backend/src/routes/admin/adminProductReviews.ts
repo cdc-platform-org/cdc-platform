@@ -7,10 +7,11 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { recomputeProductReviewAggregates } from '../../services/marketplace/productReviewAggregateService';
 
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin);
 
 // Full moderation queue — every Digital Store product review, newest first.
 router.get('/', async (_req: Request, res: Response) => {

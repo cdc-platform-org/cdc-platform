@@ -13,7 +13,8 @@ import { createPromoCodeSchema, updatePromoCodeSchema } from '../../schemas/prom
 import { logAdminAction } from '../../services/account/auditLogService';
 
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+// Money-only area (amounts, discounts, escrow release/refund) — SUPER_ADMIN only.
+router.use(authenticate, requireAdminRole('SUPER_ADMIN'));
 
 router.get('/', async (req: Request, res: Response) => {
   const codes = await prisma.promoCode.findMany({ orderBy: { createdAt: 'desc' } });

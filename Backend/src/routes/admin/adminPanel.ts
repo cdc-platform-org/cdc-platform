@@ -26,6 +26,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import {
   setAdminRoleSchema,
   addTeamMemberSchema,
@@ -40,7 +41,7 @@ import { sendCertificateEmail } from '../../services/integrations/emailService';
 const router = Router();
 const participantSelect = { select: { id: true, name: true, email: true, role: true, adminRole: true } };
 
-router.use(authenticate);
+router.use(authenticate, hideMoneyFromNonSuperAdmin);
 
 // ============================================================
 // DASHBOARD OVERVIEW — any admin tier. Headline KPIs only; the detailed

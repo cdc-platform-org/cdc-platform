@@ -16,6 +16,7 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { AGENT_CATEGORIES, AGENT_CATEGORY_KEYS, isAgentCategoryKey } from '../../services/productAgent/categories';
 import { getProductAgentSettings, getSpendSummary, settingsUpdateSchema, updateProductAgentSettings } from '../../services/productAgent/settings';
 import { enqueueRuns, isAgentBusy } from '../../services/productAgent';
@@ -23,7 +24,7 @@ import { isAzureImageConfigured } from '../../services/ai/azureImageService';
 import { latestTrendBriefs, refreshAllTrendBriefs } from '../../services/productAgent/trends';
 
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin);
 
 router.get('/', async (_req: Request, res: Response) => {
   const [settings, spend, runs, products, trendBriefs] = await Promise.all([

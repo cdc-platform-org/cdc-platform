@@ -27,6 +27,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
 import { authenticate, requireAdminRole } from '../../middleware/auth';
+import { hideMoneyFromNonSuperAdmin } from '../../middleware/moneyVisibility';
 import { logAdminAction } from '../../services/account/auditLogService';
 import { sendLiveTrainingEnrollmentEmail } from '../../services/integrations/emailService';
 import { sendRegistrationStatusWhatsApp, formatWhatsAppDate } from '../../services/integrations/whatsappService';
@@ -45,7 +46,7 @@ import { setupCourseWorkspace } from '../../services/ai/googleAgentService';
 import { withCurrentLiveTrainingPrice, validateLiveTrainingDiscount, LiveTrainingPricingInput } from '../../services/learning/liveTrainingPricing';
 
 const router = Router();
-router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'));
+router.use(authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin);
 
 // Same buffered-straight-to-Bunny pattern as adminStudioCases.ts's own
 // /upload-image — a plain marketing cover photo, no Sharp processing.
