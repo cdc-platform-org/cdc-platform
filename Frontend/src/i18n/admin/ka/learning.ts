@@ -114,6 +114,7 @@ export const KA_LEARNING: Record<string, string> = {
   "Badge Text": "ნიშნის ტექსტი",
   "— optional, e.g. \"SPECIAL OFFER\" or \"BLACK FRIDAY\". Leave blank to show \"-": "— არასავალდებულო, მაგ. „სპეციალური შეთავაზება“. ცარიელზე ჩანს „-",
   "Update Course": "კურსის განახლება",
+  "Price is set by a Super Admin. A new course stays a draft until it has a price.": "ფასს Super Admin აწესებს. ახალი კურსი ფასის დაწესებამდე მონახაზად რჩება.",
   "Create Course": "კურსის შექმნა",
   "Curriculum —": "სილაბუსი —",
   "Section title": "სექციის სათაური",

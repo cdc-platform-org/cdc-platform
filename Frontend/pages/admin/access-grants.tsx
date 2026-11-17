@@ -3,13 +3,43 @@ import Head from 'next/head';
 import Link from 'next/link';
 import AdminGuard from '@/src/components/admin/AdminGuard';
 import AdminLayout from '@/src/components/admin/AdminLayout';
-import { AccessGrant, AccessGrantResourceType, createAccessGrant, listAccessGrants, revokeAccessGrant } from '@/src/services/accessGrantService';
+import { AccessGrant, AccessGrantResourceType, CollegeAiAccess, createAccessGrant, getCollegeAiAccess, listAccessGrants, revokeAccessGrant } from '@/src/services/accessGrantService';
 import { listDigitalTools, DigitalToolDefinition } from '@/src/services/iakoAssistantService';
 
-import { at, atf } from '../../src/i18n/admin';
+import { adminLocale, at, atf } from '../../src/i18n/admin';
 const inputClass = 'w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-cyan-500';
 const buttonClass = 'rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50';
 const primaryClass = 'rounded-xl bg-cyan-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50';
+
+// Course students get every AI tool free while a paid course is unfinished
+// (max 90 days from enrollment). This card shows that live status per email.
+function CollegeAiAccessLookup() {
+  const [email, setEmail] = useState('');
+  const [result, setResult] = useState<CollegeAiAccess | null>(null);
+  const [lookupError, setLookupError] = useState('');
+  const [checking, setChecking] = useState(false);
+  const check = async (e: FormEvent) => {
+    e.preventDefault();
+    setChecking(true); setLookupError(''); setResult(null);
+    try { setResult(await getCollegeAiAccess(email.trim())); }
+    catch { setLookupError(at('No user found with this email.')); }
+    finally { setChecking(false); }
+  };
+  return <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 mb-6">
+    <h2 className="text-xl font-bold mb-1">{at('Free AI access for course students')}</h2>
+    <p className="text-sm text-slate-500 mb-4">{at('A student of a paid course gets all AI tools free until the course is finished or 90 days pass since enrollment.')}</p>
+    <form onSubmit={check} className="flex flex-wrap gap-2">
+      <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="student@example.com" className={`${inputClass} max-w-sm`} />
+      <button type="submit" disabled={checking} className={primaryClass}>{checking ? at('Checking…') : at('Check')}</button>
+    </form>
+    {lookupError && <p className="mt-3 text-sm text-red-600">{lookupError}</p>}
+    {result && <p className="mt-3 text-sm text-slate-700">
+      {result.user.name} ({result.user.email}) — {result.active
+        ? atf('active until {0}', result.endsAt ? new Date(result.endsAt).toLocaleDateString(adminLocale()) : '—')
+        : result.ended ? at('course access has ended') : at('no paid course enrollment')}
+    </p>}
+  </section>;
+}
 
 function AdminAccessGrantsContent() {
   const [grants, setGrants] = useState<AccessGrant[]>([]);
@@ -63,6 +93,8 @@ function AdminAccessGrantsContent() {
     <p className="text-sm text-slate-500 mt-2 mb-7">{at("Temporary entitlements, by user or email, independent of any purchase or enrollment — checked alongside a resource's own natural entitlement, never in place of it.")}</p>
     {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 mb-5 text-sm text-red-700">{error}</div>}
 
+    <CollegeAiAccessLookup />
+
     {loading ? <p role="status">{at("Loading…")}</p> : <>
       <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 mb-7">
         <h2 className="text-xl font-bold mb-4">{at("New grant")}</h2>
@@ -100,7 +132,7 @@ function AdminAccessGrantsContent() {
         <h2 className="text-xl font-bold mb-4">{at("All grants")}</h2>
         <ul className="divide-y divide-slate-100">
           {grants.map((grant) => <li key={grant.id} className="py-3 flex flex-wrap justify-between items-center gap-3 text-sm">
-            <span>{grant.resourceType} · {grant.resourceId} · {grant.user?.email ?? grant.email}{grant.revokedAt ? at(" · revoked") : grant.expiresAt ? atf(" · until {0}", new Date(grant.expiresAt).toLocaleDateString()) : ''}</span>
+            <span>{grant.resourceType} · {grant.resourceId} · {grant.user?.email ?? grant.email}{grant.revokedAt ? at(" · revoked") : grant.expiresAt ? atf(" · until {0}", new Date(grant.expiresAt).toLocaleDateString(adminLocale())) : ''}</span>
             {!grant.revokedAt && <button type="button" disabled={busy} onClick={() => void doRevoke(grant.id)} className={buttonClass}>{at("Revoke")}</button>}
           </li>)}
           {!grants.length && <p className="text-sm text-slate-500 py-3">{at("No grants yet.")}</p>}

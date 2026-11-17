@@ -140,7 +140,7 @@ function AdminStudioDashboard() {
                 <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 rounded-lg p-3">{inq.message}</p>
                 {inq.reviewedBy && (
                   <p className="text-[11px] text-gray-400 mt-2">
-                    {at("Reviewed by")}{" "}{inq.reviewedBy.name}{inq.resolvedAt ? atf(" on {0}", new Date(inq.resolvedAt).toLocaleDateString()) : ''}
+                    {at("Reviewed by")}{" "}{inq.reviewedBy.name}{inq.resolvedAt ? atf(" on {0}", new Date(inq.resolvedAt).toLocaleDateString(adminLocale())) : ''}
                   </p>
                 )}
               </div>

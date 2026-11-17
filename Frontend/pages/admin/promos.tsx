@@ -15,7 +15,7 @@ import { getCourses } from '../../src/services/courseService';
 import { getAdminLiveTrainings } from '../../src/services/adminLiveTrainingService';
 import { getAdminProducts } from '../../src/services/productService';
 
-import { at, atf } from '../../src/i18n/admin';
+import { adminLocale, at, atf } from '../../src/i18n/admin';
 const inputClass = 'w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
 
 const TYPE_LABEL: Record<PromoApplicableType, string> = {
@@ -348,7 +348,7 @@ function AdminPromosDashboard() {
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">
                       {c.discountPercent ? atf("{0}% off", c.discountPercent) : atf("{0} GEL off", ((c.discountAmount ?? 0) / 100).toFixed(2))}
-                      {c.expiresAt ? atf(" · Expires {0}", new Date(c.expiresAt).toLocaleDateString()) : ''}
+                      {c.expiresAt ? atf(" · Expires {0}", new Date(c.expiresAt).toLocaleDateString(adminLocale())) : ''}
                       {' · '}
                       {c.currentUses}
                       {c.maxUses ? `/${c.maxUses}` : ''} {at("used")}

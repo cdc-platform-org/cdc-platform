@@ -23,6 +23,7 @@ import {
 } from '../../src/services/adminEnglishTutorService';
 
 import { adminLocale, at, atEnum, atf } from '../../src/i18n/admin';
+import { useCanSeeMoney } from '../../src/components/admin/useCanSeeMoney';
 const TASK_TYPES = ['READING', 'WRITING', 'GRAMMAR', 'VOCABULARY', 'QUIZ', 'LISTENING', 'DIALOGUE'] as const;
 const LEARNING_GOALS = ['TRAVEL', 'TECHNICAL_IT', 'BUSINESS', 'ACADEMIC', 'GENERAL_DAILY', 'INTERVIEW_PREP'] as const;
 
@@ -85,6 +86,7 @@ function StatCard({ label, value }: { label: string; value: string }) {
 }
 
 function AnalyticsTab() {
+  const canSeeMoney = useCanSeeMoney();
   const [data, setData] = useState<TutorAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -102,11 +104,11 @@ function AnalyticsTab() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label={at("Active PRO subscribers")} value={String(data.activeProSubscribers)} />
         <StatCard label={at("Trial → Paid conversion")} value={pct(data.conversionRate)} />
-        <StatCard label={at("Revenue (all-time)")} value={formatGel(data.revenueGel)} />
+        {canSeeMoney && <StatCard label={at("Revenue (all-time)")} value={formatGel(data.revenueGel)} />}
         <StatCard label={at("Average score")} value={data.averageScoreOverall != null ? `${data.averageScoreOverall}%` : '—'} />
         <StatCard label={at("Ever started trial")} value={String(data.everStartedTrial)} />
-        <StatCard label={at("Total purchases")} value={String(data.totalPurchases)} />
-        <StatCard label={at("Price / month")} value={formatGel(data.subscriptionPriceGel)} />
+        {canSeeMoney && <StatCard label={at("Total purchases")} value={String(data.totalPurchases)} />}
+        {canSeeMoney && <StatCard label={at("Price / month")} value={formatGel(data.subscriptionPriceGel)} />}
         <StatCard label={at("Total users")} value={String(data.totalUsers)} />
       </div>
 

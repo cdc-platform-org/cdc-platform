@@ -36,6 +36,7 @@ import IakoAssistantFields from '../../../src/components/admin/liveTrainings/Iak
 import LiveTrainingList from '../../../src/components/admin/liveTrainings/LiveTrainingList';
 
 import { at } from '../../../src/i18n/admin';
+import { useCanSeeMoney } from '../../../src/components/admin/useCanSeeMoney';
 // <input type="datetime-local"> gives "YYYY-MM-DDTHH:mm" (local time, no
 // timezone) — the backend requires full ISO 8601. Same UTC-anchoring
 // reasoning as PostingForm.tsx's toIsoDatetime for a date-only input,
@@ -109,6 +110,7 @@ const emptyForm: Omit<LiveTrainingPayload, 'discountBadgeText'> & {
 };
 
 function AdminLiveTrainingsDashboard() {
+  const canSeeMoney = useCanSeeMoney();
   const [trainings, setTrainings] = useState<LiveTraining[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -548,9 +550,10 @@ function AdminLiveTrainingsDashboard() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <ScheduleFields form={form} setForm={setForm} inputClass={inputClass} />
 
-            <PriceFields form={form} setForm={setForm} inputClass={inputClass} />
+            {/* Price and discount are SUPER_ADMIN-only; the API ignores them from other tiers. */}
+            {canSeeMoney && <PriceFields form={form} setForm={setForm} inputClass={inputClass} />}
 
-            <DiscountFields form={form} setForm={setForm} inputClass={inputClass} />
+            {canSeeMoney && <DiscountFields form={form} setForm={setForm} inputClass={inputClass} />}
 
             <CapacityFields form={form} setForm={setForm} inputClass={inputClass} />
 

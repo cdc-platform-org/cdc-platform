@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Bot, Check, Pencil, Trash2 } from 'lucide-react';
 import { AgentProduct } from '../../../services/adminProductAgentService';
 import { formatPrice } from '../../../utils/coursePricing';
+import { useCanSeeMoney } from '../useCanSeeMoney';
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   PENDING: { label: 'ელოდება დამტკიცებას', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export default function AgentProductsList({ products, actingId, onApprove, onDelete }: Props) {
+  const canSeeMoney = useCanSeeMoney();
   if (!products.length) return <p className="text-sm text-gray-500">აგენტს ჯერ პროდუქტი არ შეუქმნია.</p>;
   return (
     <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -42,7 +44,7 @@ export default function AgentProductsList({ products, actingId, onApprove, onDel
               </div>
               <p className="text-sm font-semibold text-gray-900 line-clamp-3">{p.title}</p>
               <p className="text-xs text-gray-500">
-                {formatPrice(p.price)} · {new Date(p.createdAt).toLocaleString('ka-GE')} · გაყიდვები: {p.salesCount}
+                {canSeeMoney && <>{formatPrice(p.price)} · </>}{new Date(p.createdAt).toLocaleString('ka-GE')}{canSeeMoney && <> · გაყიდვები: {p.salesCount}</>}
               </p>
               <div className="mt-auto flex gap-2 flex-wrap pt-2">
                 {p.status !== 'APPROVED' && (

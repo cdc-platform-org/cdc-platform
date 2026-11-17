@@ -14,6 +14,7 @@ import {
 import { InstructorCourseDetail, ModerationCourseRow, CourseStatus } from '../../../src/types/instructor';
 
 import { adminLocale, at, atf } from '../../../src/i18n/admin';
+import { useCanSeeMoney } from '../../../src/components/admin/useCanSeeMoney';
 type Detail = InstructorCourseDetail & { instructor: ModerationCourseRow['instructor'] };
 
 const STATUS_BADGE_CLASS: Record<CourseStatus, string> = {
@@ -27,6 +28,7 @@ const STATUS_BADGE_CLASS: Record<CourseStatus, string> = {
 };
 
 function AdminCourseReviewDashboard({ courseId }: { courseId: string }) {
+  const canSeeMoney = useCanSeeMoney();
   const router = useRouter();
   const [course, setCourse] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -95,7 +97,7 @@ function AdminCourseReviewDashboard({ courseId }: { courseId: string }) {
         <div>
           <h1 className="blog-heading-safe text-xl font-bold text-gray-900 dark:text-white">{course.title}</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            {at("by")} {course.instructor.name} ({course.instructor.email}) · {course.category} · {course.originalPrice / 100} {at("GEL")}
+            {at("by")} {course.instructor.name} ({course.instructor.email}) · {course.category}{canSeeMoney && course.originalPrice != null ? <> · {course.originalPrice / 100} {at("GEL")}</> : null}
           </p>
         </div>
         <span className={`text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full border ${STATUS_BADGE_CLASS[course.status]}`}>
