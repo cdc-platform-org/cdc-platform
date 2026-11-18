@@ -100,5 +100,6 @@
   "startTestMessage": "Start the test",
   "chatInputPlaceholder": "Type a reply...",
   "chatConnectionError": "❌ Error connecting to the assistant.",
+  "chatReplyInterrupted": "⚠️ The reply was cut off. Please try again.",
   "viewAllCourses": "All courses"
 }

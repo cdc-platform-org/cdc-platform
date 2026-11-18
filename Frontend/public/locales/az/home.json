@@ -100,5 +100,6 @@
   "startTestMessage": "Testə başla",
   "chatInputPlaceholder": "Cavab yazın...",
   "chatConnectionError": "❌ Köməkçiyə qoşularkən xəta baş verdi.",
+  "chatReplyInterrupted": "⚠️ Cavab yarımçıq kəsildi. Yenidən cəhd edin.",
   "viewAllCourses": "Bütün kurslar"
 }

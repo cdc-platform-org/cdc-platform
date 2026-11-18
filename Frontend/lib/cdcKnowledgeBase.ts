@@ -30,7 +30,7 @@ export async function getCdcKnowledgeContext(scopeToFilenames?: string[]): Promi
     allDocs = cached.docs;
   } else {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/knowledge`);
+      const response = await fetch(`${API_BASE_URL}/admin/knowledge`, { signal: AbortSignal.timeout(5000) });
       if (response.ok) {
         const { data } = (await response.json()) as { data: CdcKnowledgeDocument[] };
         cached = { docs: data, fetchedAt: Date.now() };

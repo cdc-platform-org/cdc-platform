@@ -86,7 +86,7 @@ export async function getDynamicCourseAndTrainingContext(): Promise<string> {
 
 async function fetchCourses(): Promise<CourseListItem[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/courses`);
+    const response = await fetch(`${API_BASE_URL}/courses`, { signal: AbortSignal.timeout(5000) });
     if (!response.ok) return [];
     const { data } = (await response.json()) as { data: CourseListItem[] };
     return data;
@@ -97,7 +97,7 @@ async function fetchCourses(): Promise<CourseListItem[]> {
 
 async function fetchLiveTrainings(): Promise<LiveTrainingListItem[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/live-trainings`);
+    const response = await fetch(`${API_BASE_URL}/live-trainings`, { signal: AbortSignal.timeout(5000) });
     if (!response.ok) return [];
     const { data } = (await response.json()) as { data: LiveTrainingListItem[] };
     return data;
