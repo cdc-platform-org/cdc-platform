@@ -93,5 +93,15 @@
   "resetFilters": "Reset All Filters",
   "filtersButton": "Filters",
   "applyFilters": "Apply",
-  "noResultsFiltered": "No products match your filters."
+  "noResultsFiltered": "No products match your filters.",
+  "sortFeatured": "Рекомендовані",
+  "aiToolsChip": "AI-інструменти",
+  "coloringSubtitle": "Роздрукуй і розфарбуй: веселі аркуші для дітей",
+  "otherProductsTitle": "Інші цифрові продукти",
+  "otherProductsSubtitle": "Постери, планери, шаблони CV та для бізнесу",
+  "showMore": "Показати більше",
+  "showLess": "Показати менше",
+  "storeSearchPlaceholder": "Пошук інструментів і продуктів...",
+  "resultsFound": "Знайдено: {{count}}",
+  "productsHeading": "Цифрові продукти"
 }

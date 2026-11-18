@@ -7,6 +7,7 @@ import { Bot, Check, Pencil, Trash2 } from 'lucide-react';
 import { AgentProduct } from '../../../services/adminProductAgentService';
 import { formatPrice } from '../../../utils/coursePricing';
 import { useCanSeeMoney } from '../useCanSeeMoney';
+import { productCategoryLabel } from '../../../data/productCategories';
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   PENDING: { label: 'ელოდება დამტკიცებას', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -40,7 +41,7 @@ export default function AgentProductsList({ products, actingId, onApprove, onDel
             <div className="p-4 flex-1 flex flex-col gap-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${s.cls}`}>{s.label}</span>
-                <span className="text-[10px] text-gray-400">{p.category}</span>
+                <span className="text-[10px] text-gray-400">{productCategoryLabel(p.category, 'ka', p.title)}</span>
               </div>
               <p className="text-sm font-semibold text-gray-900 line-clamp-3">{p.title}</p>
               <p className="text-xs text-gray-500">

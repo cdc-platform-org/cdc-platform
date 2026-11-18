@@ -17,7 +17,7 @@ import {
   Handshake,
   type LucideIcon, ShieldCheck } from 'lucide-react';
 import type { SupportedLocale } from '../utils/locale';
-import { MARKETPLACE_CATEGORIES } from './marketplaceCategories';
+import { AI_TOOLS_FILTER, ProductCategoryKey } from './productCategories';
 
 // Single source of truth for the public site navigation. Both the shared
 // SiteHeader (all content pages) and the homepage use it, so the menu is
@@ -58,12 +58,10 @@ export interface NavLink {
 
 export type NavEntry = NavGroup | NavLink;
 
-const cat = (index: number, locale: SupportedLocale) => {
-  const value = MARKETPLACE_CATEGORIES[index].value;
-  return `/marketplace?category=${encodeURIComponent(locale === 'ka' ? value.ka : value.en)}`;
-};
+// Store filters use fixed, language-independent keys (src/data/productCategories.ts).
+const cat = (key: ProductCategoryKey | typeof AI_TOOLS_FILTER) => `/marketplace?category=${key}`;
 
-export function getSiteNavigation(locale: SupportedLocale): NavEntry[] {
+export function getSiteNavigation(_locale: SupportedLocale): NavEntry[] {
   return [
     {
       kind: 'group',
@@ -81,10 +79,10 @@ export function getSiteNavigation(locale: SupportedLocale): NavEntry[] {
       key: 'shop',
       href: '/marketplace',
       items: [
-        { key: 'ebooks', href: cat(1, locale), icon: BookOpen },
-        { key: 'designAssets', href: cat(2, locale), icon: Palette },
+        { key: 'aiToolsLink', href: cat(AI_TOOLS_FILTER), icon: Wand2 },
+        { key: 'ebooks', href: cat('education'), icon: BookOpen },
+        { key: 'designAssets', href: cat('design-business'), icon: Palette },
         { key: 'allProducts', href: '/marketplace', icon: ShoppingBag },
-        { key: 'aiToolsLink', href: cat(0, locale), icon: Wand2 },
       ],
     },
     {

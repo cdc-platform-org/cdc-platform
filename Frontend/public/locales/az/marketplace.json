@@ -93,5 +93,15 @@
   "resetFilters": "Reset All Filters",
   "filtersButton": "Filters",
   "applyFilters": "Apply",
-  "noResultsFiltered": "No products match your filters."
+  "noResultsFiltered": "No products match your filters.",
+  "sortFeatured": "Tövsiyə olunan",
+  "aiToolsChip": "Süni intellekt alətləri",
+  "coloringSubtitle": "Çap et və rənglə: uşaqlar üçün əyləncəli vərəqlər",
+  "otherProductsTitle": "Digər rəqəmsal məhsullar",
+  "otherProductsSubtitle": "Divar posterləri, planlayıcılar, CV və biznes şablonları",
+  "showMore": "Daha çox göstər",
+  "showLess": "Daha az göstər",
+  "storeSearchPlaceholder": "Alət və məhsul axtar...",
+  "resultsFound": "Tapıldı: {{count}}",
+  "productsHeading": "Rəqəmsal məhsullar"
 }

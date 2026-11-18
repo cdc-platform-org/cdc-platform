@@ -120,6 +120,10 @@ export interface ToolCatalogEntry {
   // link it is shown instead of the cover photo, on the /tools card and at
   // the top of the tool's own page (ToolMediaBanner).
   videoUrl?: string;
+  // Store flag (BESTSELLER | POPULAR | RECOMMENDED | NEW, see
+  // src/data/productCategories.ts): flagged tools are listed first in the
+  // Digital Store's AI tools section and get a badge. Empty = none.
+  highlight?: string;
 }
 
 export interface ToolCatalogContent {

@@ -6,7 +6,7 @@ import { Mail, Phone } from 'lucide-react';
 import { useRouter } from 'next/router';
 import { merchantInfo } from '@/src/data/merchantInfo';
 import { NAV_DICT } from '@/src/data/siteNavigation';
-import { MARKETPLACE_CATEGORIES } from '@/src/data/marketplaceCategories';
+import { AI_TOOLS_FILTER } from '@/src/data/productCategories';
 import { resolveLocale } from '@/src/utils/locale';
 
 const SOCIAL_LINKS = [
@@ -271,7 +271,7 @@ export default function SiteFooter() {
             <li><Link href="/community" className={navLink}>{t.jobs}</Link></li>
             <li><Link href="/mentors" className={navLink}>{t.mentors}</Link></li>
             <li><Link href="/marketplace" className={navLink}>{t.marketplace}</Link></li>
-            <li><Link href={`/marketplace?category=${encodeURIComponent(MARKETPLACE_CATEGORIES[0].value[lang === 'ka' ? 'ka' : 'en'])}`} className={navLink}>{NAV_DICT[lang].items.aiToolsLink.title}</Link></li>
+            <li><Link href={`/marketplace?category=${AI_TOOLS_FILTER}`} className={navLink}>{NAV_DICT[lang].items.aiToolsLink.title}</Link></li>
             <li><Link href="/forum" className={navLink}>{t.forum}</Link></li>
             <li><Link href="/agency" className={navLink}>{t.studio}</Link></li>
             <li><Link href="/cases" className={navLink}>{t.caseStudies}</Link></li>

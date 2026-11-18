@@ -21,6 +21,7 @@ import {
 } from '../../../services/productService';
 import { DashboardStrings } from './dashboardDict';
 import { DashboardTab } from './dashboardShared';
+import { normalizeProductCategory } from '../../../data/productCategories';
 
 // Mirrors Backend's products.ts validateSubmitterPrice exactly: only an
 // admin-team member (user.adminRole set) may publish a 0 GEL product —
@@ -172,7 +173,8 @@ export function useProductSubmission({
     setSubmitTitle(s.title);
     setSubmitDescription(s.description);
     setSubmitPrice(String(s.price / 100));
-    setSubmitCategory(s.category);
+    // Older submissions may hold a pre-clean-up free-text category; edit with its fixed key.
+    setSubmitCategory(normalizeProductCategory(s.category, s.title));
     setSubmitImageUrl(s.imageUrl);
     setSubmitPreviewImages(s.previewImages);
     setSubmitVideoUrl(s.previewVideoUrl ?? '');

@@ -17,7 +17,7 @@
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
 import { RunCost, writeJson } from './ai';
-import { AGENT_CATEGORIES, AGENT_CATEGORY_KEYS, AgentCategoryKey } from './categories';
+import { AGENT_CATEGORIES, AGENT_CATEGORY_KEYS, AgentCategoryKey, storeCategoryValues } from './categories';
 
 export interface ThemeOutcome {
   theme: string;
@@ -95,7 +95,7 @@ export async function refreshTrendBrief(category: AgentCategoryKey): Promise<{ t
   const def = AGENT_CATEGORIES[category];
   const outcomes = await getThemeOutcomes(category);
   const bestSellers = await prisma.digitalProduct.findMany({
-    where: { category: def.storeCategory, status: 'APPROVED', salesCount: { gt: 0 } },
+    where: { category: { in: storeCategoryValues(category) }, status: 'APPROVED', salesCount: { gt: 0 } },
     orderBy: { salesCount: 'desc' },
     take: 8,
     select: { titleEn: true, title: true, salesCount: true },

@@ -66,7 +66,10 @@ export interface DigitalProduct {
   saleStartsAt?: string | null;
   currentPrice: number;
   saleActive: boolean;
+  // One of the fixed keys in src/data/productCategories.ts (normalized by the API).
   category: string;
+  // Admin store flag: BESTSELLER | POPULAR | RECOMMENDED | NEW, or null.
+  highlight?: string | null;
   imageUrl: string;
   // Up to 15 additional showcase screenshots alongside imageUrl (the main
   // cover) — shown as a gallery/carousel on /store/[id].
@@ -218,6 +221,7 @@ export interface CreateProductPayload {
   discountedPrice?: number | null; // major-unit GEL — null clears an existing sale
   saleEndsAt?: string | null; // ISO string from <input type="datetime-local">, or null for "never expires"
   saleStartsAt?: string | null; // admin only — ISO string, or null for "starts immediately"
+  highlight?: string | null; // admin only — store flag
 }
 
 // Admin-authored — published immediately (no moderation needed).
@@ -261,6 +265,8 @@ export interface UpdateProductPayload {
   titleEn?: string | null;
   descriptionEn?: string | null;
   category?: string;
+  // Admin store flag; null clears it.
+  highlight?: string | null;
   price?: number; // major-unit GEL
   imageUrl?: string;
   previewImages?: string[]; // up to 15

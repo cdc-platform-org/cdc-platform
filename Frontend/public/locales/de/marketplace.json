@@ -93,5 +93,15 @@
   "resetFilters": "Reset All Filters",
   "filtersButton": "Filters",
   "applyFilters": "Apply",
-  "noResultsFiltered": "No products match your filters."
+  "noResultsFiltered": "No products match your filters.",
+  "sortFeatured": "Empfohlen",
+  "aiToolsChip": "KI-Tools",
+  "coloringSubtitle": "Ausdrucken und ausmalen: lustige Blätter für Kinder",
+  "otherProductsTitle": "Weitere digitale Produkte",
+  "otherProductsSubtitle": "Wandkunst, Planer, Lebenslauf- und Business-Vorlagen",
+  "showMore": "Mehr anzeigen",
+  "showLess": "Weniger anzeigen",
+  "storeSearchPlaceholder": "Tools und Produkte suchen...",
+  "resultsFound": "Gefunden: {{count}}",
+  "productsHeading": "Digitale Produkte"
 }

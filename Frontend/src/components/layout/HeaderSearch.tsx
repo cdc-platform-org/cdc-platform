@@ -13,6 +13,7 @@ import { getProducts } from '../../services/productService';
 import { formatPrice } from '../../utils/coursePricing';
 import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { isPublishedCourse } from '../../utils/courseCatalog';
+import { productCategoryLabel } from '../../data/productCategories';
 
 function SearchPortal({ children }: { children: ReactNode }) { return createPortal(children, document.body); }
 
@@ -125,7 +126,7 @@ export default function HeaderSearch({ darkMode, lang, prominent = false }: { da
     [posts, query]
   );
   const matchedProducts = useMemo(
-    () => (query ? products.filter((p) => matches(query, p.title, p.description, p.category)).slice(0, RESULT_LIMIT) : []),
+    () => (query ? products.filter((p) => matches(query, p.title, p.description, productCategoryLabel(p.category, lang === 'GEO' ? 'ka' : 'en', p.title))).slice(0, RESULT_LIMIT) : []),
     [products, query]
   );
   const hasResults = matchedCourses.length > 0 || matchedPosts.length > 0 || matchedProducts.length > 0;
@@ -226,7 +227,7 @@ export default function HeaderSearch({ darkMode, lang, prominent = false }: { da
                         <Link key={p.id} href={`/store/${p.id}`} onClick={close} className={linkClass}>
                           <span className="flex-1 min-w-0">
                             <span className="block text-sm font-bold truncate">{p.title}</span>
-                            <span className={`block text-xs ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{p.category}</span>
+                            <span className={`block text-xs ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>{productCategoryLabel(p.category, lang === 'GEO' ? 'ka' : 'en', p.title)}</span>
                           </span>
                           <span className="text-xs font-bold shrink-0">{p.price === 0 ? '' : formatPrice(p.price)}</span>
                         </Link>

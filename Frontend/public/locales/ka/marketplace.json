@@ -93,5 +93,15 @@
   "resetFilters": "ფილტრების გასუფთავება",
   "filtersButton": "ფილტრები",
   "applyFilters": "გამოყენება",
-  "noResultsFiltered": "თქვენი ფილტრებით პროდუქტები ვერ მოიძებნა."
+  "noResultsFiltered": "თქვენი ფილტრებით პროდუქტები ვერ მოიძებნა.",
+  "sortFeatured": "რეკომენდებული",
+  "aiToolsChip": "AI ხელსაწყოები",
+  "coloringSubtitle": "დაბეჭდე და გააფერადე — სახალისო ფურცლები ბავშვებისთვის",
+  "otherProductsTitle": "სხვა ციფრული პროდუქტები",
+  "otherProductsSubtitle": "კედლის პრინტები, პლანერები, CV და ბიზნესის შაბლონები",
+  "showMore": "მეტის ჩვენება",
+  "showLess": "ნაკლების ჩვენება",
+  "storeSearchPlaceholder": "მოძებნე ხელსაწყო ან პროდუქტი...",
+  "resultsFound": "ნაპოვნია: {{count}}",
+  "productsHeading": "ციფრული პროდუქტები"
 }

@@ -5,6 +5,7 @@ import { MyCourseWithProgress } from '../../types/lms';
 import { DigitalProduct, productTitle } from '../../services/productService';
 import { BookListItem, downloadBookPdf } from '../../services/childrensBookService';
 import { MyPaymentRow } from '../../services/paymentService';
+import { productCategoryLabel } from '../../data/productCategories';
 
 // One place that lists everything the signed-in user owns: children's books,
 // courses and digital products, each with its open / download action.
@@ -212,7 +213,7 @@ export default function MyPurchasesPanel({
   ));
 
   const productRows = products.map((product) => (
-    <Row key={`p-${product.id}`} icon={ShoppingBag} title={productTitle(product, titleLang)} meta={product.category}>
+    <Row key={`p-${product.id}`} icon={ShoppingBag} title={productTitle(product, titleLang)} meta={productCategoryLabel(product.category, titleLang, product.title)}>
       <Link href={`/store/${product.id}`} className={btnSecondary}>
         {t.open}
       </Link>

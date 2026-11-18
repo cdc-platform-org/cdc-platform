@@ -93,5 +93,15 @@
   "resetFilters": "Reset All Filters",
   "filtersButton": "Filters",
   "applyFilters": "Apply",
-  "noResultsFiltered": "No products match your filters."
+  "noResultsFiltered": "No products match your filters.",
+  "sortFeatured": "Recomendados",
+  "aiToolsChip": "Herramientas de IA",
+  "coloringSubtitle": "Imprime y colorea: fichas divertidas para niños",
+  "otherProductsTitle": "Otros productos digitales",
+  "otherProductsSubtitle": "Láminas, agendas, plantillas de CV y de negocio",
+  "showMore": "Ver más",
+  "showLess": "Ver menos",
+  "storeSearchPlaceholder": "Buscar herramientas y productos...",
+  "resultsFound": "Encontrados: {{count}}",
+  "productsHeading": "Productos digitales"
 }

@@ -93,5 +93,15 @@
   "resetFilters": "Reset All Filters",
   "filtersButton": "Filters",
   "applyFilters": "Apply",
-  "noResultsFiltered": "No products match your filters."
+  "noResultsFiltered": "No products match your filters.",
+  "sortFeatured": "Recommandés",
+  "aiToolsChip": "Outils IA",
+  "coloringSubtitle": "Imprimez et coloriez : des fiches amusantes pour enfants",
+  "otherProductsTitle": "Autres produits numériques",
+  "otherProductsSubtitle": "Affiches, agendas, modèles de CV et d’entreprise",
+  "showMore": "Voir plus",
+  "showLess": "Voir moins",
+  "storeSearchPlaceholder": "Rechercher des outils et produits...",
+  "resultsFound": "Trouvés : {{count}}",
+  "productsHeading": "Produits numériques"
 }

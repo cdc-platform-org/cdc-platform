@@ -13,7 +13,7 @@ import ImageGalleryUploader from '../../shared/ImageGalleryUploader';
 import VideoTutorialLink from '../../shared/VideoTutorialLink';
 import { assetFilenameFromUrl } from '../../../utils/assetFilename';
 import { SupportedLocale } from '../../../utils/locale';
-import { DIGITAL_PRODUCT_CATEGORIES } from '../../../data/digitalProductCategories';
+import { PRODUCT_CATEGORIES } from '../../../data/productCategories';
 import { uploadMyProductImage, ProductLicenseType, LICENSE_LABELS } from '../../../services/productService';
 import { DashboardStrings } from './dashboardDict';
 import { CARD_CLASS, PRODUCT_ASSET_ACCEPT } from './dashboardShared';
@@ -105,13 +105,8 @@ export default function ProductsTab({
               <option value="" disabled>
                 {t.formCategory}
               </option>
-              {/* Preserves an existing product's category during edit even if it
-                  predates this curated list, instead of silently swapping it on save. */}
-              {s.submitCategory && !DIGITAL_PRODUCT_CATEGORIES.some((c) => c.value === s.submitCategory) && (
-                <option value={s.submitCategory}>{s.submitCategory}</option>
-              )}
-              {DIGITAL_PRODUCT_CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>
+              {PRODUCT_CATEGORIES.map((c) => (
+                <option key={c.key} value={c.key}>
                   {c.emoji} {lang === 'ka' ? c.labelKa : c.labelEn}
                 </option>
               ))}

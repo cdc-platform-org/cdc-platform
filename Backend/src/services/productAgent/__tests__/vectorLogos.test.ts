@@ -90,5 +90,5 @@ it('renders all outputs without paid image calls and keeps transparent PNGs and 
   fs.writeFileSync(path.join(output,'sample.svg'),draft.files[0].buffer);
   fs.writeFileSync(path.join(output,'sample-preview.png'),draft.cover);
   fs.writeFileSync(path.join(output,'sample-transparent.png'),png);
-  expect(AGENT_CATEGORIES.VECTOR_LOGOS.storeCategory).toBe(draft.category === 'VECTOR_LOGOS' ? 'Design & Graphics / Vector Logos' : '');
+  expect(AGENT_CATEGORIES.VECTOR_LOGOS.storeCategory).toBe(draft.category === 'VECTOR_LOGOS' ? 'design-business' : '');
 },30000);
