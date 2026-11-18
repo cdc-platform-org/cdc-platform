@@ -54,7 +54,7 @@ export default function Scene({ kind, lang, typed, done }: { kind: Kind; lang: L
     case 'python':
       return <div className={styles.split}>
         <Code lines={['# ' + (ka ? 'თემოს პირველი პროგრამა' : "Temo's first program"), `name = '${ka ? 'თემო' : 'Temo'}'`, '', 'def greet(who):', '']} typedLast={typed} />
-        <Pane label={t.out}><div className={styles.term}>{'>>> greet(name)'}<br />{done ? <b>{ka ? 'გამარჯობა, თემო! 👋' : 'Hello, Temo! 👋'}</b> : null}</div></Pane>
+        <Pane label={t.out}><div className={styles.term}>{'>>> greet(name)'}<br />{done ? <b>{ka ? 'გამარჯობა, თემო!' : 'Hello, Temo!'}</b> : null}</div></Pane>
       </div>;
     case 'sql':
       return <div className={styles.split}>
@@ -67,12 +67,12 @@ export default function Scene({ kind, lang, typed, done }: { kind: Kind; lang: L
       return <div className={styles.chat}>
         <div className={styles.bubbleU}><b>{t.prompt}</b>{ka ? 'დაწერე 3 სათაური ჩვენი კურსისთვის და გააგზავნე ელფოსტით.' : 'Write 3 headlines for our course and email them to the team.'}</div>
         <div className={styles.bubbleA}><b>{t.ai}</b>{ka ? '1. ისწავლე უნარი, რომელიც სამუშაოს გაძლევს\n2. პრაქტიკა პირველივე დღიდან\n3. შენი AI მენტორი 24/7' : '1. Learn a skill that gets you hired\n2. Hands-on from day one\n3. Your AI mentor, 24/7'}</div>
-        <div className={styles.chip}>{ka ? '⚙ ავტომატიზაცია: გაგზავნა ელფოსტით ✓' : '⚙ Automation: email sent ✓'}</div>
+        <div className={styles.chip}>{ka ? 'ავტომატიზაცია: გაგზავნა ელფოსტით ✓' : 'Automation: email sent ✓'}</div>
       </div>;
     case 'html':
       return <div className={styles.split}>
         <Code lines={['<button class="cta">', `  ${ka ? 'დააჭირე' : 'Click me'}`, '</button>', '', '.cta { border-radius: 12px; }', 'button.onclick = () => hi();']} />
-        <Pane label="Preview"><div className={styles.pv}><h4>{ka ? 'გამარჯობა! 👋' : 'Hello! 👋'}</h4><button type="button" tabIndex={-1}>{ka ? 'დააჭირე' : 'Click me'}</button></div></Pane>
+        <Pane label="Preview"><div className={styles.pv}><h4>{ka ? 'გამარჯობა!' : 'Hello!'}</h4><button type="button" tabIndex={-1}>{ka ? 'დააჭირე' : 'Click me'}</button></div></Pane>
       </div>;
     case 'sheet':
       return <div className={styles.split}>
