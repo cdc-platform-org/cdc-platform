@@ -50,8 +50,6 @@ const companySelect = {
   businessKycRejectionReason: true,
 };
 
-const AI_TRIAL_DAYS_ON_FIRST_VERIFY = 7;
-
 // Every Client (Business) account — the frontend derives the three-state
 // badge (Unverified / Under Review / Verified) from verificationDocUrl +
 // isVerified, same as the dashboard does for its own account. `status`
@@ -82,16 +80,13 @@ async function setVerified(req: Request, res: Response, isVerified: boolean, act
   if (!existing || existing.role !== 'Client') {
     return res.status(404).json({ message: 'Business account not found.' });
   }
-  // First-time verification starts the AI Agents Suite's 7-day trial —
-  // idempotent (a later re-verify never resets/extends it) and never
-  // touched on an unverify, so toggling verification off and back on
-  // doesn't hand out a second trial.
+  // Verification no longer grants an AI Agents Suite trial (AI tools now
+  // come with a course or the monthly subscription). Trials granted earlier
+  // simply run out on their own aiTrialEndsAt.
   const data: {
     isVerified: boolean;
     verificationStatus: 'APPROVED' | 'UNVERIFIED';
     verificationLevel?: 'BUSINESS';
-    aiTrialEndsAt?: Date;
-    trialStartDate?: Date;
   } = {
     isVerified,
     verificationStatus: isVerified ? 'APPROVED' : 'UNVERIFIED',
@@ -99,11 +94,6 @@ async function setVerified(req: Request, res: Response, isVerified: boolean, act
   // Only set on a genuine verify — an unverify leaves the level as-is
   // (still BUSINESS, just no longer approved), never resets it to NONE.
   if (isVerified) data.verificationLevel = 'BUSINESS';
-  const isFirstTrialGrant = isVerified && !existing.aiTrialEndsAt;
-  if (isFirstTrialGrant) {
-    data.trialStartDate = new Date();
-    data.aiTrialEndsAt = new Date(Date.now() + AI_TRIAL_DAYS_ON_FIRST_VERIFY * 24 * 60 * 60 * 1000);
-  }
   const user = await prisma.user.update({ where: { id: existing.id }, data, select: companySelect });
   await logAdminAction({ action, targetType: 'User', targetId: user.id, performedById: req.user!.id });
   if (isVerified) {
@@ -116,8 +106,8 @@ async function setVerified(req: Request, res: Response, isVerified: boolean, act
       .create({
         data: {
           userId: user.id,
-          title: 'თქვენი ბიზნეს ანგარიში დადასტურდა',
-          message: 'ადმინისტრაციამ დაადასტურა თქვენი ბიზნეს დოკუმენტი — Buy/Sell წვდომა უკვე ხელმისაწვდომია.',
+          title: 'დამსაქმებლის ვერიფიკაცია დადასტურდა',
+          message: 'ადმინისტრაციამ დაადასტურა თქვენი კომპანიის დოკუმენტი — ახლა შეგიძლიათ ვაკანსიების, შეკვეთების და ფასიანი შეთავაზებების გამოქვეყნება.',
           type: 'BUSINESS_KYC',
         },
       })

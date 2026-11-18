@@ -24,7 +24,7 @@ import { openDisputeSchema } from '../schemas/disputeSchemas';
 import { captureEscrow } from '../services/payments/escrowService';
 import { approveGigWork, GigApprovalError } from '../services/marketplace/gigApprovalService';
 import { hasReachedDailyPostLimit } from '../services/marketplace/postingLimitService';
-import { canPostListing, VERIFICATION_REQUIRED_TO_POST_MESSAGE } from '../utils/freelancerVerification';
+import { canPostListing, employerVerificationRequiredBody } from '../utils/freelancerVerification';
 import { z } from 'zod';
 
 const router = Router();
@@ -221,7 +221,7 @@ router.post(
       return res.status(429).json({ message: 'You have reached your daily posting limit. Try again tomorrow.' });
     }
     if (!(await canPostListing(prisma, req.user!.id, req.user!.role))) {
-      return res.status(403).json({ message: VERIFICATION_REQUIRED_TO_POST_MESSAGE });
+      return res.status(403).json(employerVerificationRequiredBody());
     }
     const result = postGigSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });

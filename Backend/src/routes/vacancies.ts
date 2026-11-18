@@ -17,7 +17,7 @@ import { postVacancySchema, updateVacancySchema, applyToVacancySchema, reviewVac
 import { sanitizeChatMessage } from '../utils/sanitizeChatMessage';
 import { sendVacancyApplicationEmail } from '../services/integrations/emailService';
 import { hasReachedDailyPostLimit } from '../services/marketplace/postingLimitService';
-import { canPostListing, VERIFICATION_REQUIRED_TO_POST_MESSAGE } from '../utils/freelancerVerification';
+import { canPostListing, employerVerificationRequiredBody } from '../utils/freelancerVerification';
 const router = Router();
 // _count.courseEnrollments drives the "სტუდენტი" badge on listing cards —
 // see the hasPurchasedCourse comment on routes/reviews.ts's profile route.
@@ -130,7 +130,7 @@ router.post(
       return res.status(429).json({ message: 'You have reached your daily posting limit. Try again tomorrow.' });
     }
     if (!(await canPostListing(prisma, req.user!.id, req.user!.role))) {
-      return res.status(403).json({ message: VERIFICATION_REQUIRED_TO_POST_MESSAGE });
+      return res.status(403).json(employerVerificationRequiredBody());
     }
     const result = postVacancySchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });
@@ -158,6 +158,16 @@ router.put(
   async (req: Request, res: Response) => {
     const result = updateVacancySchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });
+    // Publishing a draft is a new publish — same employer-verification gate
+    // as POST /. Already-open vacancies keep working whatever their owner's
+    // verification state.
+    if (
+      result.data.status === 'open' &&
+      req.vacancy!.status === 'draft' &&
+      !(await canPostListing(prisma, req.user!.id, req.user!.role))
+    ) {
+      return res.status(403).json(employerVerificationRequiredBody());
+    }
     const { salaryMin, salaryMax, applicationDeadline, ...rest } = result.data;
     const vacancy = await prisma.vacancy.update({
       where: { id: req.vacancy!.id },

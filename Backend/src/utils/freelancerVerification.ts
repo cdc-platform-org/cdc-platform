@@ -35,6 +35,25 @@ export function isIdentityVerified(user: {
 export const VERIFICATION_REQUIRED_TO_POST_MESSAGE =
   'Account verification is required before you can publish a listing.';
 
+// "Employer verification" (დამსაქმებლის ვერიფიკაცია) is the product name for
+// the gate below: publishing a NEW job post (vacancy/gig) or sending a paid
+// direct offer needs an approved verification. Listings published before
+// the gate existed stay live — only create/publish actions are checked.
+export const EMPLOYER_VERIFICATION_URL = '/employer-verification';
+export const EMPLOYER_VERIFICATION_REQUIRED_CODE = 'EMPLOYER_VERIFICATION_REQUIRED';
+
+// 403 body for the gate. `message` keeps the exact legacy English text so
+// older Frontend builds still map it to their verification modal.
+export function employerVerificationRequiredBody() {
+  return {
+    message: VERIFICATION_REQUIRED_TO_POST_MESSAGE,
+    messageKa: 'ვაკანსიის, შეკვეთის ან ფასიანი შეთავაზების გამოსაქვეყნებლად საჭიროა დამსაქმებლის ვერიფიკაცია.',
+    messageEn: 'Employer verification is required before you can publish a job post or send a paid offer.',
+    code: EMPLOYER_VERIFICATION_REQUIRED_CODE,
+    verifyUrl: EMPLOYER_VERIFICATION_URL,
+  };
+}
+
 // Gates gig/vacancy POST / — any approved verification track (individual,
 // graduate, or business) satisfies this, same breadth as isIdentityVerified,
 // since a vacancy poster is typically business-verified while a gig poster

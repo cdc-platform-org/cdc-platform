@@ -111,11 +111,7 @@ router.post(
       // — a previously-verified business swapping in a new document needs
       // a fresh look (automated or manual), not to keep riding on the old
       // document's approval.
-      // Same first-time-only trial grant as routes/adminCompanies.ts's
-      // setVerified() — this auto-verify path used to bypass it entirely,
-      // meaning a business whose document auto-matched never got the AI
-      // Agents Suite trial an admin-approved business gets.
-      const isFirstTrialGrant = autoVerified && !previous?.aiTrialEndsAt;
+      // Verification no longer starts an AI trial (see adminCompanies.ts).
       const user = await prisma.user.update({
         where: { id: req.user!.id },
         data: {
@@ -131,9 +127,6 @@ router.post(
                 businessKycReasoning: extractedData.reasoning,
                 businessKycCheckedAt: new Date(),
               }
-            : {}),
-          ...(isFirstTrialGrant
-            ? { trialStartDate: new Date(), aiTrialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
             : {}),
         },
       });
