@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<!--
+  CDC Vector Studio: the vector half of the CDC Design Studio.
+  Built on SVG-Edit 7.4.2 (MIT, see LICENSE.txt and licenseInfo.json), served
+  unmodified except for: a Georgian locale (locale/lang.ka.js, registered in
+  Editor.js), the CDC logo (images/logo.svg) and the dark theme below.
+  The React shell (src/components/studio/DesignStudio) embeds this page in an
+  iframe and drives it through window.svgEditor (same origin).
+-->
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="images/logo.svg">
+  <style id="styleoverrides" media="screen"></style>
+  <link href="./svgedit.css" rel="stylesheet" media="all">
+  <style>
+    /* Professional dark workspace: neutral greys, CDC cyan for focus/selection. */
+    :root {
+      --main-bg-color: #2f2f33;
+      --text-color: #e8e8ec;
+      --border-color: #1c1c1f;
+      --canvas-bg-color: #1e1e21;
+      --ruler-color: #26262a;
+      --icon-bg-color: #2f2f33;
+      --icon-bg-color-hover: #44444b;
+      --input-color: #45454c;
+      --orange-color: #22d3ee;
+      --link-color: #22d3ee;
+    }
+    html, body { background: #1e1e21; color: #e8e8ec; font-family: Inter, "Segoe UI", system-ui, sans-serif; }
+    /* Tool icons are drawn for light backgrounds; lift them so they read on dark panels. */
+    se-button, se-flyingbutton, se-explorerbutton, se-menu, se-menu-item, se-zoom, se-list, se-spin-input, se-input, se-colorpicker, se-palette { color: #e8e8ec; }
+    #svgcanvas { background: #1e1e21 !important; }
+  </style>
+  <title>CDC Vector Studio</title>
+</head>
+<body style="margin:0">
+  <div id="container" style="width:100%;height:100vh"></div>
+</body>
+<script type="module">
+  import Editor from './Editor.js'
+
+  // The shell passes the site language (?lang=ka|en|de|…); SVG-Edit ships all
+  // CDC site languages, Georgian is added by this build.
+  const params = new URLSearchParams(location.search)
+  const lang = (params.get('lang') || 'ka').replace(/[^a-zA-Z-]/g, '')
+
+  const svgEditor = new Editor(document.getElementById('container'))
+  svgEditor.setConfig({
+    lang,
+    allowInitialUserOverride: false,
+    // ext-storage is left out on purpose: it asks visitors about storing
+    // drawings in localStorage, while the shell already handles saving.
+    noDefaultExtensions: true,
+    extensions: [
+      'ext-connector', 'ext-eyedropper', 'ext-grid', 'ext-markers', 'ext-panning',
+      'ext-shapes', 'ext-polystar', 'ext-opensave', 'ext-layer_view'
+    ],
+    dimensions: [1080, 1080],
+    showRulers: true,
+    gridSnapping: false,
+    initFill: { color: '22D3EE', opacity: 1 },
+    initStroke: { color: '1E1E21', width: 2, opacity: 1 }
+  })
+  svgEditor.init()
+  window.svgEditor = svgEditor
+
+  // Tell the shell when the editor is usable (it polls isReady too, as a fallback).
+  const notify = () => window.parent !== window && window.parent.postMessage({ source: 'cdc-vector', type: 'ready' }, location.origin)
+  const wait = setInterval(() => { if (svgEditor.isReady && svgEditor.svgCanvas) { clearInterval(wait); notify() } }, 150)
+</script>
+</html>

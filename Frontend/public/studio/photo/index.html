@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!--
+  CDC Photo Studio: the raster half of the CDC Design Studio.
+  Built on miniPaint 4.14.3 (MIT, see LICENSE.txt), served from its prebuilt
+  dist/bundle.js. CDC additions: cdc-bridge.js (Georgian/Armenian/Azerbaijani/
+  Ukrainian UI via i18n/*.json, hides the third-party image search, notifies the
+  shell) and the CDC logo. The React shell (src/components/studio/DesignStudio)
+  embeds this page in an iframe and drives it through window.Layers/FileOpen.
+-->
+<html dir="ltr" lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>CDC Photo Studio</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=0" />
+	<meta name="robots" content="noindex" />
+	<link rel="icon" href="images/cdc-logo.svg">
+	<script src="dist/bundle.js"></script>
+	<script src="cdc-bridge.js"></script>
+	<style>
+		/* Neutral professional dark workspace (CDC cyan accent) over miniPaint's green dark theme. */
+		body.theme-dark {
+			--background: #1e1e21;
+			--text-color: #e8e8ec;
+			--text-color-muted: #a1a1aa;
+			--link-color: #67e8f9;
+			--section-background-color: #26262a;
+			--area-background-color: #2f2f33;
+			--block-background-color: #2f2f33;
+			--header-background-color: #26262a;
+			--button-background-color: #3a3a40;
+			--button-background-color-hover: #22d3ee;
+			--button-background-color-active: #44444b;
+			--button-text-color-active: #67e8f9;
+			--button-toggle-background-color: #44444b;
+			--button-toggle-background-color-hover: #4f4f57;
+			--input-background-color: #1e1e21;
+			--input-background-color-hover: #2a2a2f;
+			--input-border-color: #111113;
+			--input-border-color-active: #22d3ee;
+			--input-group-border-color: #26262a;
+			--menu-background-color: #19191c;
+			--background-color-active: #22d3ee;
+			--background-color-hover: #44444b;
+			--text-color-active: #0b2530;
+			--border-color: #3f3f46;
+			--scrollbar-track-color: #26262a;
+			--scrollbar-thumb-color: #4f4f57;
+		}
+		.submenu .logo { font-weight: 700; letter-spacing: .02em; width: auto; white-space: nowrap; }
+		/* Inside the Design Studio shell the brand is already in the app bar. */
+		html.cdc-embedded .submenu .logo { display: none; }
+		.submenu .logo:after { background-image: url('images/cdc-logo.svg') !important; background-size: 22px 22px !important; }
+	</style>
+</head>
+<body>
+	<div class="wrapper">
+
+		<nav aria-label="Main Menu" class="main_menu" id="main_menu"></nav>
+		
+		<div class="submenu">
+			<a class="logo" href="#">CDC Photo</a>
+			<div class="block attributes" id="action_attributes"></div>
+			<button class="undo_button" id="undo_button" type="button">
+				<span class="sr_only">Undo</span>
+			</button>
+		</div>
+		
+		<div class="sidebar_left" id="tools_container"></div>
+
+
+		<div class="middle_area" id="middle_area">
+
+			<canvas class="ruler_left" id="ruler_left"></canvas>
+			<canvas class="ruler_top" id="ruler_top"></canvas>
+
+			<div class="main_wrapper" id="main_wrapper">
+				<div class="canvas_wrapper" id="canvas_wrapper">
+					<div id="mouse"></div>
+					<div class="transparent-grid" id="canvas_minipaint_background"></div>
+					<canvas id="canvas_minipaint">
+						<div class="trn error">
+							Your browser does not support canvas or JavaScript is not enabled.
+						</div>
+					</canvas>
+				</div>
+			</div>
+		</div>
+
+		<div class="sidebar_right">
+			<div class="preview block">
+				<h2 class="trn toggle" data-target="toggle_preview">Preview</h2>
+				<div id="toggle_preview"></div>
+			</div>
+			
+			<div class="colors block">
+				<h2 class="trn toggle" data-target="toggle_colors">Colors</h2>
+				<div class="content" id="toggle_colors"></div>
+			</div>
+			
+			<div class="block" id="info_base">
+				<h2 class="trn toggle toggle-full" data-target="toggle_info">Information</h2>
+				<div class="content" id="toggle_info"></div>
+			</div>
+			
+			<div class="details block" id="details_base">
+				<h2 class="trn toggle toggle-full" data-target="toggle_details">Layer details</h2>
+				<div class="content details-content" id="toggle_details"></div>
+			</div>
+			
+			<div class="layers block">
+				<h2 class="trn">Layers</h2>
+				<div class="content" id="layers_base"></div>
+			</div>
+		</div>
+	</div>
+	<div class="mobile_menu">
+		<button class="left_mobile_menu" id="left_mobile_menu_button" type="button">
+			<span class="sr_only">Toggle Menu</span>
+		</button>
+		<button class="right_mobile_menu" id="mobile_menu_button" type="button">
+			<span class="sr_only">Toggle Menu</span>
+		</button>
+	</div>
+	<div class="hidden" id="tmp"></div>
+	<div id="popups"></div>
+</body>
+</html>
