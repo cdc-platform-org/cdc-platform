@@ -588,7 +588,7 @@ function AdminCompaniesDashboard() {
                         <span className="font-semibold text-gray-900 dark:text-white">{c.companyName || c.name}</span>
                         <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded border shadow-[0_0_10px_-3px] ${STATUS_BADGE[status]}`}>
                           <StatusIcon className="w-3 h-3" />
-                          {status.replace('_', ' ')}
+                          {status === 'under_review' ? at("Under Review") : status === 'unverified' ? at("Unverified") : status === 'rejected' ? at("Rejected") : at("Verified")}
                         </span>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-slate-400">{c.name} · {c.email}{c.phone ? ` · ${c.phone}` : ''}</p>
