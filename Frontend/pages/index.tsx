@@ -303,46 +303,71 @@ export default function Home() {
     history: { role: 'user' | 'model'; text: string }[],
     onChunk: (text: string) => void
   ): Promise<void> => {
-    const response = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: userText, lang: legacyLang, history }),
-    });
-    if (!response.ok) {
-      // A pre-flight failure (missing message, GEMINI_API_KEY unset) never
-      // switches the response over to SSE at all — it's the same plain
-      // JSON body/status this always returned, from before streaming.
-      const data = await response.json().catch(() => null);
-      throw new Error(data?.reply || 'Request failed');
-    }
-    if (!response.body) throw new Error('Streaming is not supported by this browser.');
+    // A stalled stream used to lock the input forever — abort if nothing
+    // arrives for 30s (timer re-armed before every read).
+    const IDLE_TIMEOUT_MS = 30_000;
+    const controller = new AbortController();
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    const armIdleTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => controller.abort(), IDLE_TIMEOUT_MS);
+    };
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) return;
-      buffer += decoder.decode(value, { stream: true });
-
-      // SSE frames are separated by a blank line; one fetch chunk can
-      // contain zero, one, or several complete frames, so split on that
-      // and keep any trailing partial frame in the buffer for next read.
-      const frames = buffer.split('\n\n');
-      buffer = frames.pop() ?? '';
-      for (const frame of frames) {
-        const dataLine = frame.split('\n').find((line) => line.startsWith('data: '));
-        if (!dataLine) continue;
-        const payload = JSON.parse(dataLine.slice('data: '.length));
-        if (payload.type === 'chunk' && typeof payload.text === 'string') {
-          onChunk(payload.text);
-        } else if (payload.type === 'error') {
-          throw new Error(payload.reply || 'Request failed');
-        }
-        // 'done' needs no handling — the server closes the connection right
-        // after it, which surfaces here as reader.read() returning done:true.
+    armIdleTimer();
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userText, lang: legacyLang, history }),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        // A pre-flight failure (missing message, GEMINI_API_KEY unset) never
+        // switches the response over to SSE at all — it's the same plain
+        // JSON body/status this always returned, from before streaming.
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.reply || 'Request failed');
       }
+      if (!response.body) throw new Error('Streaming is not supported by this browser.');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      // Only an explicit 'done' frame means the reply is complete. A stream
+      // that just closes (e.g. the serverless function was killed) is an
+      // interrupted reply and must surface as an error, not as a finished
+      // half-sentence.
+      let sawDone = false;
+
+      while (true) {
+        armIdleTimer();
+        const { done, value } = await reader.read();
+        if (done) {
+          if (!sawDone) throw new Error('Stream ended before the reply was complete.');
+          return;
+        }
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE frames are separated by a blank line; one fetch chunk can
+        // contain zero, one, or several complete frames, so split on that
+        // and keep any trailing partial frame in the buffer for next read.
+        const frames = buffer.split('\n\n');
+        buffer = frames.pop() ?? '';
+        for (const frame of frames) {
+          const dataLine = frame.split('\n').find((line) => line.startsWith('data: '));
+          if (!dataLine) continue;
+          const payload = JSON.parse(dataLine.slice('data: '.length));
+          if (payload.type === 'chunk' && typeof payload.text === 'string') {
+            onChunk(payload.text);
+          } else if (payload.type === 'error') {
+            throw new Error(payload.reply || 'Request failed');
+          } else if (payload.type === 'done') {
+            sawDone = true;
+          }
+        }
+      }
+    } finally {
+      if (idleTimer) clearTimeout(idleTimer);
     }
   };
 
@@ -402,7 +427,7 @@ export default function Home() {
         await attempt();
       }
     } catch {
-      setChatError(t('chatConnectionError'));
+      setChatError(t(receivedAnyChunk ? 'chatReplyInterrupted' : 'chatConnectionError'));
       setLastFailedInput(userText);
       // Drop the placeholder only if it never received any content — a
       // partial reply that broke mid-stream stays visible (the user did

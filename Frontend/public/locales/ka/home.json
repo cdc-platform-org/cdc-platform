@@ -100,5 +100,6 @@
   "startTestMessage": "დავიწყოთ ტესტი",
   "chatInputPlaceholder": "ჩაწერეთ პასუხი...",
   "chatConnectionError": "❌ ასისტენტთან კავშირის ხარვეზი.",
+  "chatReplyInterrupted": "⚠️ პასუხი შუაში შეწყდა. სცადეთ ხელახლა.",
   "viewAllCourses": "ყველა კურსი"
 }

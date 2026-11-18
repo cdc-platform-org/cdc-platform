@@ -100,5 +100,6 @@
   "startTestMessage": "Commencer le test",
   "chatInputPlaceholder": "Écrivez une réponse...",
   "chatConnectionError": "❌ Erreur de connexion à l'assistant.",
+  "chatReplyInterrupted": "⚠️ La réponse a été interrompue. Veuillez réessayer.",
   "viewAllCourses": "Tous les cours"
 }

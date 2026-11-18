@@ -20,7 +20,7 @@ export async function getHomepageAgentConfig(): Promise<HomepageAgentConfig | nu
     return cached.config;
   }
   try {
-    const response = await fetch(`${API_BASE_URL}/admin/ai-agents/homepage-config`);
+    const response = await fetch(`${API_BASE_URL}/admin/ai-agents/homepage-config`, { signal: AbortSignal.timeout(5000) });
     if (!response.ok) return cached?.config ?? null;
     const { data } = (await response.json()) as { data: HomepageAgentConfig | null };
     cached = { config: data, fetchedAt: Date.now() };

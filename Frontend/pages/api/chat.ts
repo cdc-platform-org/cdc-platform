@@ -4,6 +4,37 @@ import { getCdcKnowledgeContext } from '../../lib/cdcKnowledgeBase';
 import { getDynamicCourseAndTrainingContext } from '../../lib/cdcCourseContext';
 import { getHomepageAgentConfig } from '../../lib/platformAgentConfig';
 
+// Vercel's default function limit killed long replies mid-stream (the browser
+// saw a closed connection and treated half a sentence as the whole answer).
+// 60s gives Gemini room; our own 50s deadline ends the reply with a proper
+// error frame before Vercel would cut it silently.
+export const config = { maxDuration: 60 };
+const REPLY_DEADLINE_MS = 50_000;
+// A stream that stops yielding chunks is treated as failed rather than left
+// hanging until the platform kills the function.
+const CHUNK_IDLE_TIMEOUT_MS = 20_000;
+
+class StreamTimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'StreamTimeoutError';
+  }
+}
+
+async function nextWithTimeout<T>(iterator: AsyncIterator<T>, ms: number): Promise<IteratorResult<T>> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      iterator.next(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new StreamTimeoutError(`no Gemini output for ${ms}ms`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 // `history` comes straight from the browser — untrusted input. Only well-
 // formed {role, text} turns are kept; anything else is silently dropped
 // rather than passed through to the Gemini SDK.
@@ -63,6 +94,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   const send = (payload: Record<string, unknown>) => {
+    if (res.writableEnded || res.destroyed) return;
     res.write(`data: ${JSON.stringify(payload)}\n\n`);
   };
 
@@ -85,8 +117,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // admin-uploaded reference documents, not the other way around.
     const knowledgeContext = [courseContext, uploadedKnowledge].filter(Boolean).join('\n\n');
 
-    for await (const chunk of askCdcAssistantStream(message, effectiveLang, sanitizeHistory(history), knowledgeContext, homepageAgent?.systemPrompt)) {
-      send({ type: 'chunk', text: chunk });
+    const startedAt = Date.now();
+    let clientGone = false;
+    req.on('close', () => {
+      clientGone = true;
+    });
+    const iterator = askCdcAssistantStream(
+      message,
+      effectiveLang,
+      sanitizeHistory(history),
+      knowledgeContext,
+      homepageAgent?.systemPrompt
+    )[Symbol.asyncIterator]();
+    try {
+      while (true) {
+        const remaining = REPLY_DEADLINE_MS - (Date.now() - startedAt);
+        if (remaining <= 0) throw new StreamTimeoutError(`reply exceeded ${REPLY_DEADLINE_MS}ms`);
+        const { done, value } = await nextWithTimeout(iterator, Math.min(CHUNK_IDLE_TIMEOUT_MS, remaining));
+        if (done || clientGone) break;
+        send({ type: 'chunk', text: value });
+      }
+    } finally {
+      // Stop the Gemini generator (and its network request) on timeout or
+      // client disconnect instead of letting it run on in the background.
+      iterator.return?.(undefined).catch(() => undefined);
     }
     send({ type: 'done' });
   } catch (error) {
@@ -110,7 +164,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 // "[401 Unauthorized] API key not valid..." or "[429 Too Many Requests]
 // Resource has been exhausted...". Matched defensively since the SDK gives
 // no guarantee on this exact format across versions.
-function classifyGeminiError(error: unknown): 'invalid_api_key' | 'quota_exceeded' | 'unavailable' | 'unknown' {
+function classifyGeminiError(
+  error: unknown
+): 'timeout' | 'invalid_api_key' | 'quota_exceeded' | 'unavailable' | 'unknown' {
+  if (error instanceof StreamTimeoutError) return 'timeout';
   const message = error instanceof Error ? error.message : String(error);
   if (/\b(401|403)\b/.test(message) || /API key not valid|PERMISSION_DENIED/i.test(message)) return 'invalid_api_key';
   if (/\b429\b/.test(message) || /RESOURCE_EXHAUSTED|quota/i.test(message)) return 'quota_exceeded';

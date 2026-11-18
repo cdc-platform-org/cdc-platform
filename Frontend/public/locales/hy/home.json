@@ -100,5 +100,6 @@
   "startTestMessage": "Սկսել թեստը",
   "chatInputPlaceholder": "Գրեք պատասխան...",
   "chatConnectionError": "❌ Սխալ՝ օգնականին կապվելիս։",
+  "chatReplyInterrupted": "⚠️ Պատասխանը կիսատ ընդհատվեց։ Խնդրում ենք կրկին փորձել։",
   "viewAllCourses": "Բոլոր դասընթացները"
 }

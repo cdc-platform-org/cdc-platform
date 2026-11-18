@@ -100,5 +100,6 @@
   "startTestMessage": "Почати тест",
   "chatInputPlaceholder": "Введіть відповідь...",
   "chatConnectionError": "❌ Помилка з'єднання з асистентом.",
+  "chatReplyInterrupted": "⚠️ Відповідь обірвалася. Спробуйте ще раз.",
   "viewAllCourses": "Усі курси"
 }
