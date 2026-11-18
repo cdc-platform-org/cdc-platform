@@ -46,11 +46,13 @@ export default function HeroCodeDemo({ lang }: { lang: 'ka' | 'en' }) {
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // Type by code point (Array.from) so the 👋 emoji is never cut in half.
+    const chars = Array.from(c.line);
     let i = 0;
     let timer: number;
     const tick = () => {
-      setTyped(c.line.slice(0, i));
-      i = i < c.line.length ? i + 1 : 0;
+      setTyped(chars.slice(0, i).join(''));
+      i = i < chars.length ? i + 1 : 0;
       timer = window.setTimeout(tick, i === 0 ? 1800 : 70);
     };
     tick();
