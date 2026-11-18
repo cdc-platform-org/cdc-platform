@@ -8,6 +8,17 @@ interface WordAnalysis {
   feedback?: string;
 }
 
+export interface TextAnalysis {
+  cefrLevel: string;
+  /** In the native (right-hand) language. */
+  explanation: string;
+  /** Same explanation in the text's own (left-hand) language; '' when both are the same. */
+  explanationSource: string;
+  vocabulary: { word: string; meaning: string; explanation?: string }[];
+  learningLanguage: string;
+  nativeLanguage: string;
+}
+
 export function useSmartReader(initialText: string) {
   const [text, setText] = useState<string>(initialText);
   const [learningLang, setLearningLang] = useState<string>('English');
@@ -24,6 +35,14 @@ export function useSmartReader(initialText: string) {
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const [wordScores, setWordScores] = useState<WordAnalysis[]>([]);
   const [teacherAdvice, setTeacherAdvice] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<TextAnalysis | null>(null);
+
+  // A result written for another language pair would now be in the wrong language.
+  useEffect(() => {
+    setAnalysis(null);
+    setSummary(null);
+    setCefrLevel(null);
+  }, [learningLang, nativeLang]);
 
   useEffect(() => {
     setIsPlaying(false);
@@ -60,21 +79,32 @@ export function useSmartReader(initialText: string) {
     setLoadingAi(true);
     setSummary(null);
     setCefrLevel(null);
+    setAnalysis(null);
 
     try {
-      const { data } = await apiClient.post<{ summary: string }>('/language-teacher/summarize', { text });
-      const [summaryText, cefr] = data.summary.split('CEFR Level:');
-      setSummary(summaryText.trim());
-      setCefrLevel((cefr ?? '').trim());
+      const { data } = await apiClient.post<{ summary: string; analysis?: TextAnalysis }>('/language-teacher/summarize', {
+        text,
+        learningLanguage: learningLang,
+        nativeLanguage: nativeLang,
+      });
+      if (data.analysis) {
+        setAnalysis(data.analysis);
+        setSummary(data.analysis.explanation);
+        setCefrLevel(data.analysis.cefrLevel);
+      } else {
+        // Older Backend: "<summary>\nCEFR Level: <level>" only.
+        const [summaryText, cefr] = data.summary.split('CEFR Level:');
+        setSummary(summaryText.trim());
+        setCefrLevel((cefr ?? '').trim());
+      }
     } catch (err: any) {
-      // The Backend now always responds 200 with a clean fallback summary
-      // rather than throwing on an AI-provider failure (see
-      // routes/languageTeacher.ts's /summarize) — this branch should only
-      // ever fire for a genuine network/CORS failure that never reached the
-      // server at all, so it's logged for real debugging instead of being a
-      // silent generic string.
+      // The Backend always responds 200 with a clean fallback summary rather
+      // than throwing on an AI-provider failure (see routes/languageTeacher.ts's
+      // /summarize), so this only fires for a genuine network/CORS failure.
       console.error('[useSmartReader] /language-teacher/summarize request failed:', err?.message ?? err);
-      setSummary('Could not reach the server. Please check your connection and try again.');
+      setSummary(nativeLang === 'Georgian'
+        ? 'სერვერთან კავშირი ვერ მოხერხდა. შეამოწმეთ ინტერნეტი და სცადეთ თავიდან.'
+        : 'Could not reach the server. Please check your connection and try again.');
     } finally {
       setLoadingAi(false);
     }
@@ -88,7 +118,7 @@ export function useSmartReader(initialText: string) {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = learningLang === 'German' ? 'de-DE' : learningLang === 'Spanish' ? 'es-ES' : 'en-US';
+    recognition.lang = learningLang === 'German' ? 'de-DE' : learningLang === 'Spanish' ? 'es-ES' : learningLang === 'French' ? 'fr-FR' : 'en-US';
     recognition.interimResults = false;
 
     setIsListening(true);
@@ -135,6 +165,7 @@ export function useSmartReader(initialText: string) {
     aiResponse,
     summary,
     cefrLevel,
+    analysis,
     loadingAi,
     handleSummarize,
     isListening,

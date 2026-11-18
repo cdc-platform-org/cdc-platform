@@ -29,11 +29,40 @@ function respondAiError(res: Response, err: unknown) {
   throw err;
 }
 
+// The two dropdowns in SmartReader.tsx. Anything else (or a missing value,
+// e.g. an older Frontend build) falls back to the old English -> Georgian
+// pair, so a free-text value can never be injected into the prompt.
+const SUPPORTED_LANGUAGES = [
+  'English', 'Georgian', 'German', 'Spanish', 'French', 'Ukrainian', 'Turkish', 'Armenian', 'Azerbaijani', 'Russian', 'Italian',
+] as const;
+type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+
+function pickLanguage(value: unknown, fallback: SupportedLanguage): SupportedLanguage {
+  return typeof value === 'string' && (SUPPORTED_LANGUAGES as readonly string[]).includes(value)
+    ? (value as SupportedLanguage)
+    : fallback;
+}
+
+function languagePair(body: any): { learning: SupportedLanguage; native: SupportedLanguage } {
+  return {
+    learning: pickLanguage(body?.learningLanguage, 'English'),
+    native: pickLanguage(body?.nativeLanguage, 'Georgian'),
+  };
+}
+
 router.post('/explain', async (req: Request, res: Response) => {
-  const { text, targetPhrase, learningLanguage, nativeLanguage } = req.body;
+  const { text, targetPhrase } = req.body;
+  const { learning, native } = languagePair(req.body);
   try {
     const explanation = await callTextModelPlain(
-      `Explain the phrase "${targetPhrase}" in the context of "${text}", for a student learning ${learningLanguage} whose native language is ${nativeLanguage}. Include a definition, its CEFR level, a ${nativeLanguage} translation, and two example sentences.`,
+      `You are a friendly language teacher. A student whose native language is ${native} is learning ${learning}.
+Explain the ${learning} phrase "${targetPhrase}" as it is used in this context: "${text}".
+Write the WHOLE explanation in ${native} (not in English, unless ${native} is English). Keep "${targetPhrase}" itself and the example sentences in ${learning}.
+Plain text, no markdown. Use exactly these parts:
+1. ${native} translation of the phrase
+2. Meaning in this context (1-2 sentences in ${native})
+3. CEFR level (A1-C2)
+4. Two short example sentences in ${learning}, each followed by its ${native} translation in parentheses`,
       0.3
     );
     res.json({ explanation });
@@ -43,10 +72,11 @@ router.post('/explain', async (req: Request, res: Response) => {
 });
 
 router.post('/translate', async (req: Request, res: Response) => {
-  const { targetPhrase, learningLanguage, nativeLanguage } = req.body;
+  const { targetPhrase } = req.body;
+  const { learning, native } = languagePair(req.body);
   try {
     const translation = await callTextModelPlain(
-      `Translate the phrase "${targetPhrase}" from ${learningLanguage} to ${nativeLanguage}. Respond with ONLY the translation, no explanation.`,
+      `Translate the phrase "${targetPhrase}" from ${learning} to ${native}. Respond with ONLY the translation, no explanation.`,
       0.1
     );
     res.json({ translation });
@@ -103,7 +133,8 @@ Respond with strict JSON matching this shape: {"words": [{"word": string, "statu
 // exhausted providers, malformed response) instead of ever throwing —
 // "Error summarizing text." should no longer be reachable through an AI
 // failure at all, short input or not.
-const SUMMARIZE_TIMEOUT_MS = 10_000;
+// Raised from 10s: the answer is now JSON in two languages + key words.
+const SUMMARIZE_TIMEOUT_MS = 20_000;
 const SHORT_TEXT_WORD_THRESHOLD = 5;
 
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T | 'TIMEOUT'> {
@@ -121,33 +152,95 @@ function fallbackSummary(text: string): string {
   return `${notice}\nCEFR Level: B1`;
 }
 
-router.post('/summarize', async (req: Request, res: Response) => {
-  const { text } = req.body;
-  if (typeof text !== 'string' || !text.trim()) {
-    return res.json({ summary: fallbackSummary(typeof text === 'string' ? text : '') });
+// Analysis is written in the learner's NATIVE language (the right-hand
+// dropdown) — e.g. Spanish text + ქართული -> the explanation is in Georgian —
+// with the same explanation in the text's own language underneath, plus the
+// key words with their native-language meaning. `summary` keeps the old
+// "<text>\nCEFR Level: <level>" contract so an older Frontend build still works.
+interface VocabularyItem { word: string; meaning: string; explanation?: string }
+interface TextAnalysis {
+  cefrLevel: string;
+  explanation: string;
+  explanationSource: string;
+  vocabulary: VocabularyItem[];
+  learningLanguage: SupportedLanguage;
+  nativeLanguage: SupportedLanguage;
+}
+
+const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+
+function str(value: unknown, max = 2000): string {
+  return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+
+export function parseAnalysis(raw: string, learning: SupportedLanguage, native: SupportedLanguage): TextAnalysis | null {
+  let data: any;
+  try {
+    data = JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g, ''));
+  } catch {
+    return null;
   }
+  const explanation = str(data?.explanation);
+  if (!explanation) return null;
+  const level = str(data?.cefrLevel, 4).toUpperCase();
+  const vocabulary: VocabularyItem[] = Array.isArray(data?.vocabulary)
+    ? data.vocabulary
+        .map((v: any) => ({ word: str(v?.word, 80), meaning: str(v?.meaning, 200), explanation: str(v?.explanation, 400) || undefined }))
+        .filter((v: VocabularyItem) => v.word && v.meaning)
+        .slice(0, 8)
+    : [];
+  return {
+    cefrLevel: CEFR_LEVELS.includes(level) ? level : 'B1',
+    explanation,
+    explanationSource: learning === native ? '' : str(data?.explanationSource),
+    vocabulary,
+    learningLanguage: learning,
+    nativeLanguage: native,
+  };
+}
 
-  const wordCount = text.trim().split(/\s+/).length;
-  const prompt =
-    wordCount <= SHORT_TEXT_WORD_THRESHOLD
-      ? `The following input is very short (a single word or short phrase), too short to genuinely "summarize" — instead, give a brief definition/explanation of it (2-3 sentences), then its CEFR complexity level (A1, A2, B1, B2, C1, or C2) as a learner vocabulary item. Respond in EXACTLY this format, no markdown, no extra commentary:
-<explanation text>
-CEFR Level: <level>
-
-Text: "${text}"`
-      : `Summarize the following text in 2-3 sentences, then give its CEFR complexity level (A1, A2, B1, B2, C1, or C2). Respond in EXACTLY this format, no markdown, no extra commentary:
-<summary text>
-CEFR Level: <level>
+export function buildAnalysisPrompt(text: string, learning: SupportedLanguage, native: SupportedLanguage): string {
+  const short = text.trim().split(/\s+/).length <= SHORT_TEXT_WORD_THRESHOLD;
+  const task = short
+    ? `The input is a single word or short phrase: explain what it means, when and how it is used, and any nuance a learner should know (2-3 sentences).`
+    : `Explain the text to the student like a teacher (3-5 sentences): what its main idea is, what any idioms or figurative expressions really mean (e.g. "opens doors" = creates opportunities), and one grammar or usage point worth noticing. Do NOT simply translate the text and do NOT repeat it word for word: explain it in your own words.`;
+  return `You are a friendly language teacher. The student's native language is ${native}. The student is learning ${learning}; the text below is written in ${learning} (if it is clearly in another language, treat that language as the source language instead).
+${task}
+Rules:
+- "explanation": written ENTIRELY in ${native}${native === 'English' ? '' : ' (do NOT answer in English)'}.
+- "explanationSource": ${learning === native ? 'an empty string, because both languages are the same.' : `the SAME teacher explanation, rewritten in simple ${learning} for a learner. It must be an explanation, never a copy of the original text.`}
+- "vocabulary": ${short ? 'the word/phrase itself, plus at most 2 closely related words a learner should know' : 'the 3-6 most useful or difficult words/expressions from the text'}, each with "word" (in ${learning}), "meaning" (short ${native} translation) and "explanation" (one short sentence in ${native}).
+- "cefrLevel": the text's CEFR level, one of A1, A2, B1, B2, C1, C2.
+Respond with strict JSON only: {"explanation": string, "explanationSource": string, "vocabulary": [{"word": string, "meaning": string, "explanation": string}], "cefrLevel": string}
 
 Text: "${text}"`;
+}
+
+function fallbackAnalysis(text: string, learning: SupportedLanguage, native: SupportedLanguage): TextAnalysis {
+  const [explanation, cefr] = fallbackSummary(text).split('\nCEFR Level: ');
+  return { cefrLevel: cefr, explanation, explanationSource: '', vocabulary: [], learningLanguage: learning, nativeLanguage: native };
+}
+
+router.post('/summarize', async (req: Request, res: Response) => {
+  const { text } = req.body;
+  const { learning, native } = languagePair(req.body);
+  const send = (analysis: TextAnalysis) =>
+    res.json({ summary: `${analysis.explanation}\nCEFR Level: ${analysis.cefrLevel}`, analysis });
+
+  if (typeof text !== 'string' || !text.trim()) {
+    return send(fallbackAnalysis(typeof text === 'string' ? text : '', learning, native));
+  }
 
   try {
-    const result = await withTimeout(callTextModelPlain(prompt, 0.3), SUMMARIZE_TIMEOUT_MS);
-    const summary = result === 'TIMEOUT' ? fallbackSummary(text) : result;
-    res.json({ summary });
+    const raw = await withTimeout(
+      callTextModel(buildAnalysisPrompt(text.slice(0, 6000), learning, native), 0.3, undefined, { timeoutMs: SUMMARIZE_TIMEOUT_MS }),
+      SUMMARIZE_TIMEOUT_MS
+    );
+    const analysis = raw === 'TIMEOUT' ? null : parseAnalysis(raw, learning, native);
+    send(analysis ?? fallbackAnalysis(text, learning, native));
   } catch (err) {
     console.error('[languageTeacher] /summarize failed, using local fallback:', err instanceof Error ? err.message : err);
-    res.json({ summary: fallbackSummary(text) });
+    send(fallbackAnalysis(text, learning, native));
   }
 });
 

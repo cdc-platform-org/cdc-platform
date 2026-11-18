@@ -5,6 +5,41 @@ import apiClient from '../../services/apiClient';
 
 type TeacherAction = 'pronounce' | 'explain' | 'translate';
 
+// Labels of the analysis card follow the right-hand (native) language.
+const LANGUAGE_NAMES: Record<string, { ka: string; en: string }> = {
+  English: { ka: 'ინგლისურად', en: 'English' },
+  German: { ka: 'გერმანულად', en: 'German' },
+  Spanish: { ka: 'ესპანურად', en: 'Spanish' },
+  French: { ka: 'ფრანგულად', en: 'French' },
+  Georgian: { ka: 'ქართულად', en: 'Georgian' },
+  Ukrainian: { ka: 'უკრაინულად', en: 'Ukrainian' },
+  Turkish: { ka: 'თურქულად', en: 'Turkish' },
+  Armenian: { ka: 'სომხურად', en: 'Armenian' },
+  Azerbaijani: { ka: 'აზერბაიჯანულად', en: 'Azerbaijani' },
+};
+
+function analysisLabels(nativeLang: string) {
+  const ka = nativeLang === 'Georgian';
+  const name = (lang: string) => (ka ? LANGUAGE_NAMES[lang]?.ka : LANGUAGE_NAMES[lang]?.en) ?? lang;
+  return ka
+    ? {
+        button: 'შეჯამება და CEFR ანალიზი',
+        explanationIn: (lang: string) => `ახსნა ${name(lang)}`,
+        keyWords: 'მთავარი სიტყვები',
+        showSource: (lang: string) => `ახსნა ${name(lang)}აც`,
+        level: 'CEFR დონე',
+      }
+    : {
+        button: 'Summarize & CEFR Analysis',
+        explanationIn: (lang: string) => `Explanation in ${name(lang)}`,
+        keyWords: 'Key words',
+        showSource: (lang: string) => `Also show in ${name(lang)}`,
+        level: 'CEFR Level',
+      };
+}
+
+const SHOW_SOURCE_KEY = 'smartReader.showSourceExplanation';
+
 export const SmartReader: React.FC = () => {
   useEffect(() => () => stopNaturalSpeech(), []);
   const {
@@ -22,6 +57,7 @@ export const SmartReader: React.FC = () => {
     handleTextSelection,
     summary,
     cefrLevel,
+    analysis,
     loadingAi,
     handleSummarize,
     isListening,
@@ -34,6 +70,17 @@ export const SmartReader: React.FC = () => {
   const [popupPos, setPopupPos] = useState<{ x: number; y: number } | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionResponse, setActionResponse] = useState<string | null>(null);
+  const [showSource, setShowSource] = useState(true);
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(SHOW_SOURCE_KEY) === '0') setShowSource(false);
+    } catch { /* storage blocked */ }
+  }, []);
+  const toggleShowSource = (value: boolean) => {
+    setShowSource(value);
+    try { window.localStorage.setItem(SHOW_SOURCE_KEY, value ? '1' : '0'); } catch { /* storage blocked */ }
+  };
+  const labels = analysisLabels(nativeLang);
 
   const onTextSelect = () => {
     handleTextSelection();
@@ -168,24 +215,62 @@ export const SmartReader: React.FC = () => {
           onClick={handleSummarize}
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
         >
-          Summarize & CEFR Analysis
+          {labels.button}
         </button>
 
         {summary && (
-          <div className="bg-slate-800 p-4 rounded-lg mt-4">
-            <p className="text-slate-200">{summary}</p>
-            {cefrLevel && (
-              <span
-                className={`inline-block px-3 py-1 mt-2 text-sm font-semibold rounded-full ${
-                  cefrLevel.startsWith('A')
-                    ? 'bg-green-500 text-white'
-                    : cefrLevel.startsWith('B')
-                    ? 'bg-yellow-500 text-black'
-                    : 'bg-red-500 text-white'
-                }`}
-              >
-                CEFR Level: {cefrLevel}
+          <div className="bg-slate-800 p-4 rounded-lg mt-4 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-indigo-300">
+                {labels.explanationIn(analysis?.nativeLanguage ?? nativeLang)}
               </span>
+              {cefrLevel && (
+                <span
+                  className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${
+                    cefrLevel.startsWith('A')
+                      ? 'bg-green-500 text-white'
+                      : cefrLevel.startsWith('B')
+                      ? 'bg-yellow-500 text-black'
+                      : 'bg-red-500 text-white'
+                  }`}
+                >
+                  {labels.level}: {cefrLevel}
+                </span>
+              )}
+            </div>
+            <p className="text-slate-100 leading-relaxed whitespace-pre-wrap">{summary}</p>
+
+            {analysis && analysis.vocabulary.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-indigo-300">{labels.keyWords}</p>
+                <ul className="space-y-1.5">
+                  {analysis.vocabulary.map((item, i) => (
+                    <li key={`${item.word}-${i}`} className="text-sm text-slate-200">
+                      <span className="font-semibold text-white">{item.word}</span>
+                      <span className="text-slate-500"> — </span>
+                      <span className="text-indigo-200">{item.meaning}</span>
+                      {item.explanation && <span className="block text-xs text-slate-400 mt-0.5">{item.explanation}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {analysis?.explanationSource && (
+              <div className="border-t border-slate-700 pt-3 space-y-2">
+                <label className="inline-flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={showSource}
+                    onChange={(e) => toggleShowSource(e.target.checked)}
+                    className="accent-indigo-500"
+                  />
+                  {labels.showSource(analysis.learningLanguage)}
+                </label>
+                {showSource && (
+                  <p className="text-sm text-slate-300 leading-relaxed whitespace-pre-wrap">{analysis.explanationSource}</p>
+                )}
+              </div>
             )}
           </div>
         )}
