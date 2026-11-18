@@ -257,7 +257,7 @@ export default function SiteFooter() {
           <h3 className={headingClass}>{t.coursesHeading}</h3>
           <ul className={listClass}>
             <li><Link href="/courses" className={navLink}>{t.courses}</Link></li>
-            <li><Link href="/gift-cards" className={navLink}>🎁 {t.giftCards}</Link></li>
+            <li><Link href="/gift-cards" className={navLink}>{t.giftCards}</Link></li>
             <li><Link href="/success-stories" className={navLink}>{t.cases}</Link></li>
             <li><Link href="/trainers" className={navLink}>{t.trainers}</Link></li>
             <li><Link href="/gallery" className={navLink}>{t.gallery}</Link></li>

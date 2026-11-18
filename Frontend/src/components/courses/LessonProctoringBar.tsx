@@ -4,6 +4,7 @@
  * updating the 25% Attendance pillar in real time.
  */
 
+import { BrainCircuit, Check, Video } from 'lucide-react';
 import { useState } from 'react';
 import { pingAttendanceCheckpoint, ReadinessResponse } from '../../services/readinessPassportService';
 
@@ -55,37 +56,39 @@ export default function LessonProctoringBar({
         <button
           type="button"
           onClick={handleCameraVerify}
-          className={`rounded-lg px-3 py-1.5 font-bold cursor-pointer ${
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold cursor-pointer ${
             cameraVerified
               ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
               : 'bg-cyan-600 hover:bg-cyan-500 text-white border-none'
           }`}
         >
+          {cameraVerified ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Video className="h-3.5 w-3.5" aria-hidden="true" />}
           {cameraVerified
             ? lang === 'ka'
-              ? '🎥 კამერით დასწრება დადასტურებულია (25%)'
-              : '🎥 Camera Attendance Verified'
+              ? 'კამერით დასწრება დადასტურებულია (25%)'
+              : 'Camera Attendance Verified'
             : lang === 'ka'
-              ? '🎥 კამერით დასწრების დადასტურება'
-              : '🎥 Verify Camera Attendance'}
+              ? 'კამერით დასწრების დადასტურება'
+              : 'Verify Camera Attendance'}
         </button>
 
         <button
           type="button"
           onClick={handleCheckpointPass}
-          className={`rounded-lg px-3 py-1.5 font-bold border-none cursor-pointer ${
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-bold border-none cursor-pointer ${
             checkpointPassed
               ? 'bg-purple-500/20 text-purple-300'
               : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
           }`}
         >
+          {checkpointPassed ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <BrainCircuit className="h-3.5 w-3.5" aria-hidden="true" />}
           {checkpointPassed
             ? lang === 'ka'
-              ? '✓ AI Checkpoint ჩაბარებულია'
-              : '✓ AI Checkpoint Passed'
+              ? 'AI Checkpoint ჩაბარებულია'
+              : 'AI Checkpoint Passed'
             : lang === 'ka'
-              ? '🧠 AI სწრაფი შემოწმება (Checkpoint)'
-              : '🧠 Quick AI Lesson Check'}
+              ? 'AI სწრაფი შემოწმება (Checkpoint)'
+              : 'Quick AI Lesson Check'}
         </button>
       </div>
       <span className="text-[11px] text-slate-400">

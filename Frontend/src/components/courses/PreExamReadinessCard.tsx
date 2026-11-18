@@ -4,6 +4,7 @@
  * and enforces the mandatory >= 90% threshold required to unlock the final exam.
  */
 
+import { ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { ReadinessResponse } from '../../services/readinessPassportService';
 
@@ -70,10 +71,11 @@ export default function PreExamReadinessCard({ data, lang }: PreExamReadinessCar
       </div>
 
       {!eligibleForExam && (
-        <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-rose-200 font-semibold">
-          {isKa
-            ? '⛔ ჯამური ქულა 90%-ზე ნაკლებია. გამოცდაზე გასასვლელად თავიდან უნდა გაიაროთ კურსი და სრულყოფილად შეასრულოთ დავალებები.'
-            : '⛔ Total score is below 90%. You must retake the course lessons and complete all assignments to unlock the exam.'}
+        <div className="flex items-start gap-2 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-rose-200 font-semibold">
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>{isKa
+            ? 'ჯამური ქულა 90%-ზე ნაკლებია. გამოცდაზე გასასვლელად თავიდან უნდა გაიაროთ კურსი და სრულყოფილად შეასრულოთ დავალებები.'
+            : 'Total score is below 90%. You must retake the course lessons and complete all assignments to unlock the exam.'}</span>
         </div>
       )}
     </div>
