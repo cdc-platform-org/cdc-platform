@@ -81,7 +81,7 @@ const dictBase = {
     saving: 'ინახება…',
     saved: 'შენახულია ✓',
     // KYC verification
-    kycTitle: 'ბიზნესის ვერიფიკაცია',
+    kycTitle: 'დამსაქმებლის ვერიფიკაცია',
     kycHint: 'ატვირთეთ საჯარო რეესტრის ამონაწერი ან კომპანიის რეგისტრაციის დოკუმენტი (PDF, JPG, PNG ან WEBP, მაქს. 10MB).',
     taxId: 'საიდენტიფიკაციო კოდი (ს/კ)',
     kycUpload: 'დოკუმენტის ატვირთვა',
@@ -92,7 +92,7 @@ const dictBase = {
     kycViewDoc: 'ატვირთული დოკუმენტის ნახვა',
     statusUnverified: 'მოითხოვს ვერიფიკაციას',
     statusUnderReview: 'განხილვის პროცესშია',
-    statusVerified: 'დადასტურებული ბიზნესი',
+    statusVerified: 'დადასტურებული დამსაქმებელი',
     // Vacancies
     postVacancy: '+ ვაკანსიის გამოქვეყნება',
     noVacancies: 'ვაკანსიები ჯერ არ არის.',
@@ -168,7 +168,7 @@ const dictBase = {
     saving: 'Saving…',
     saved: 'Saved ✓',
     // KYC verification
-    kycTitle: 'Business Verification',
+    kycTitle: 'Employer Verification',
     kycHint: 'Upload a Public Registry Extract or company registration document (PDF, JPG, PNG, or WEBP, max 10MB).',
     taxId: 'Identification Code (ს/კ)',
     kycUpload: 'Upload Document',
@@ -179,7 +179,7 @@ const dictBase = {
     kycViewDoc: 'View Uploaded Document',
     statusUnverified: 'Unverified',
     statusUnderReview: 'Under Review',
-    statusVerified: 'Verified Business',
+    statusVerified: 'Verified Employer',
     postVacancy: '+ Post a Vacancy',
     noVacancies: "You haven't posted any vacancies yet.",
     statusAll: 'All',

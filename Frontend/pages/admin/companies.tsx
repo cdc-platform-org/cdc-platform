@@ -18,6 +18,7 @@ import {
 import { useAuth } from '../../src/context/AuthContext';
 
 import { adminLocale, at } from '../../src/i18n/admin';
+import IndividualVerificationList from '../../src/components/admin/IndividualVerificationList';
 // Inline "how many accounts may share this ს/კ" control — fetches the
 // current override (or platform default) only when opened, since most
 // companies never need this touched at all.
@@ -300,7 +301,7 @@ function KycInspectionDrawer({
             onClick={onApprove}
             className="w-full text-sm font-semibold px-4 py-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
           >
-            {at("Approve — Grant Buy/Sell Access")}
+            {at("Approve — Grant Publishing Access")}
           </button>
           <textarea
             value={reasonDraft}
@@ -440,6 +441,8 @@ function AdminCompaniesDashboard() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | 'unverified' | 'under_review' | 'verified' | 'rejected'>('under_review');
+  // One queue for both submission types (company + individual employer).
+  const [typeFilter, setTypeFilter] = useState<'' | 'business' | 'individual'>('');
   const [aiTrialCompanyId, setAiTrialCompanyId] = useState<string | null>(null);
   const [inspectingCompanyId, setInspectingCompanyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -523,13 +526,13 @@ function AdminCompaniesDashboard() {
   return (
     <>
       <Head>
-        <title>{at("Business Verification | Admin")}</title>
+        <title>{at("Employer Verification | Admin")}</title>
       </Head>
       <div className="max-w-5xl">
         <div className="mb-8">
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{at("Business Verification")}</h1>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">{at("Employer Verification")}</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-            {at("Review uploaded Public Registry Extracts / registration documents and approve or revoke Business accounts.")}
+            {at("One review queue for companies and individual employers. Approved accounts can publish job posts, orders and paid offers.")}
           </p>
         </div>
 
@@ -538,6 +541,19 @@ function AdminCompaniesDashboard() {
             {actionError}
           </div>
         )}
+
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {(['', 'business', 'individual'] as const).map((type) => (
+            <button
+              key={type || 'all'}
+              type="button"
+              onClick={() => setTypeFilter(type)}
+              className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${typeFilter === type ? 'bg-slate-900 text-white border-slate-900' : 'bg-white dark:bg-slate-900/60 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
+            >
+              {type === '' ? at("All types") : type === 'business' ? at("Company") : at("Individual")}
+            </button>
+          ))}
+        </div>
 
         <div className="flex items-center gap-2 mb-4">
           {(['under_review', 'unverified', 'verified', 'rejected', ''] as const).map((s) => (
@@ -552,7 +568,10 @@ function AdminCompaniesDashboard() {
           ))}
         </div>
 
-        {loading ? (
+        {typeFilter === '' && (
+          <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">{at("Companies")}</h2>
+        )}
+        {typeFilter === 'individual' ? null : loading ? (
           <p className="text-sm text-gray-400 dark:text-slate-500">{at("Loading…")}</p>
         ) : companies.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-slate-400">{at("No businesses here.")}</p>
@@ -645,6 +664,13 @@ function AdminCompaniesDashboard() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {typeFilter !== 'business' && (
+          <div className="mt-8">
+            {typeFilter === '' && <h2 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2">{at("Individuals")}</h2>}
+            <IndividualVerificationList status={statusFilter} />
           </div>
         )}
       </div>

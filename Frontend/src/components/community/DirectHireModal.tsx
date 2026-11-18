@@ -3,6 +3,8 @@ import { useTranslation } from 'next-i18next';
 import { Gig } from '../../types/community';
 import { CreateDirectOfferPayload } from '../../services/directOfferService';
 import ChatBox from './ChatBox';
+import PermissionDeniedModal from '../shared/PermissionDeniedModal';
+import { classifyApiError, ApiErrorReason } from '../../utils/apiErrorMessages';
 
 type ModalStep = 'select' | 'offer' | 'chat';
 type OfferSource = 'existing' | 'custom';
@@ -33,6 +35,7 @@ export default function DirectHireModal({
   const [message, setMessage] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [permissionReason, setPermissionReason] = useState<ApiErrorReason | null>(null);
 
   const inputClass =
     'w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500';
@@ -91,7 +94,14 @@ export default function DirectHireModal({
       await onSubmit(payload);
       onClose();
     } catch (err: any) {
-      setError(err?.response?.data?.message ?? t('directHireModal.error'));
+      const message = err?.response?.data?.message;
+      // Paid offers need employer verification (server 403) — explain it
+      // with the shared modal and a button to start verification.
+      if (classifyApiError(message) === 'VERIFICATION_REQUIRED') {
+        setPermissionReason('VERIFICATION_REQUIRED');
+        return;
+      }
+      setError(message ?? t('directHireModal.error'));
     } finally {
       setSubmitting(false);
     }
@@ -291,6 +301,9 @@ export default function DirectHireModal({
           </form>
         )}
       </div>
+      {permissionReason && (
+        <PermissionDeniedModal reason={permissionReason} context="posting" onClose={() => { setPermissionReason(null); onClose(); }} />
+      )}
     </div>
   );
 }
