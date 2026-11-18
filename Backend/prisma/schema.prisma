@@ -2039,7 +2039,13 @@ model DigitalProduct {
   // schedule a discount ahead of time (e.g. a weekend sale); before this
   // moment getCurrentProductPrice() still charges `price`.
   saleStartsAt       DateTime?
+  // One of the fixed keys in services/marketplace/productCategories.ts
+  // (coloring, wall-art, ...). Older rows may still hold a free-text value;
+  // reads normalize them with normalizeProductCategory().
   category           String
+  // Admin-only store flag: BESTSELLER | POPULAR | RECOMMENDED | NEW, or null.
+  // Flagged products are listed first and get a badge on their card.
+  highlight          String?
   imageUrl           String
   // Up to 4 additional showcase screenshots shown alongside imageUrl (the
   // main cover) in the /store/[id] gallery/carousel — same array-of-URLs

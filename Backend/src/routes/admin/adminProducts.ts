@@ -31,6 +31,7 @@ import { protectProductPreviewImage } from '../../services/marketplace/productIm
 import { uploadProductFile, resolveProductFileDeliveryUrl } from '../../services/marketplace/productFileDelivery';
 import { withCurrentProductPrice, validateProductDiscount } from '../../services/marketplace/productPricing';
 import { logAdminAction } from '../../services/account/auditLogService';
+import { normalizeProductCategory, PRODUCT_HIGHLIGHTS } from '../../services/marketplace/productCategories';
 
 function toPrismaSaleEndsAt(value: string | null | undefined): Date | null | undefined {
   if (value === undefined) return undefined;
@@ -155,7 +156,9 @@ const createSchema = z.object({
   // here so every other money field in the DB (Course.originalPrice,
   // BogPayment.amount) stays in the same unit.
   price: z.number().min(0),
-  category: z.string().min(1).max(100),
+  // Picked from the fixed list in the admin dropdown; anything else is folded into a key.
+  category: z.string().min(1).max(100).transform((c) => normalizeProductCategory(c)),
+  highlight: z.enum(PRODUCT_HIGHLIGHTS).optional().nullable(),
   imageUrl: z.string().url(),
   // Up to 15 additional showcase screenshots alongside imageUrl (the main
   // cover) — empty is fine, a submission isn't required to have a gallery.
@@ -246,7 +249,11 @@ router.get('/', async (_req: Request, res: Response) => {
     orderBy: { createdAt: 'desc' },
     include: { submittedBy: { select: { id: true, name: true, email: true } } },
   });
-  res.json({ data: products.map(withCurrentProductPrice) });
+  // Category normalized so the admin list/filter shows the fixed keys even
+  // for rows saved before the category clean-up.
+  res.json({
+    data: products.map((p) => ({ ...withCurrentProductPrice(p), category: normalizeProductCategory(p.category, p.title) })),
+  });
 });
 
 // Every purchase of one product, including whether the buyer has ever
@@ -266,7 +273,9 @@ const updateSchema = z.object({
   description: z.string().min(1).max(5000).optional(),
   titleEn: z.string().min(1).max(200).optional().nullable(),
   descriptionEn: z.string().min(1).max(5000).optional().nullable(),
-  category: z.string().min(1).max(100).optional(),
+  category: z.string().min(1).max(100).transform((c) => normalizeProductCategory(c)).optional(),
+  // Store flag (BESTSELLER/POPULAR/RECOMMENDED/NEW); null clears it.
+  highlight: z.enum(PRODUCT_HIGHLIGHTS).optional().nullable(),
   // Major-unit GEL, same conversion as createSchema — omit to leave price unchanged.
   price: z.number().finite().min(0).max(21474836.47).optional(),
   // Integer tetri for inline edits; preserve the existing GEL price contract.
@@ -355,7 +364,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         },
       });
     }
-    res.json({ data: withCurrentProductPrice(updated) });
+    res.json({ data: { ...withCurrentProductPrice(updated), category: normalizeProductCategory(updated.category, updated.title) } });
   } catch (err: any) {
     if (err.code === 'P2025') return res.status(404).json({ message: 'Product not found.' });
     throw err;

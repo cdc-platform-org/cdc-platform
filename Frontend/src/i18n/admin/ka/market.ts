@@ -233,4 +233,9 @@ export const KA_MARKET: Record<string, string> = {
   "Temperature override (0-2, blank = default)": "Temperature (0-2, ცარიელი = ნაგულისხმევი)",
   "MANAGER": "მენეჯერი",
   "AI English Tutor | Admin": "AI ინგლისურის ტუტორი | ადმინი",
+  // Digital Store categories + store flags (ProductCategoryFields.tsx)
+  "Choose a category…": "აირჩიე კატეგორია…",
+  "Flagged products are shown first in the store": "მონიშნული პროდუქტები მაღაზიაში პირველები ჩანს",
+  "No store flag": "მონიშვნის გარეშე",
+  "All categories": "ყველა კატეგორია",
 };

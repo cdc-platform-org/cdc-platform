@@ -93,5 +93,15 @@
   "resetFilters": "Reset All Filters",
   "filtersButton": "Filters",
   "applyFilters": "Apply",
-  "noResultsFiltered": "No products match your filters."
+  "noResultsFiltered": "No products match your filters.",
+  "sortFeatured": "Առաջարկվող",
+  "aiToolsChip": "AI գործիքներ",
+  "coloringSubtitle": "Տպիր և ներկիր՝ զվարճալի էջեր երեխաների համար",
+  "otherProductsTitle": "Այլ թվային ապրանքներ",
+  "otherProductsSubtitle": "Պատի պաստառներ, պլանավորիչներ, CV և բիզնես ձևանմուշներ",
+  "showMore": "Ցույց տալ ավելին",
+  "showLess": "Ցույց տալ քիչ",
+  "storeSearchPlaceholder": "Որոնել գործիքներ և ապրանքներ...",
+  "resultsFound": "Գտնվել է՝ {{count}}",
+  "productsHeading": "Թվային ապրանքներ"
 }

@@ -30,6 +30,7 @@ import { autoTranslateIfBlank } from '../services/ai/aiTranslateService';
 import { protectProductPreviewImage } from '../services/marketplace/productImageProtection';
 import { uploadProductFile, resolveProductFileDeliveryUrl } from '../services/marketplace/productFileDelivery';
 import { withCurrentProductPrice, validateProductDiscount } from '../services/marketplace/productPricing';
+import { normalizeProductCategory, highlightRank } from '../services/marketplace/productCategories';
 
 // ISO string (or '' / null / undefined for "no sale end date") from the
 // form's <input type="datetime-local"> — mirrors courses.ts's identical
@@ -50,12 +51,19 @@ const router = Router();
 // only visible to their submitter (GET /:id below) or admins (adminProducts.ts).
 // ============================================================
 router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
+  // ?category= is a fixed key (productCategories.ts). Filtered after the
+  // read, not in SQL, so rows still holding a pre-clean-up free-text
+  // category match their normalized key too. The catalog is small.
   const category = typeof req.query.category === 'string' ? req.query.category : undefined;
-  const products = await prisma.digitalProduct.findMany({
-    where: { status: 'APPROVED', ...(category ? { category } : {}) },
+  const all = await prisma.digitalProduct.findMany({
+    where: { status: 'APPROVED' },
     orderBy: { createdAt: 'desc' },
     include: { editableTemplate: { select: { id: true } } },
   });
+  // Admin-highlighted products first (stable sort keeps newest-first inside each rank).
+  const products = all
+    .filter((p) => !category || normalizeProductCategory(p.category, p.title) === category)
+    .sort((a, b) => highlightRank(a.highlight) - highlightRank(b.highlight));
 
   const purchasedIds = req.user
     ? new Set(
@@ -87,7 +95,8 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
         saleEndsAt: saleActive ? p.saleEndsAt : null,
         currentPrice,
         saleActive,
-        category: p.category,
+        category: normalizeProductCategory(p.category, p.title),
+        highlight: p.highlight,
         imageUrl: p.imageUrl,
         previewImages: p.previewImages,
         fileFormat: fileFormatFromUrl(p.fileUrl),
@@ -149,7 +158,8 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
       saleEndsAt: saleActive ? product.saleEndsAt : null,
       currentPrice,
       saleActive,
-      category: product.category,
+      category: normalizeProductCategory(product.category, product.title),
+      highlight: product.highlight,
       imageUrl: product.imageUrl,
       previewImages: product.previewImages,
       previewVideoUrl: product.previewVideoUrl,
@@ -178,7 +188,8 @@ const submitSchema = z.object({
   titleEn: z.string().min(1).max(200).optional().nullable(),
   descriptionEn: z.string().min(1).max(5000).optional().nullable(),
   price: z.number().min(0),
-  category: z.string().min(1).max(100),
+  // Any legacy free-text value is folded into one fixed key (productCategories.ts).
+  category: z.string().min(1).max(100).transform((c) => normalizeProductCategory(c)),
   imageUrl: z.string().url(),
   // Up to 15 additional showcase screenshots alongside imageUrl (the main
   // cover) — empty is fine, a submission isn't required to have a gallery.

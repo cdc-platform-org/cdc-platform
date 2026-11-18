@@ -37,6 +37,7 @@ import CheckoutGatewayPicker, { useCheckoutGateway } from '../../src/components/
 import { formatPrice } from '../../src/utils/coursePricing';
 import { resolveLocale } from '@/src/utils/locale';
 import { localizePromoError } from '../../src/components/shared/PromoCodeField';
+import { productCategoryLabel } from '../../src/data/productCategories';
 
 // Fixed id of the seeded "AI Business Assistant" trial listing (see
 // Backend's 20260807010000_seed_ai_business_trial_product migration) — a
@@ -235,7 +236,7 @@ function StoreProductContent({ initialProduct }: { initialProduct: DigitalProduc
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400 w-fit">
                 <ShoppingBag className="w-3 h-3" />
-                {product.category}
+                {productCategoryLabel(product.category, contentLang, product.title)}
               </span>
               {product.fileFormat && (
                 <span className="inline-flex items-center text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400">

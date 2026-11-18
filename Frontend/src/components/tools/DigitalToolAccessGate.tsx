@@ -78,7 +78,7 @@ export default function DigitalToolAccessGate({ toolKey, children, toolTitle, to
       <div role="alert">
         <ToolStateCard icon={Lock} accent={accent} title={t.title} body={t.body}>
           <ToolLinkButton variant="secondary" href={`mailto:contact@cdc.org.ge?subject=${subject}`}><Mail className="w-4 h-4" aria-hidden />{t.contact}</ToolLinkButton>
-          <ToolLinkButton href={`/marketplace?category=${encodeURIComponent(lang === 'ka' ? 'ციფრული AI ხელსაწყოები' : 'Digital AI Tools')}`}><LayoutGrid className="w-4 h-4" aria-hidden />{t.browse}</ToolLinkButton>
+          <ToolLinkButton href="/marketplace?category=ai-tools"><LayoutGrid className="w-4 h-4" aria-hidden />{t.browse}</ToolLinkButton>
         </ToolStateCard>
       </div>
     </ToolShell>

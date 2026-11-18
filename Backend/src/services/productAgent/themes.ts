@@ -9,7 +9,7 @@
  * sells here and does not repeat itself.
  */
 import { prisma } from '../../lib/prisma';
-import { AGENT_CATEGORIES, AgentCategoryKey } from './categories';
+import { AgentCategoryKey, storeCategoryValues } from './categories';
 import { getThemeOutcomes, TrendTheme } from './trends';
 
 export const THEME_POOLS: Record<AgentCategoryKey, string[]> = {
@@ -123,7 +123,7 @@ function pickWeighted<T>(items: T[]): T {
 const BRIEF_MAX_AGE_MS = 21 * 86_400_000;
 
 export async function pickThemeContext(category: AgentCategoryKey): Promise<ThemeContext> {
-  const storeCategory = AGENT_CATEGORIES[category].storeCategory;
+  const storeCategory = { in: storeCategoryValues(category) };
   const [recentRuns, bestSellers, recentProducts, brief, outcomes] = await Promise.all([
     prisma.productAgentRun.findMany({ where: { category }, orderBy: { startedAt: 'desc' }, take: 40, select: { theme: true } }),
     prisma.digitalProduct.findMany({

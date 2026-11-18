@@ -93,5 +93,15 @@
   "resetFilters": "Reset All Filters",
   "filtersButton": "Filters",
   "applyFilters": "Apply",
-  "noResultsFiltered": "No products match your filters."
+  "noResultsFiltered": "No products match your filters.",
+  "sortFeatured": "Recommended",
+  "aiToolsChip": "AI tools",
+  "coloringSubtitle": "Print and color: fun activity sheets for kids",
+  "otherProductsTitle": "Other digital products",
+  "otherProductsSubtitle": "Wall art, planners, CV and business templates",
+  "showMore": "Show more",
+  "showLess": "Show less",
+  "storeSearchPlaceholder": "Search tools and products...",
+  "resultsFound": "Found: {{count}}",
+  "productsHeading": "Digital products"
 }

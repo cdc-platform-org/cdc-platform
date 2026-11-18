@@ -196,7 +196,7 @@ export default function BusinessAiAgentsSuite({ lang }: { lang: SupportedLocale 
         </p>
         {!hasAccess && !verificationPending && (
           <a
-            href={`/marketplace?category=${encodeURIComponent(lang === 'ka' ? 'ციფრული AI ხელსაწყოები' : 'Digital AI Tools')}`}
+            href="/marketplace?category=ai-tools"
             className="text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg no-underline"
           >
             {t.contactUs}

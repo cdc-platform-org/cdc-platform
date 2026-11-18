@@ -28,6 +28,6 @@ it('publishes a logo as pending, attaches its editable template and uploads SVG 
   const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><ellipse cx="10" cy="10" rx="5" ry="5"/></svg>');
   expect(await publishDraft({category:'VECTOR_LOGOS',titleKa:'ლოგოს შაბლონი',titleEn:'Logo template',descriptionKa:'შაბლონი',descriptionEn:'Template',priceGel:15,license:'COMMERCIAL_USE',cover:Buffer.from('preview'),gallery:[],files:[{buffer:svg,name:'logo.svg',mimetype:'image/svg+xml'}],editorTemplate:template})).toBe('logo-product');
   expect(uploadProductFile).toHaveBeenCalledWith(svg,'image/svg+xml','logo.svg');
-  expect(prisma.digitalProduct.create).toHaveBeenCalledWith(expect.objectContaining({data:expect.objectContaining({status:'PENDING',createdByAgent:true,category:'Design & Graphics / Vector Logos',price:1500,fileUrl:'cdcblob://product-file-private.svg'})}));
+  expect(prisma.digitalProduct.create).toHaveBeenCalledWith(expect.objectContaining({data:expect.objectContaining({status:'PENDING',createdByAgent:true,category:'design-business',price:1500,fileUrl:'cdcblob://product-file-private.svg'})}));
   expect(prisma.productTemplate.upsert).toHaveBeenCalledWith(expect.objectContaining({create:expect.objectContaining({productId:'logo-product',data:template})}));
 });

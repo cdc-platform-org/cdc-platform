@@ -93,5 +93,15 @@
   "resetFilters": "Reset All Filters",
   "filtersButton": "Filters",
   "applyFilters": "Apply",
-  "noResultsFiltered": "No products match your filters."
+  "noResultsFiltered": "No products match your filters.",
+  "sortFeatured": "Önerilen",
+  "aiToolsChip": "Yapay zekâ araçları",
+  "coloringSubtitle": "Yazdır ve boya: çocuklar için eğlenceli sayfalar",
+  "otherProductsTitle": "Diğer dijital ürünler",
+  "otherProductsSubtitle": "Duvar sanatı, planlayıcılar, CV ve iş şablonları",
+  "showMore": "Daha fazla göster",
+  "showLess": "Daha az göster",
+  "storeSearchPlaceholder": "Araç ve ürün ara...",
+  "resultsFound": "Bulunan: {{count}}",
+  "productsHeading": "Dijital ürünler"
 }

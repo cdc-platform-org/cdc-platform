@@ -44,6 +44,8 @@ import ProductPricingPanel from '../../src/components/admin/ProductPricingPanel'
 
 import { adminLocale, at, atEnum, atf, getAdminLang } from '../../src/i18n/admin';
 import { useCanSeeMoney } from '../../src/components/admin/useCanSeeMoney';
+import { ProductCategorySelect, ProductHighlightSelect } from '../../src/components/admin/ProductCategoryFields';
+import { PRODUCT_CATEGORIES, normalizeProductCategory } from '../../src/data/productCategories';
 // Bilingual because this admin page is English-only while its editors work in
 // Georgian. Why 4:3 + centre: the store detail gallery is 4:3 and the store
 // card is 16:9 (crops top/bottom) — see imageRatioCheck.ts.
@@ -450,8 +452,18 @@ function ModerationProductCard({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap mb-1">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-600">{p.category}</span>
           <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${STATUS_BADGE[p.status ?? 'PENDING']}`}>{atEnum(p.status)}</span>
+          {/* Category + store flag are changed right here (saved at once), no need to open Edit. */}
+          <ProductCategorySelect
+            value={normalizeProductCategory(p.category, p.title)}
+            onChange={(category) => void onSave({ category }).catch(() => undefined)}
+            className="!py-1 !text-xs"
+          />
+          <ProductHighlightSelect
+            value={p.highlight ?? ''}
+            onChange={(v) => void onSave({ highlight: v || null }).catch(() => undefined)}
+            className="!py-1 !text-xs"
+          />
           {p.createdByAgent && (
             <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-indigo-600 text-white" title={at("Created by the AI product agent — see /admin/product-agent")}>
               AI აგენტი
@@ -767,6 +779,7 @@ function AdminProductsDashboard() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('PENDING');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [actionError, setActionError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
 
@@ -841,8 +854,13 @@ function AdminProductsDashboard() {
   }, [loading]);
 
   const visible = useMemo(
-    () => (statusFilter ? products.filter((p) => p.status === statusFilter) : products),
-    [products, statusFilter]
+    () =>
+      products.filter(
+        (p) =>
+          (!statusFilter || p.status === statusFilter) &&
+          (!categoryFilter || normalizeProductCategory(p.category, p.title) === categoryFilter)
+      ),
+    [products, statusFilter, categoryFilter]
   );
   const pendingCount = products.filter((p) => p.status === 'PENDING').length;
 
@@ -1092,13 +1110,7 @@ function AdminProductsDashboard() {
           />
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">{at("Category")}</label>
-            <input
-              required
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              placeholder={at("UI Kits / AI Prompts / Templates / E-Books")}
-              className="w-full sm:w-64 rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            />
+            <ProductCategorySelect required value={category} onChange={setCategory} className="w-full sm:w-80" />
           </div>
           {!canSeeMoney && (
             <p className="text-xs text-gray-500">{at("Price is set by a Super Admin. New products wait in Pending until it is set.")}</p>
@@ -1207,7 +1219,7 @@ function AdminProductsDashboard() {
           </button>
         </form>
 
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
           {['PENDING', 'NEEDS_REVISION', 'APPROVED', 'REJECTED', 'ARCHIVED', ''].map((s) => (
             <button
               key={s}
@@ -1219,6 +1231,19 @@ function AdminProductsDashboard() {
               {s === 'PENDING' && pendingCount > 0 ? ` (${pendingCount})` : ''}
             </button>
           ))}
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            aria-label={at("Category")}
+            className="ml-auto text-xs rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-gray-600"
+          >
+            <option value="">{at("All categories")}</option>
+            {PRODUCT_CATEGORIES.map((c) => (
+              <option key={c.key} value={c.key}>
+                {c.emoji} {getAdminLang() === 'ka' ? c.labelKa : c.labelEn}
+              </option>
+            ))}
+          </select>
         </div>
 
         {actionError && <p className="text-sm text-red-600 mb-4">{actionError}</p>}

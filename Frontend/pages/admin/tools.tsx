@@ -11,6 +11,7 @@ import KaToEnButton from '../../src/components/admin/KaToEnButton';
 import { parseVideoUrl } from '../../src/components/shared/VideoEmbed';
 
 import { at } from '../../src/i18n/admin';
+import { PRODUCT_HIGHLIGHTS, HIGHLIGHT_LABELS } from '../../src/data/productCategories';
 // The 4 real, live self-service SaaS tools this CMS currently covers (see
 // marketplace/index.tsx's SAAS_TOOLS and tools.tsx's own cards for where
 // these slugs are read) — pre-seeded here so an admin sees every real tool
@@ -23,6 +24,8 @@ const KNOWN_TOOLS: { slug: string; route: string; name: string; statusWired: boo
   { slug: 'proctoring', route: '/dashboard/tools/proctored-exam', name: 'AI საპრაქტიკო გამოცდა', statusWired: true },
   { slug: 'english-tutor', route: '/dashboard/english-tutor', name: 'AI ინგლისურის რეპეტიტორი', statusWired: true },
   { slug: 'smart-reader', route: '/#ai-tools', name: 'AI ჭკვიანი წამკითხველი (მაღაზიის ბარათი)', statusWired: true },
+  { slug: 'coloring-pages', route: '/dashboard/tools/coloring-pages', name: 'AI გასაფერადებელი გვერდები', statusWired: true },
+  { slug: 'design-studio', route: '/dashboard/tools/design-studio', name: 'Ps + Ai დიზაინის სტუდია', statusWired: true },
   // /tools page cards that used to be hard-coded: text, bullets and cover
   // are editable; their visibility is still fixed in code.
   { slug: 'enterprise-ai', route: '/dashboard/tools/chatbot-builder', name: 'Enterprise AI ასისტენტი', statusWired: false },
@@ -127,8 +130,8 @@ function ToolEntryEditor({
           </p>
         </div>
       )}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex-1 min-w-[220px]">
           <label className={labelClass}>{at("Slug (matches the tool's card id — see tools.tsx / marketplace/index.tsx)")}</label>
           <input placeholder={at("e.g. educator-hub")} value={entry.slug} onChange={(e) => onChange({ slug: e.target.value })} className={inputClass} />
           {known && <p className="text-[11px] text-gray-400 mt-1">{at("Live route:")}{" "}{known.route}</p>}
@@ -139,6 +142,17 @@ function ToolEntryEditor({
             {STATUS_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className={labelClass}>მაღაზიაში მონიშვნა</label>
+          <select value={entry.highlight ?? ''} onChange={(e) => onChange({ highlight: e.target.value || undefined })} className={inputClass}>
+            <option value="">— არცერთი —</option>
+            {PRODUCT_HIGHLIGHTS.map((h) => (
+              <option key={h} value={h}>
+                {HIGHLIGHT_LABELS[h].emoji} {HIGHLIGHT_LABELS[h].ka}
               </option>
             ))}
           </select>

@@ -1,170 +1,94 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+// Digital Store (ციფრული მარკეტი). Layout, top to bottom:
+//   title + "add product" → search, category chips (with counts), sort/price
+//   → AI tools section → coloring pages section → other digital products.
+// Each section shows a few cards and a "Show more" button (StoreSection).
+// Picking a chip or typing a search switches to one filtered list.
+// Categories are the fixed keys in src/data/productCategories.ts (the API
+// already normalizes old free-text values); admin-highlighted products and
+// tools come first in the default "Recommended" sort.
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { GetStaticProps } from 'next';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { ShoppingBag, CheckCircle2, Tag, Star, Plus, Crown, Mic, ShieldCheck, Search, SlidersHorizontal, X, ChevronDown, BookOpen, Sparkles } from 'lucide-react';
-import AiToolSubscriptionActions from '../../src/components/tools/AiToolSubscriptionActions';
+import { Plus, ShoppingBag } from 'lucide-react';
 import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import { getProducts, productTitle, productDescription, DigitalProduct } from '../../src/services/productService';
-import { formatPrice } from '../../src/utils/coursePricing';
-import { onImageErrorFallback } from '../../src/utils/imageFallback';
-import { MARKETPLACE_CATEGORIES } from '../../src/data/marketplaceCategories';
 import { useAuth } from '../../src/context/AuthContext';
 import { useAuthModal } from '../../src/context/AuthModalContext';
-import { getSiteContent } from '../../src/services/siteContentService';
-import { ToolCatalogContent, ToolCatalogEntry } from '../../src/types/siteContent';
-import { findToolEntry, isHiddenAdminOnly, overrideText, overrideList } from '../../src/utils/toolCatalog';
-import { resolveBlogImageUrl } from '../../src/services/blogService';
-
-// CDC-built AI tools cross-listed under the Digital AI Tools category — these are
-// NOT DigitalProduct rows (no price, no file, no seller — they're live
-// dashboard tools, not downloadable purchases), so they're a small fixed
-// list rendered directly here rather than seeded into the real product
-// catalog, which would misrepresent them as purchasable/reviewable items
-// and risk colliding with the real checkout flow. Each pulls its
-// title/description/badge from that tool's OWN existing namespace (already
-// real-translated across all 9 locales) rather than duplicating fresh copy
-// here — only the AI Proctoring system had no reusable 9-locale source
-// (its only existing text lives in tools.tsx's own 6-locale inline dict),
-// so that one gets new keys directly in marketplace.json instead.
-const SAAS_TOOLS = [
-  { id: 'ai-agents', href: '/dashboard/ai-tools', icon: Sparkles, accent: 'from-violet-500 to-cyan-600' },
-  { id: 'chatbot-builder', href: '/dashboard/tools/chatbot-builder', icon: Sparkles, accent: 'from-indigo-500 to-purple-600' },
-  { id: 'coloring-pages', href: '/dashboard/tools/coloring-pages', icon: Sparkles, accent: 'from-emerald-500 to-cyan-600' },
-  { id: 'design-studio', href: '/dashboard/tools/design-studio', icon: Sparkles, accent: 'from-sky-500 to-amber-500' },
-  { id: 'english-tutor', href: '/dashboard/english-tutor', icon: BookOpen, accent: 'from-purple-500 to-cyan-600' },
-  { id: 'educator-hub', href: '/dashboard/tools/educator-hub', icon: Crown, accent: 'from-amber-500 to-purple-600' },
-  { id: 'media-studio', href: '/dashboard/tools/media-studio', icon: Mic, accent: 'from-cyan-500 to-purple-600' },
-  { id: 'smart-reader', href: '/dashboard/tools/smart-reader', icon: BookOpen, accent: 'from-cyan-500 to-emerald-600' },
-  // Self-service practice version — distinct from the Business-gated
-  // candidate-screening system at /dashboard/ai-tools (tools.tsx's Card 2).
-  { id: 'proctoring', href: '/dashboard/tools/proctored-exam', icon: ShieldCheck, accent: 'from-cyan-500 to-purple-600' },
-  // Personalized Children's Book — a server-priced one-time purchase,
-  // linked into the existing dashboard wizard rather than represented by
-  // a downloadable DigitalProduct row.
-  { id: 'childrens-book', href: '/dashboard/tools/childrens-book', icon: BookOpen, accent: 'from-pink-500 to-purple-600' },
-] as const;
-
-type SortOption = 'newest' | 'name_asc' | 'name_desc' | 'price_asc' | 'price_desc' | 'popularity';
-const SORT_OPTIONS: SortOption[] = ['newest', 'name_asc', 'name_desc', 'price_asc', 'price_desc', 'popularity'];
-const SORT_LABEL_KEYS: Record<SortOption, string> = {
-  newest: 'sortNewest',
-  name_asc: 'sortAlphaAsc',
-  name_desc: 'sortAlphaDesc',
-  price_asc: 'sortPriceAsc',
-  price_desc: 'sortPriceDesc',
-  popularity: 'sortPopularity',
-};
-type PriceFilter = 'all' | 'free' | 'paid';
-const PRICE_FILTERS: PriceFilter[] = ['all', 'free', 'paid'];
-const PRICE_FILTER_LABEL_KEYS: Record<PriceFilter, string> = { all: 'all', free: 'free', paid: 'paid' };
+import {
+  AI_TOOLS_FILTER,
+  PRODUCT_CATEGORIES,
+  highlightRank,
+  isAiToolsFilter,
+  isProductCategoryKey,
+  normalizeProductCategory,
+  productCategoryLabel,
+} from '../../src/data/productCategories';
+import { useStoreTools, StoreTool } from '../../src/components/marketplace/useStoreTools';
+import { ToolCard, ProductCard } from '../../src/components/marketplace/StoreCards';
+import StoreSection from '../../src/components/marketplace/StoreSection';
+import StoreToolbar, { CategoryChip, PriceFilter, PRICE_FILTERS, SortOption, SORT_OPTIONS } from '../../src/components/marketplace/StoreToolbar';
 
 const SEARCH_DEBOUNCE_MS = 300;
-const AI_TOOLS_CATEGORY = MARKETPLACE_CATEGORIES[0].value;
+// How many cards each section shows before "Show more".
+const TOOLS_INITIAL = 3;
+const COLORING_INITIAL = 3;
+const OTHER_INITIAL = 6;
+const FILTERED_INITIAL = 9;
 const INTERNAL_CATEGORY_MARKER = /(?:^|[^a-z0-9])(?:qa|e2e|test(?:ing)?|fixture|fixtures|demo|seed)(?:$|[^a-z0-9])/i;
-const PERSONALIZED_LEARNING_MARKER = /\b(?:tutor|tutoring|personalized learning|adaptive learning|ai teacher)\b|პერსონალური სწავლ|რეპეტიტორ/i;
-const AI_UTILITY_CATEGORY_MARKER = /\bai(?:[_\s-]+(?:prompts?[_\s-]+)?)?tools?\b|ai_prompts_tools/i;
-const AI_SIGNAL_MARKER = /\bai\b|artificial intelligence|ხელოვნური ინტელექტ/i;
-const AI_UTILITY_TYPE_MARKER = /\b(?:assistant|generator|reader|prompt|productivity tool|ai tool)\b|ასისტენტ|გენერატორ|მკითხველ|AI ხელსაწყო/i;
 
-function isInternalCatalogProduct(product: DigitalProduct): boolean {
-  return INTERNAL_CATEGORY_MARKER.test(product.category);
-}
-
-function marketplaceProductCategory(product: DigitalProduct, lang: 'ka' | 'en'): string {
-  if (product.category === 'Design & Graphics / Vector Logos') return MARKETPLACE_CATEGORIES[2].value[lang];
-  const content = `${product.category} ${productTitle(product, lang)} ${productDescription(product, lang)}`;
-  const isAiUtility = AI_SIGNAL_MARKER.test(content) && AI_UTILITY_TYPE_MARKER.test(content);
-  if (
-    !PERSONALIZED_LEARNING_MARKER.test(content) &&
-    (AI_UTILITY_CATEGORY_MARKER.test(product.category) || isAiUtility)
-  ) {
-    return AI_TOOLS_CATEGORY[lang];
-  }
-  return product.category;
+// ?category= may be the new key, the "ai-tools" chip, or an old free-text
+// link (bookmarks, other pages) — all resolve to one chip value.
+function resolveCategoryParam(value: string | null): string | null {
+  if (!value) return null;
+  if (isAiToolsFilter(value)) return AI_TOOLS_FILTER;
+  if (isProductCategoryKey(value)) return value;
+  return normalizeProductCategory(value);
 }
 
 function MarketplaceContent() {
   const { t } = useTranslation('marketplace');
-  const { t: tEdu } = useTranslation('educatorHub');
-  const { t: tm } = useTranslation('mediaStudio');
-  const { t: th } = useTranslation('home');
-  const { t: tCB } = useTranslation('childrensBook');
   const router = useRouter();
   const { isAuthenticated, user } = useAuth();
-  const viewerIsAdmin = !!user?.adminRole;
   const { openAuthModal } = useAuthModal();
-  // MARKETPLACE_CATEGORIES.value only carries ka/en fields (it's the literal
-  // ?category= filter value, matching DigitalProduct.category as sellers
-  // typed it) — falls back to English for de/es/fr/uk visitors rather than
-  // Georgian, same boundary as SiteHeader's catLocale.
+  // Product/tool text only exists in ka/en; other locales read English.
   const lang = router.locale === 'ka' ? 'ka' : 'en';
+  const collatorLocale = lang;
 
-  const categoryParam = typeof router.query.category === 'string' ? router.query.category : null;
+  const activeCategory = resolveCategoryParam(typeof router.query.category === 'string' ? router.query.category : null);
+  const { tools } = useStoreTools(lang, !!user?.adminRole);
 
   const [products, setProducts] = useState<DigitalProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  // Admin-editable overrides for the SaaS tool cards below (pages/admin/tools.tsx)
-  // — null until loaded, at which point findToolEntry/overrideText below
-  // fall back to each card's existing static/i18n copy for any unset field.
-  const [toolCatalog, setToolCatalog] = useState<ToolCatalogContent | null>(null);
 
   useEffect(() => {
-    getSiteContent<ToolCatalogContent>('tool-catalog')
-      .then((row) => setToolCatalog(row?.content ?? {}))
-      .catch(() => setToolCatalog({}));
+    getProducts()
+      .then((catalog) =>
+        setProducts(
+          catalog
+            .filter((p) => !INTERNAL_CATEGORY_MARKER.test(p.category))
+            // Already normalized by the API; repeated so the page also works
+            // against an API that hasn't been redeployed yet.
+            .map((p) => ({ ...p, category: normalizeProductCategory(p.category, p.title) }))
+        )
+      )
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
   }, []);
 
-  const load = useCallback(async (category: string | null, locale: 'ka' | 'en') => {
-    setLoading(true);
-    setError(false);
-    try {
-      const catalog = (await getProducts()).filter((product) => !isInternalCatalogProduct(product));
-      setProducts(category ? catalog.filter((product) => marketplaceProductCategory(product, locale) === category) : catalog);
-    } catch {
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!router.isReady) return;
-    load(categoryParam, lang);
-  }, [router.isReady, categoryParam, lang, load]);
-
-  // Curated marketplace taxonomy first, then any other category values
-  // actually present on products (so nothing already published silently
-  // disappears from "All" while the catalog is still adopting the new
-  // categories) — de-duplicated.
-  const categoryChips = useMemo(() => {
-    const fromCatalog = Array.from(new Set(products.map((product) => marketplaceProductCategory(product, lang))));
-    const curated = MARKETPLACE_CATEGORIES.map((c) => c.value[lang]);
-    return Array.from(new Set([...curated, ...fromCatalog]));
-  }, [products, lang]);
-
-  // ---- Sorting, price filter/range, and search — all mirrored into the URL
-  // (?sort=&price=&minPrice=&maxPrice=&search=&category=) so a filtered view
-  // is directly shareable, same shallow-routing approach categoryParam above
-  // already uses. Hydrated FROM the URL exactly once (hydratedFromUrlRef)
-  // so a shared link opens pre-filtered; every change after that flows the
-  // other way (state -> URL) via the sync effect below. ----
-  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  // ---- Filters, mirrored into the URL so a filtered view is shareable.
+  // Read FROM the URL once (hydratedFromUrlRef); after that state -> URL.
+  const [sortBy, setSortBy] = useState<SortOption>('featured');
   const [priceFilter, setPriceFilter] = useState<PriceFilter>('all');
-  const [minPriceInput, setMinPriceInput] = useState('');
-  const [maxPriceInput, setMaxPriceInput] = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  // Only this debounced value drives actual filtering/URL sync — searchInput
-  // itself updates the text box instantly so typing never feels laggy.
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [search, setSearch] = useState('');
   const hydratedFromUrlRef = useRef(false);
 
   useEffect(() => {
@@ -173,88 +97,74 @@ function MarketplaceContent() {
     const q = router.query;
     if (typeof q.sort === 'string' && (SORT_OPTIONS as string[]).includes(q.sort)) setSortBy(q.sort as SortOption);
     if (typeof q.price === 'string' && (PRICE_FILTERS as string[]).includes(q.price)) setPriceFilter(q.price as PriceFilter);
-    if (typeof q.minPrice === 'string') setMinPriceInput(q.minPrice);
-    if (typeof q.maxPrice === 'string') setMaxPriceInput(q.maxPrice);
+    if (typeof q.minPrice === 'string') setMinPrice(q.minPrice);
+    if (typeof q.maxPrice === 'string') setMaxPrice(q.maxPrice);
     if (typeof q.search === 'string') {
       setSearchInput(q.search);
-      setDebouncedSearch(q.search);
+      setSearch(q.search);
     }
   }, [router.isReady, router.query]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchInput), SEARCH_DEBOUNCE_MS);
+    const timer = setTimeout(() => setSearch(searchInput), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
-  const setCategory = (category: string | null) => {
+  const buildQuery = (category: string | null) => {
     const query: Record<string, string> = {};
     if (category) query.category = category;
-    if (sortBy !== 'newest') query.sort = sortBy;
+    if (sortBy !== 'featured') query.sort = sortBy;
     if (priceFilter !== 'all') query.price = priceFilter;
-    if (minPriceInput.trim()) query.minPrice = minPriceInput.trim();
-    if (maxPriceInput.trim()) query.maxPrice = maxPriceInput.trim();
-    if (debouncedSearch.trim()) query.search = debouncedSearch.trim();
-    router.push({ pathname: '/marketplace', query }, undefined, { shallow: true });
+    if (minPrice.trim()) query.minPrice = minPrice.trim();
+    if (maxPrice.trim()) query.maxPrice = maxPrice.trim();
+    if (search.trim()) query.search = search.trim();
+    return query;
   };
 
-  // Every OTHER filter change (sort/price/range/search) replaces the URL in
-  // place — no new history entry per keystroke/toggle, unlike setCategory's
-  // push above (a deliberate navigation the back button should undo).
-  // Skipped until hydration has run once, so this can never fire before the
-  // initial URL state is read and silently wipe a shared link's params.
+  // A chip is a real navigation (back button undoes it); other filter
+  // changes replace the URL in place.
+  const setCategory = (category: string | null) => {
+    router.push({ pathname: '/marketplace', query: buildQuery(category) }, undefined, { shallow: true, scroll: false });
+  };
+
   useEffect(() => {
     if (!router.isReady || !hydratedFromUrlRef.current) return;
-    const query: Record<string, string> = {};
-    if (categoryParam) query.category = categoryParam;
-    if (sortBy !== 'newest') query.sort = sortBy;
-    if (priceFilter !== 'all') query.price = priceFilter;
-    if (minPriceInput.trim()) query.minPrice = minPriceInput.trim();
-    if (maxPriceInput.trim()) query.maxPrice = maxPriceInput.trim();
-    if (debouncedSearch.trim()) query.search = debouncedSearch.trim();
-    router.replace({ pathname: '/marketplace', query }, undefined, { shallow: true });
+    router.replace({ pathname: '/marketplace', query: buildQuery(activeCategory) }, undefined, { shallow: true, scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortBy, priceFilter, minPriceInput, maxPriceInput, debouncedSearch]);
+  }, [sortBy, priceFilter, minPrice, maxPrice, search]);
 
-  const hasActiveFilters =
-    sortBy !== 'newest' || priceFilter !== 'all' || !!minPriceInput.trim() || !!maxPriceInput.trim() || !!debouncedSearch.trim() || !!categoryParam;
+  const priceActive = priceFilter !== 'all' || !!minPrice.trim() || !!maxPrice.trim();
+  const query = search.trim().toLowerCase();
+  const hasActiveFilters = sortBy !== 'featured' || priceActive || !!query || !!activeCategory;
 
   const resetAllFilters = () => {
-    setSortBy('newest');
+    setSortBy('featured');
     setPriceFilter('all');
-    setMinPriceInput('');
-    setMaxPriceInput('');
+    setMinPrice('');
+    setMaxPrice('');
     setSearchInput('');
-    setDebouncedSearch('');
-    if (categoryParam) setCategory(null);
-    setFiltersOpen(false);
+    setSearch('');
+    if (activeCategory) setCategory(null);
   };
 
-  // Georgian collation: plain codepoint order (what a bare .sort() or a
-  // locale-less localeCompare falls back to) does not reliably follow the
-  // traditional ა -> ჰ ordering — explicitly passing 'ka' (vs. 'en' for
-  // every other site locale, matching the lang boundary already used
-  // throughout this page) is what actually gets it right.
-  const collatorLocale = lang === 'ka' ? 'ka' : 'en';
-
-  const visibleProducts = useMemo(() => {
-    const query = debouncedSearch.trim().toLowerCase();
-    const min = minPriceInput.trim() ? parseFloat(minPriceInput) : null;
-    const max = maxPriceInput.trim() ? parseFloat(maxPriceInput) : null;
-
-    const filtered = products.filter((p) => {
+  // Search + price filter + sort (category is applied per view below).
+  const filteredProducts = useMemo(() => {
+    const min = minPrice.trim() ? parseFloat(minPrice) : null;
+    const max = maxPrice.trim() ? parseFloat(maxPrice) : null;
+    const list = products.filter((p) => {
       if (priceFilter === 'free' && p.currentPrice !== 0) return false;
       if (priceFilter === 'paid' && p.currentPrice === 0) return false;
-      const priceInGel = p.currentPrice / 100;
-      if (min !== null && !Number.isNaN(min) && priceInGel < min) return false;
-      if (max !== null && !Number.isNaN(max) && priceInGel > max) return false;
+      const gel = p.currentPrice / 100;
+      if (min !== null && !Number.isNaN(min) && gel < min) return false;
+      if (max !== null && !Number.isNaN(max) && gel > max) return false;
       if (query) {
-        const haystack = `${productTitle(p, lang)} ${productDescription(p, lang)} ${p.category}`.toLowerCase();
+        const haystack = `${productTitle(p, lang)} ${productDescription(p, lang)} ${productCategoryLabel(p.category, lang, p.title)}`.toLowerCase();
         if (!haystack.includes(query)) return false;
       }
       return true;
     });
-
-    return [...filtered].sort((a, b) => {
+    const newest = (a: DigitalProduct, b: DigitalProduct) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return list.sort((a, b) => {
       switch (sortBy) {
         case 'name_asc':
           return productTitle(a, lang).localeCompare(productTitle(b, lang), collatorLocale, { sensitivity: 'base' });
@@ -265,70 +175,38 @@ function MarketplaceContent() {
         case 'price_desc':
           return b.currentPrice - a.currentPrice;
         case 'popularity':
-          return b.salesCount - a.salesCount;
+          return b.salesCount - a.salesCount || newest(a, b);
         case 'newest':
+          return newest(a, b);
+        case 'featured':
         default:
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          // Admin-flagged first, then best sellers, then newest.
+          return highlightRank(a.highlight) - highlightRank(b.highlight) || b.salesCount - a.salesCount || newest(a, b);
       }
     });
-  }, [products, debouncedSearch, priceFilter, minPriceInput, maxPriceInput, sortBy, lang, collatorLocale]);
+  }, [products, priceFilter, minPrice, maxPrice, query, sortBy, lang, collatorLocale]);
 
-  // AI services belong to the unified Digital Market and its AI category.
-  const showSaasTools = !categoryParam || categoryParam === AI_TOOLS_CATEGORY.ka || categoryParam === AI_TOOLS_CATEGORY.en;
+  // Tools have no fixed price, so a price filter hides them.
+  const filteredTools = useMemo(() => {
+    if (priceActive) return [];
+    if (!query) return tools;
+    return tools.filter((tool) => `${tool.title} ${tool.desc} ${tool.badge}`.toLowerCase().includes(query));
+  }, [tools, query, priceActive]);
 
-  const saasToolDefaults: Record<(typeof SAAS_TOOLS)[number]['id'], { title: string; desc: string; badge: string; cta: string; features?: string[] }> = {
-    'ai-agents': { title: lang === 'ka' ? 'AI აგენტები' : 'AI Agents', desc: lang === 'ka' ? 'კონტენტი, ანალიზი და AI ასისტენტი' : 'Content, analysis and AI assistance', badge: 'AI', cta: t('saasLaunchCta') },
-    'chatbot-builder': { title: lang === 'ka' ? 'AI ჩატბოტის კონსტრუქტორი' : 'AI Chatbot Builder', desc: lang === 'ka' ? 'შექმენი და მართე საკუთარი ჩატბოტი' : 'Build and manage your own chatbot', badge: 'AI', cta: t('saasLaunchCta') },
-    'coloring-pages': { title: lang === 'ka' ? 'AI გასაფერადებელი გვერდები' : 'AI Coloring Pages', desc: lang === 'ka' ? 'შექმენი დასაბეჭდი გასაფერადებელი გვერდები' : 'Create printable coloring pages', badge: 'AI', cta: t('saasLaunchCta') },
-    'design-studio': { title: lang === 'ka' ? 'Ps + Ai დიზაინის სტუდია (2-in-1)' : 'Ps + Ai Design Studio (2-in-1)', desc: lang === 'ka' ? 'Photoshop-ისა და Illustrator-ის სიმულაციური სამუშაო გარემო — ფენები, ფილტრები, ვექტორი და PNG/SVG ექსპორტი' : 'Photoshop & Illustrator simulation workspace — layers, filters, vectors & PNG/SVG export', badge: 'Ps + Ai', cta: t('saasLaunchCta'), features: lang === 'ka' ? ['Photoshop რასტრული რეჟიმი და ფილტრები', 'Illustrator ვექტორული Artboard და Pen Tool', 'მრავალფენიანი სისტემა (Layers) და History', 'PNG და SVG მაღალი ხარისხის ექსპორტი'] : ['Photoshop raster mode & filters', 'Illustrator vector Artboard & Pen Tool', 'Multi-layer system & History', 'High-res PNG & SVG export'] },
-    'english-tutor': { title: th('imiakoCardTitle'), desc: th('imiakoFeature1'), badge: th('imiakoBadgeFreeTrial'), cta: t('saasLaunchCta') },
-    'educator-hub': { title: tEdu('pageTitle'), desc: tEdu('pageSubtitle'), badge: tEdu('vipBadge'), cta: tEdu('trialCta') },
-    'media-studio': { title: tm('catalogTitle'), desc: tm('catalogDesc'), badge: tm('catalogTag'), cta: t('saasLaunchCta') },
-    'smart-reader': {
-      title: lang === 'ka' ? 'AI ჭკვიანი წამკითხველი' : 'AI Smart Reader',
-      desc: lang === 'ka' ? 'ივარჯიშე კითხვასა და გამოთქმაში AI-ის პერსონალური დახმარებით.' : 'Practice reading and pronunciation with interactive AI guidance.',
-      badge: lang === 'ka' ? 'AI ხელსაწყო' : 'AI tool',
-      cta: lang === 'ka' ? 'წამკითხველის გახსნა' : 'Open Smart Reader',
-    },
-    proctoring: { title: t('proctoringTitle'), desc: t('proctoringDesc'), badge: t('proctoringBadge'), cta: t('saasLaunchCta') },
-    'childrens-book': {
-      title: lang === 'ka' ? 'პერსონალური საბავშვო წიგნი' : "Personalized Children's Book",
-      desc: lang === 'ka'
-        ? 'შექმენი უნიკალური ისტორია, სადაც შენი ბავშვი მთავარი გმირია.'
-        : 'Create a unique story where your child is the main character.',
-      badge: tCB('cardBadge'),
-      cta: lang === 'ka' ? 'შექმენი წიგნი' : 'Create your book',
-      features: lang === 'ka'
-        ? ['5–20 გვერდი', 'პერსონალური გმირი', 'ილუსტრირებული ისტორია', 'PDF ვერსია', 'აქტიური წვდომით წიგნის გენერირება შედის']
-        : ['5–20 pages', 'Personalized main character', 'Illustrated story', 'PDF version', 'Book generation included with active access'],
-    },
-  };
+  const chips: CategoryChip[] = useMemo(() => {
+    const counts = new Map<string, number>();
+    products.forEach((p) => counts.set(p.category, (counts.get(p.category) ?? 0) + 1));
+    return [
+      { value: AI_TOOLS_FILTER, label: t('aiToolsChip'), emoji: '🤖', count: tools.length },
+      ...PRODUCT_CATEGORIES.filter((c) => (counts.get(c.key) ?? 0) > 0).map((c) => ({
+        value: c.key,
+        label: lang === 'ka' ? c.labelKa : c.labelEn,
+        emoji: c.emoji,
+        count: counts.get(c.key) ?? 0,
+      })),
+    ];
+  }, [products, tools.length, lang, t]);
 
-  type SaasToolCopy = { title: string; desc: string; badge: string; cta: string; features?: string[]; imageUrl?: string; status: ToolCatalogEntry['status'] };
-
-  // Layers pages/admin/tools.tsx's saved overrides on top of the defaults
-  // above — a DISABLED entry is hidden entirely, COMING_SOON swaps the CTA
-  // for a non-clickable badge instead of launching the (not yet ready)
-  // tool.
-  const saasToolCopy = SAAS_TOOLS.reduce((acc, { id }) => {
-    const fallback = saasToolDefaults[id];
-    const cms = findToolEntry(toolCatalog?.tools, id === 'chatbot-builder' || id === 'ai-agents' ? 'enterprise-ai' : id);
-    acc[id] = {
-      title: overrideText(fallback.title, lang === 'ka' ? cms?.titleKa : cms?.titleEn),
-      desc: overrideText(fallback.desc, lang === 'ka' ? cms?.descriptionKa : cms?.descriptionEn),
-      badge: overrideText(fallback.badge, lang === 'ka' ? cms?.badgeKa : cms?.badgeEn),
-      cta: fallback.cta,
-      features: overrideList(fallback.features ?? [], lang === 'ka' ? cms?.featuresKa : cms?.featuresEn),
-      imageUrl: cms?.imageUrl?.trim() || undefined,
-      status: cms?.status ?? 'ACTIVE',
-    };
-    return acc;
-  }, {} as Record<(typeof SAAS_TOOLS)[number]['id'], SaasToolCopy>);
-
-  // Same "sign in, then resume" pattern as this page's own product cards
-  // (store/[id].tsx's handleBuy/handleClaim) — a guest lands in the auth
-  // modal and, on success, is carried straight into the submission tab
-  // instead of being dropped back on the marketplace with nothing continued.
   const goToUpload = () => {
     if (!isAuthenticated) {
       openAuthModal({ onSuccess: () => router.push('/dashboard?tab=products') });
@@ -337,13 +215,59 @@ function MarketplaceContent() {
     router.push('/dashboard?tab=products');
   };
 
-  // Same pattern as goToUpload above — a guest clicking a SaaS tool card
-  // gets the auth modal (continuing straight into the tool on success)
-  // rather than a plain <Link> that would silently full-navigate into
-  // ProtectedRoute's own redirect-to-/auth/login dance on the destination
-  // page. Kept as its own handler (not goToUpload) since the destination
-  // varies per card.
+  const sectionLabels = { showMoreLabel: t('showMore'), showLessLabel: t('showLess') };
+  const renderTool = (tool: StoreTool) => <ToolCard tool={tool} lang={lang} />;
+  const renderProduct = (product: DigitalProduct) => <ProductCard product={product} lang={lang} />;
+  const toolsSection = (initial: number) => (
+    <StoreSection id="ai-tools" emoji="🤖" title={t('saasToolsHeading')} subtitle={t('saasToolsSubheading')} items={filteredTools} initial={initial} renderItem={renderTool} getKey={(x) => x.id} {...sectionLabels} />
+  );
 
+  const browsing = !activeCategory && !query && !priceActive;
+  const coloringLabel = PRODUCT_CATEGORIES.find((c) => c.key === 'coloring')!;
+  const coloring = filteredProducts.filter((p) => p.category === 'coloring');
+  const others = filteredProducts.filter((p) => p.category !== 'coloring');
+
+  let body: React.ReactNode;
+  if (browsing) {
+    body = (
+      <>
+        {toolsSection(TOOLS_INITIAL)}
+        <StoreSection id="coloring" emoji={coloringLabel.emoji} title={lang === 'ka' ? coloringLabel.labelKa : coloringLabel.labelEn} subtitle={t('coloringSubtitle')} items={coloring} initial={COLORING_INITIAL} renderItem={renderProduct} getKey={(x) => x.id} {...sectionLabels} />
+        <StoreSection id="products" emoji="🛍️" title={t('otherProductsTitle')} subtitle={t('otherProductsSubtitle')} items={others} initial={OTHER_INITIAL} renderItem={renderProduct} getKey={(x) => x.id} {...sectionLabels} />
+      </>
+    );
+  } else if (activeCategory === AI_TOOLS_FILTER) {
+    body = toolsSection(filteredTools.length);
+  } else {
+    const list = activeCategory ? filteredProducts.filter((p) => p.category === activeCategory) : filteredProducts;
+    const def = PRODUCT_CATEGORIES.find((c) => c.key === activeCategory);
+    const showTools = !activeCategory && filteredTools.length > 0;
+    body = (
+      <>
+        {(query || priceActive) && <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-6">{t('resultsFound', { count: list.length + (showTools ? filteredTools.length : 0) })}</p>}
+        {showTools && toolsSection(TOOLS_INITIAL)}
+        <StoreSection
+          key={activeCategory ?? 'all'}
+          id="products"
+          emoji={def?.emoji ?? '🛍️'}
+          title={def ? (lang === 'ka' ? def.labelKa : def.labelEn) : t('productsHeading')}
+          items={list}
+          initial={FILTERED_INITIAL}
+          renderItem={renderProduct}
+          getKey={(x) => x.id}
+          {...sectionLabels}
+        />
+        {list.length === 0 && !showTools && (
+          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 p-16 text-center">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">{products.length === 0 ? t('empty') : t('noResultsFiltered')}</p>
+            <button type="button" onClick={resetAllFilters} className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline bg-transparent border-none cursor-pointer">
+              {t('resetFilters')}
+            </button>
+          </div>
+        )}
+      </>
+    );
+  }
 
   return (
     <div className="-mx-4 sm:-mx-6 px-4 sm:px-6 min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
@@ -352,398 +276,60 @@ function MarketplaceContent() {
       </Head>
       <SiteHeader />
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-12 flex-1 w-full">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-10 flex-1 w-full">
         <div className="mb-4">
           <BackButton fallbackHref="/" className="dark:text-slate-400 dark:hover:text-slate-100" />
         </div>
 
-        <div className="mb-10 text-center max-w-2xl mx-auto">
-          <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest px-4 py-2 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-full border border-purple-500/20 mb-4">
-            <ShoppingBag className="w-3.5 h-3.5" />
-            CDC Marketplace
-          </span>
-          <h1 className="text-3xl md:text-4xl font-black tracking-wide mb-3">{t('title')}</h1>
-          <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed mb-6">{t('subtitle')}</p>
+        <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div className="max-w-2xl">
+            <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-widest px-3 py-1.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-full border border-purple-500/20 mb-3">
+              <ShoppingBag className="w-3.5 h-3.5" />
+              CDC Marketplace
+            </span>
+            <h1 className="text-3xl md:text-4xl font-black tracking-wide mb-2">{t('title')}</h1>
+            <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed">{t('subtitle')}</p>
+          </div>
           <button
             type="button"
             onClick={goToUpload}
-            className="inline-flex items-center gap-2 text-sm font-black text-white bg-gradient-to-r from-purple-500 to-cyan-600 px-6 py-3.5 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-xl transition-all border-none cursor-pointer"
+            className="self-start md:self-auto shrink-0 inline-flex items-center gap-2 text-sm font-black text-white bg-gradient-to-r from-purple-500 to-cyan-600 px-5 py-3 rounded-xl shadow-lg shadow-purple-500/20 hover:shadow-xl transition-all border-none cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             {t('uploadCta')}
           </button>
         </div>
 
-        {categoryChips.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-2 mb-10">
-            <button
-              type="button"
-              onClick={() => setCategory(null)}
-              className={`text-xs font-bold px-4 py-2 rounded-full border transition-colors ${
-                categoryParam === null
-                  ? 'bg-slate-900 dark:bg-cyan-600 text-white border-transparent'
-                  : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              {t('all')}
-            </button>
-            {categoryChips.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => setCategory(cat)}
-                className={`text-xs font-bold px-4 py-2 rounded-full border transition-colors ${
-                  categoryParam === cat
-                    ? 'bg-slate-900 dark:bg-cyan-600 text-white border-transparent'
-                    : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {showSaasTools && (
-          <div className="mb-10">
-            <div className="text-center mb-5">
-              <h2 className="text-lg font-black tracking-wide">{t('saasToolsHeading')}</h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('saasToolsSubheading')}</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {SAAS_TOOLS.filter(({ id }) => saasToolCopy[id].status !== 'DISABLED' && !isHiddenAdminOnly(toolCatalog?.tools, id, viewerIsAdmin)).map(({ id, href, icon: Icon, accent }) => {
-                const copy = saasToolCopy[id];
-                const comingSoon = copy.status === 'COMING_SOON';
-                return (
-                  <div
-                    key={id}
-                    data-ai-tool={id}
-                    className={`group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 overflow-hidden p-5 flex flex-wrap gap-4 items-start ${
-                      comingSoon ? 'opacity-80' : 'cursor-pointer hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10'
-                    }`}
-                  >
-                    {copy.imageUrl ? (
-                      // Admin-set cover (pages/admin/tools.tsx), full-bleed across the card top.
-                      <div className="-mx-5 -mt-5 w-[calc(100%+2.5rem)] max-w-none shrink-0 aspect-[2/1] overflow-hidden bg-slate-100 dark:bg-slate-800">
-                        {/* eslint-disable-next-line @next/next/no-img-element -- admin-uploaded CMS image on the API origin */}
-                        <img src={resolveBlogImageUrl(copy.imageUrl)} alt={copy.title} onError={onImageErrorFallback} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
-                      </div>
-                    ) : (
-                      <div className={`shrink-0 w-12 h-12 rounded-xl bg-gradient-to-tr ${accent} flex items-center justify-center`}>
-                        <Icon className="w-6 h-6 text-white" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-1.5 mb-1">
-                        <h3 className="text-sm font-black tracking-wide group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{copy.title}</h3>
-                      </div>
-                      <span className="inline-block text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/30 mb-2">
-                        {comingSoon ? t('comingSoonBadge') : copy.badge}
-                      </span>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-2">{copy.desc}</p>
-                      {copy.features && copy.features.length > 0 && <ul className="mb-3 grid gap-1 text-xs text-slate-600 dark:text-slate-300">{copy.features.map((feature) => <li key={feature}>• {feature}</li>)}</ul>}
-                      {!comingSoon && <AiToolSubscriptionActions toolKey={id} href={href} lang={lang} />}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {!loading && !error && products.length > 0 && (
-          <div className="mb-6">
-            <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                <input
-                  type="text"
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  placeholder={t('searchPlaceholder')}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                />
-              </div>
-
-              {/* Sort dropdown — inline on desktop, hidden here (moved into the
-                  drawer) below md, where SORT_LABEL_KEYS + the price controls
-                  collapse behind the "Filters" button instead. */}
-              <div className="relative hidden md:block shrink-0">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  aria-label={t('sortLabel')}
-                  className="appearance-none pl-4 pr-9 py-2.5 rounded-lg bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/60 dark:border-slate-800 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
-                >
-                  {SORT_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {t(SORT_LABEL_KEYS[opt])}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setFiltersOpen(true)}
-                className="md:hidden shrink-0 inline-flex items-center justify-center gap-2 text-sm font-bold px-4 py-2.5 rounded-lg border border-slate-200/60 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md cursor-pointer"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-                {t('filtersButton')}
-                {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-cyan-500" />}
-              </button>
-            </div>
-
-            {/* Price chips + range — inline on desktop; rendered a second
-                time inside the mobile drawer below (FilterExtras) rather than
-                just hidden here, so the drawer isn't empty. */}
-            <div className="hidden md:flex flex-wrap items-center gap-3 mt-3">
-              <div className="flex gap-2">
-                {PRICE_FILTERS.map((pf) => (
-                  <button
-                    key={pf}
-                    type="button"
-                    onClick={() => setPriceFilter(pf)}
-                    className={`text-xs font-bold px-3.5 py-1.5 rounded-full border transition-colors ${
-                      priceFilter === pf
-                        ? 'bg-slate-900 dark:bg-cyan-600 text-white border-transparent'
-                        : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    {t(PRICE_FILTER_LABEL_KEYS[pf])}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  min={0}
-                  inputMode="decimal"
-                  value={minPriceInput}
-                  onChange={(e) => setMinPriceInput(e.target.value)}
-                  placeholder={t('minPricePlaceholder')}
-                  className="w-28 px-3 py-1.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                />
-                <span className="text-xs text-slate-400">–</span>
-                <input
-                  type="number"
-                  min={0}
-                  inputMode="decimal"
-                  value={maxPriceInput}
-                  onChange={(e) => setMaxPriceInput(e.target.value)}
-                  placeholder={t('maxPricePlaceholder')}
-                  className="w-28 px-3 py-1.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                />
-              </div>
-              {hasActiveFilters && (
-                <button
-                  type="button"
-                  onClick={resetAllFilters}
-                  className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline bg-transparent border-none cursor-pointer ml-auto"
-                >
-                  {t('resetFilters')}
-                </button>
-              )}
-            </div>
-
-            {/* Mobile-only active-filter reset (desktop's lives inline above) */}
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={resetAllFilters}
-                className="md:hidden mt-3 text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline bg-transparent border-none cursor-pointer"
-              >
-                {t('resetFilters')}
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Mobile filter drawer — bottom sheet with the sort dropdown + price
-            chips/range that live inline on desktop above. */}
-        {filtersOpen && (
-          <div className="fixed inset-0 z-[100] flex items-end md:hidden" role="dialog" aria-modal="true">
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setFiltersOpen(false)} />
-            <div className="relative w-full max-h-[85vh] rounded-t-2xl bg-white dark:bg-[#0e1422] shadow-2xl overflow-y-auto">
-              <div className="sticky top-0 flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-[#0e1422]/95 backdrop-blur-md">
-                <h2 className="text-sm font-black text-slate-900 dark:text-white">{t('filtersButton')}</h2>
-                <button
-                  type="button"
-                  onClick={() => setFiltersOpen(false)}
-                  aria-label={t('modalClose')}
-                  className="p-1.5 rounded-lg border-none bg-transparent cursor-pointer text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="p-5 space-y-5">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">{t('sortLabel')}</label>
-                  <div className="relative">
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value as SortOption)}
-                      className="w-full appearance-none pl-4 pr-9 py-2.5 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
-                    >
-                      {SORT_OPTIONS.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {t(SORT_LABEL_KEYS[opt])}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">{t('priceRangeLabel')}</label>
-                  <div className="flex gap-2 mb-3">
-                    {PRICE_FILTERS.map((pf) => (
-                      <button
-                        key={pf}
-                        type="button"
-                        onClick={() => setPriceFilter(pf)}
-                        className={`flex-1 text-xs font-bold px-3 py-2 rounded-lg border transition-colors ${
-                          priceFilter === pf
-                            ? 'bg-slate-900 dark:bg-cyan-600 text-white border-transparent'
-                            : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-                        }`}
-                      >
-                        {t(PRICE_FILTER_LABEL_KEYS[pf])}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={0}
-                      inputMode="decimal"
-                      value={minPriceInput}
-                      onChange={(e) => setMinPriceInput(e.target.value)}
-                      placeholder={t('minPricePlaceholder')}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    />
-                    <span className="text-xs text-slate-400">–</span>
-                    <input
-                      type="number"
-                      min={0}
-                      inputMode="decimal"
-                      value={maxPriceInput}
-                      onChange={(e) => setMaxPriceInput(e.target.value)}
-                      placeholder={t('maxPricePlaceholder')}
-                      className="w-full px-3 py-2 rounded-lg bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  {hasActiveFilters && (
-                    <button
-                      type="button"
-                      onClick={resetAllFilters}
-                      className="flex-1 text-sm font-bold px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 bg-transparent cursor-pointer"
-                    >
-                      {t('resetFilters')}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setFiltersOpen(false)}
-                    className="flex-1 text-sm font-bold text-white bg-gradient-to-r from-purple-500 to-cyan-600 px-4 py-2.5 rounded-lg border-none cursor-pointer"
-                  >
-                    {t('applyFilters')}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        <StoreToolbar
+          search={searchInput}
+          onSearch={setSearchInput}
+          chips={chips}
+          activeCategory={activeCategory}
+          onCategory={setCategory}
+          sortBy={sortBy}
+          onSort={setSortBy}
+          priceFilter={priceFilter}
+          onPriceFilter={setPriceFilter}
+          minPrice={minPrice}
+          maxPrice={maxPrice}
+          onMinPrice={setMinPrice}
+          onMaxPrice={setMaxPrice}
+          hasActiveFilters={hasActiveFilters}
+          onReset={resetAllFilters}
+        />
 
         {loading ? (
-          <p className="text-sm text-slate-400 text-center py-16">…</p>
+          <>
+            {toolsSection(TOOLS_INITIAL)}
+            <p className="text-sm text-slate-400 text-center py-16">…</p>
+          </>
         ) : error ? (
-          <p className="text-sm text-red-500 text-center py-16">{t('loadFailed')}</p>
-        ) : products.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 p-16 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400">{t('empty')}</p>
-          </div>
-        ) : visibleProducts.length === 0 ? (
-          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none p-16 text-center">
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">{t('noResultsFiltered')}</p>
-            <button
-              type="button"
-              onClick={resetAllFilters}
-              className="text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline bg-transparent border-none cursor-pointer"
-            >
-              {t('resetFilters')}
-            </button>
-          </div>
+          <>
+            {toolsSection(TOOLS_INITIAL)}
+            <p className="text-sm text-red-500 text-center py-16">{t('loadFailed')}</p>
+          </>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {visibleProducts.map((product) => (
-              <Link
-                key={product.id}
-                href={`/store/${product.id}`}
-                className="group rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/60 backdrop-blur-md shadow-md shadow-slate-200/40 dark:shadow-none transition-all duration-300 hover:border-cyan-400/50 dark:hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 overflow-hidden no-underline text-current hover:border-cyan-400 dark:hover:border-cyan-500 transition-colors flex flex-col"
-              >
-                <div className="relative w-full aspect-video overflow-hidden bg-slate-900">
-                  <Image
-                    src={product.imageUrl}
-                    alt={productTitle(product, lang)}
-                    fill
-                    className="object-cover object-center"
-                    unoptimized
-                    onError={onImageErrorFallback}
-                  />
-                  {product.fileFormat && (
-                    <span className="absolute top-3 left-3 inline-flex items-center text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-black/60 text-white shadow">
-                      {product.fileFormat}
-                    </span>
-                  )}
-                  {product.saleActive && (
-                    <span className="absolute top-3 right-3 z-10 text-xs font-black text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-pink-500 to-rose-500 shadow-lg shadow-rose-500/30">
-                      -{Math.round((1 - product.currentPrice / product.price) * 100)}%
-                    </span>
-                  )}
-                  {product.purchased && (
-                    <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-emerald-500 text-white shadow">
-                      <CheckCircle2 className="w-3 h-3" />
-                      {t('owned', 'შეძენილი')}
-                    </span>
-                  )}
-                </div>
-                <div className="p-5 flex flex-col flex-1">
-                  <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-cyan-600 dark:text-cyan-400">{product.category}</span>
-                    {product.salesCount > 0 && (
-                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-400 dark:text-slate-500">
-                        <Tag className="w-3 h-3" />
-                        {t(product.salesCount === 1 ? 'salesCount' : 'salesCountPlural', { count: product.salesCount })}
-                      </span>
-                    )}
-                  </div>
-                  <h3 className="text-sm font-black tracking-wide mb-1.5 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{productTitle(product, lang)}</h3>
-                  {product.reviewCount > 0 && (
-                    <div className="flex items-center gap-1 mb-1.5">
-                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{product.averageRating?.toFixed(1)}</span>
-                      <span className="text-xs text-slate-400">({product.reviewCount})</span>
-                    </div>
-                  )}
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 mb-4 flex-1">{productDescription(product, lang)}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-baseline gap-1.5">
-                      {product.saleActive && <s className="text-xs text-slate-500">{formatPrice(product.price)}</s>}
-                      <span className="text-base font-black">{product.currentPrice === 0 ? t('free') : formatPrice(product.currentPrice)}</span>
-                    </span>
-                    <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{t('details')} →</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+          body
         )}
       </div>
 
