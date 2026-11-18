@@ -37,6 +37,9 @@ export interface HomepageContent {
   heroTitleEn?: string;
   heroSubtitleKa?: string;
   heroSubtitleEn?: string;
+  // Small label above the hero headline (e.g. the platform name).
+  heroKickerKa?: string;
+  heroKickerEn?: string;
   stats?: HomepageStat[];
   faq?: HomepageFaqItem[];
   heksCard?: HeksCardConfig;

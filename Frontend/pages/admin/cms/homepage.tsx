@@ -130,7 +130,7 @@ function HomepageCmsDashboard() {
                 value={content.heroTitleKa ?? ''}
                 onChange={(e) => setContent({ ...content, heroTitleKa: e.target.value })}
                 className={inputClass}
-                placeholder="(default) გახდი მოთხოვნადი ციფრული ეპოქის პროფესიონალი"
+                placeholder="(default) ისწავლე, განვითარდი, გახდი ვერიფიცირებული პროფესიონალი"
               />
             </div>
             <div>
@@ -139,7 +139,27 @@ function HomepageCmsDashboard() {
                 value={content.heroTitleEn ?? ''}
                 onChange={(e) => setContent({ ...content, heroTitleEn: e.target.value })}
                 className={inputClass}
-                placeholder={at("(default) Become a High-Demand Digital-Era Professional")}
+                placeholder="(default) Learn, grow, become a verified professional"
+              />
+            </div>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">{at("Label above title (Georgian)")}</label>
+              <input
+                value={content.heroKickerKa ?? ''}
+                onChange={(e) => setContent({ ...content, heroKickerKa: e.target.value })}
+                className={inputClass}
+                placeholder="(default) CDC — ავტომატიზირებული სასწავლო პლატფორმა"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">{at("Label above title (English)")}</label>
+              <input
+                value={content.heroKickerEn ?? ''}
+                onChange={(e) => setContent({ ...content, heroKickerEn: e.target.value })}
+                className={inputClass}
+                placeholder="(default) CDC — Automated Learning Platform"
               />
             </div>
           </div>
@@ -150,7 +170,7 @@ function HomepageCmsDashboard() {
                 value={content.heroSubtitleKa ?? ''}
                 onChange={(e) => setContent({ ...content, heroSubtitleKa: e.target.value })}
                 className={inputClass}
-                placeholder="(default) ...და დასაქმდი ჩვენივე პლატფორმაზე!"
+                placeholder="(default) ყოველი უნარი AI-ით შემოწმებული, ყოველი სერტიფიკატი ონლაინ გადამოწმებადი…"
               />
             </div>
             <div>
@@ -159,7 +179,7 @@ function HomepageCmsDashboard() {
                 value={content.heroSubtitleEn ?? ''}
                 onChange={(e) => setContent({ ...content, heroSubtitleEn: e.target.value })}
                 className={inputClass}
-                placeholder={at("(default) ...and get hired directly on our platform!")}
+                placeholder="(default) Every skill AI-checked, every certificate verifiable online…"
               />
             </div>
           </div>
