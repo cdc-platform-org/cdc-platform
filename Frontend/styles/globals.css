@@ -47,6 +47,21 @@ body {
   color: rgb(var(--cdc-ink));
 }
 
+/* Georgian heading face (2026-11-18, user's choice): BPG Web 002 Caps —
+   an all-caps (Mtavruli-style) display face covering all 33 Georgian
+   letters, digits and common punctuation (verified). Self-hosted WOFF2
+   (public/fonts/bpg-web-002-caps, licence file alongside). `unicode-range`
+   limits it to Georgian code points, so Latin text in headings keeps the
+   normal heading font instead of this face's Latin glyphs. */
+@font-face {
+  font-family: 'BPG Web 002 Caps';
+  src: url('/fonts/bpg-web-002-caps/bpg-web-002-caps.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+10A0-10FF, U+1C90-1CBF, U+2D00-2D2F;
+}
+
 /* AUDIT NOTE (fixed): a GL-Kirovi @font-face used to live here, pointing at
    /fonts/gl-kirovi-bold-39756223608.ttf — a file that has never actually
    existed in this repo's public/fonts/ (confirmed via a full production QA
@@ -71,7 +86,7 @@ body {
 /* Headings use the bundled Georgian family, with Inter as a fallback.
    The BPG display face remains available through .font-display below. */
 h1, h2, h3, h4, h5, h6, .font-heading {
-  font-family: var(--font-georgian-safe), 'Noto Sans Georgian', var(--font-fallback), sans-serif !important;
+  font-family: 'BPG Web 002 Caps', var(--font-georgian-safe), 'Noto Sans Georgian', var(--font-fallback), sans-serif !important;
   letter-spacing: -0.01em;
 }
 /* The square display face (BPG ExtraSquare Mtavruli) is kept only where a
@@ -100,7 +115,7 @@ h1, h2, h3, h4, h5, h6, .font-heading {
    browser falls back to normal specificity, and this selector is already at
    least as specific as the bare "h1, h2, h3..." one above. */
 .blog-heading-safe {
-  font-family: var(--font-georgian-safe), 'Noto Sans Georgian', sans-serif !important;
+  font-family: 'BPG Web 002 Caps', var(--font-georgian-safe), 'Noto Sans Georgian', sans-serif !important;
 }
 
 /* ============================================================
