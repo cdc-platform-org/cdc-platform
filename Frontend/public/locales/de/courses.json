@@ -3,7 +3,6 @@
   "enroll": "Jetzt einschreiben →",
   "soldOut": "Ausgebucht",
   "back": "Zurück zum Kurs",
-
   "title": "Kurse",
   "subtitle": "Wählen Sie einen Kurs und starten Sie Ihre digitale Karriere.",
   "listEnrolling": "Wird geladen…",
@@ -36,7 +35,6 @@
   "showResultsPlural": "{{count}} Ergebnisse anzeigen",
   "showResultsCombined": "{{count}} Kurs / Tool anzeigen",
   "showResultsCombinedPlural": "{{count}} Kurse / Tools anzeigen",
-
   "notFound": "Kurs nicht gefunden.",
   "enrollFree": "Kostenlos mit dem Lernen beginnen →",
   "detailEnrolling": "Weiterleitung…",
@@ -62,7 +60,6 @@
   "promoApplied": "Aktionscode angewendet",
   "promoRemove": "Entfernen",
   "promoInvalid": "Ungültiger oder abgelaufener Code",
-
   "overview": "Übersicht",
   "resources": "Materialien",
   "assignment": "Aufgabe",
@@ -100,7 +97,6 @@
   "certLimitTitle": "Download-Limit für Zertifikate erreicht",
   "certLimitSubtitle": "Aus Sicherheitsgründen wurde die maximale Anzahl an Zertifikat-Downloads erreicht. Wenn Sie eine zusätzliche Kopie benötigen oder eine Frage haben, schreiben Sie unserem Support-Chat.",
   "certLimitContactSupport": "Support kontaktieren",
-
   "notConfigured": "Für diesen Kurs ist noch keine Zertifizierungsprüfung eingerichtet.",
   "notComplete": "Schließen Sie alle Lektionen dieses Kurses ab, bevor Sie die Prüfung ablegen.",
   "goToLessons": "Zurück zu den Lektionen",
@@ -136,7 +132,6 @@
   "checkoutError": "Der Bezahlvorgang konnte nicht gestartet werden. Bitte versuchen Sie es erneut.",
   "saleOffSuffix": "RABATT",
   "signInToEnroll": "Bitte melden Sie sich an, um sich für einen Kurs einzuschreiben",
-
   "tabAll": "Alle",
   "tabVideoCourses": "Video-Kurse",
   "tabLiveTrainings": "Live-Schulungen",
@@ -147,5 +142,80 @@
   "badgeLiveTraining": "LIVE-SCHULUNG",
   "liveTrainingSeatsLeft": "Noch {{count}} Platz frei",
   "liveTrainingSeatsLeftPlural": "Noch {{count}} Plätze frei",
-  "liveTrainingFull": "Ausgebucht"
+  "liveTrainingFull": "Ausgebucht",
+  "detailPage": {
+    "buy": "Kaufen",
+    "watchTrailer": "Trailer ansehen",
+    "trailerUnavailable": "Trailer folgt bald",
+    "students": "{{count}} Lernende",
+    "courseAccess": "Lerne in deinem eigenen Tempo",
+    "subscription": "KI-Tools im Digital Market",
+    "subscribe": "KI-Tools entdecken",
+    "learn": "Das lernst du",
+    "instructorSoon": "Angaben zur Lehrkraft folgen bald",
+    "reviews": "Bewertungen der Lernenden",
+    "faq": "Häufige Fragen",
+    "navigation": "Kursbereiche",
+    "nav": {
+      "course": "Kurs",
+      "trailer": "Trailer",
+      "details": "Details",
+      "lessons": "Lektionen",
+      "instructor": "Lehrkraft"
+    },
+    "faqItems": {
+      "access": {
+        "question": "Wie beginne ich mit dem Lernen?",
+        "answer": "Melde dich an und kaufe den Kurs. Wenn du schon Zugang hast, wähle „Weiterlernen“."
+      },
+      "preview": {
+        "question": "Kann ich mir den Kurs vorher ansehen?",
+        "answer": "Sieh dir oben den Trailer an oder öffne Lektionen, die im Lehrplan als kostenlose Vorschau markiert sind."
+      },
+      "payment": {
+        "question": "Wie kann ich bezahlen?",
+        "answer": "Wähle im Kaufbereich einen verfügbaren Zahlungsanbieter. Aktive Rabatte siehst du vor dem Bezahlen."
+      }
+    },
+    "new": "Neu"
+  },
+  "academy": {
+    "save": "{{title}} speichern",
+    "unsave": "{{title}} aus den gespeicherten Kursen entfernen",
+    "deviceSaved": "Auf diesem Gerät gespeichert",
+    "cdcTeam": "CDC Academy",
+    "students": "Lernende",
+    "featured": "Beliebt bei unseren Lernenden",
+    "previous": "Vorherige Kurse",
+    "next": "Nächste Kurse",
+    "eyebrow": "CDC ACADEMY",
+    "headline": "Fähigkeiten aufbauen. Karriere gestalten.",
+    "intro": "Lerne praktische Fähigkeiten, baue ein Portfolio auf und bereite dich auf den nächsten Schritt in einer digitalen Karriere vor.",
+    "browse": "Kurse entdecken",
+    "allCategories": "Alle Kategorien",
+    "saved": "Auf diesem Gerät gespeichert",
+    "projects": "Projekte der Lernenden",
+    "projectsEmpty": "Für diesen Kurs sind noch keine Projekte öffentlich verfügbar.",
+    "overview": "Überblick",
+    "curriculum": "Lehrplan",
+    "reviews": "Bewertungen",
+    "courseContent": "Kursinhalt",
+    "duration": "Dauer",
+    "lessons": "Lektionen",
+    "language": "Sprache",
+    "level": "Niveau",
+    "levelUnknown": "Nicht angegeben",
+    "videoUnavailable": "Für diese Lektion ist noch kein Video verfügbar.",
+    "play": "Abspielen",
+    "pause": "Pause",
+    "mute": "Stumm",
+    "unmute": "Ton an",
+    "fullscreen": "Vollbild",
+    "seek": "Videoposition",
+    "volume": "Lautstärke",
+    "trailer": "Kurstrailer",
+    "subscriptionNote": "Alle verfügbaren Tools und ihre Zugangsoptionen an einem Ort.",
+    "saleEndsIn": "Angebot endet in",
+    "daysShort": "T"
+  }
 }
