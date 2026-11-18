@@ -1,7 +1,7 @@
 /**
  * Home page hero "Neon Studio" (2026-11-18): CDC-logo-inspired night/day sky
- * with a moving neon grid, the slogan, CTAs, stats and a live code-editor
- * window (HeroCodeDemo). Georgian on `ka`, English on every other locale.
+ * with a moving neon grid, the slogan, CTAs, stats and a rotating
+ * poster window (HeroPosters). Georgian on `ka`, English on every other locale.
  * Texts can be overridden from /admin/cms/homepage (hero title, subtitle,
  * kicker); the defaults below apply when nothing is set. Under the band: the
  * event-photo slideshow and the featured-course rail.
@@ -16,7 +16,7 @@ import type { HomepageContent } from '../../types/siteContent';
 import type { Tutorial } from '../../types/tutorial';
 import FeaturedCourseRail from '../courses/FeaturedCourseRail';
 import HeroSlideshow from './HeroSlideshow';
-import HeroCodeDemo from './HeroCodeDemo';
+import HeroPosters from './HeroPosters';
 import styles from './HeroSection.module.css';
 
 interface HeroSectionProps {
@@ -98,7 +98,7 @@ export default function HeroSection({ courses, coursesLoading, cms, translate, p
               ))}
             </dl>
           </div>
-          <HeroCodeDemo lang={lang} />
+          <HeroPosters lang={lang} />
         </div>
       </div>
       <div className={styles.after}>
