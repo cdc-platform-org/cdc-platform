@@ -1,7 +1,7 @@
 /**
  * Service (courses, live trainings & certificates).
  * Exports: isCourseTutorConfigured, CourseTutorError, TutorChatTurn, GenerateTutorReplyParams,
- * clearCourseTutorCache, generateTutorReply.
+ * clearCourseTutorCache, generateTutorReply, runTutorChat.
  */
 import { GEMINI_MODEL_FALLBACK_SEQUENCE, isGeminiCapacityError } from '../../utils/geminiModels';
 import { GoogleGenerativeAI } from '@google/generative-ai';
@@ -230,13 +230,25 @@ export async function generateTutorReply(params: GenerateTutorReplyParams): Prom
     `asked something unrelated, gently redirect the student back to the lesson.\n\n` +
     `Lesson context:\n${contextLines.join('\n')}`;
 
+  const reply = await runTutorChat(systemInstruction, params.history, params.message);
+  if (key) setCached(key, reply);
+  return reply;
+}
+
+
+/**
+ * Runs one tutor-style chat turn: Azure OpenAI when configured, Gemini otherwise
+ * (or when Azure fails/times out). Shared by the course tutor and the Design
+ * Studio mentor (designMentorService.ts) so both get the same fallback rules.
+ */
+export async function runTutorChat(systemInstruction: string, history: TutorChatTurn[], message: string): Promise<string> {
   const messages: ChatMessage[] = [
     { role: 'system', content: systemInstruction },
-    ...params.history.slice(-HISTORY_TURN_LIMIT).map((turn) => ({
+    ...history.slice(-HISTORY_TURN_LIMIT).map((turn) => ({
       role: (turn.role === 'USER' ? 'user' : 'assistant') as 'user' | 'assistant',
       content: turn.content,
     })),
-    { role: 'user', content: params.message },
+    { role: 'user', content: message },
   ];
 
   let reply: string;
@@ -254,7 +266,7 @@ export async function generateTutorReply(params: GenerateTutorReplyParams): Prom
     console.error('[courseTutorService] Azure exhausted, trying Gemini fallback:', azureErr instanceof Error ? azureErr.message : azureErr);
     try {
       const geminiResult = await withTimeout(
-        callGeminiTutorFallback(systemInstruction, params.history.slice(-HISTORY_TURN_LIMIT), params.message),
+        callGeminiTutorFallback(systemInstruction, history.slice(-HISTORY_TURN_LIMIT), message),
         INTERACTIVE_TIMEOUT_MS
       );
       if (geminiResult === 'TIMEOUT') throw new CourseTutorError(`Gemini exceeded the ${INTERACTIVE_TIMEOUT_MS}ms interactive budget.`);
@@ -271,6 +283,5 @@ export async function generateTutorReply(params: GenerateTutorReplyParams): Prom
     }
   }
 
-  if (key) setCached(key, reply);
   return reply;
 }

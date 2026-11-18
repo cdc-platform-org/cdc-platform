@@ -10,6 +10,7 @@ import { requireDigitalToolAccess } from '../services/marketplace/digitalToolAcc
  *   POST /translate-title-description
  *   POST /translate-success-story
  *   POST /course-tutor
+ *   POST /design-mentor
  *   GET /digital-store-marketing/usage
  *   POST /digital-store-marketing
  */
@@ -31,6 +32,8 @@ import {
   AiTranslateError,
 } from '../services/ai/aiTranslateService';
 import { generateTutorReply, isCourseTutorConfigured, CourseTutorError } from '../services/learning/courseTutorService';
+import { askDesignMentor, DESIGN_MENTOR_LOCALES } from '../services/learning/designMentorService';
+import { resolveStudentWorkspaceAccess } from '../services/workspaceAccessService';
 import { isAiAgentConfigured } from '../services/ai/aiAgentService';
 import { generateProductMarketingCopy, ProductMarketingError } from '../services/ai/productMarketingAssistantService';
 import {
@@ -326,6 +329,39 @@ router.post('/course-tutor', authenticate, requireDigitalToolAccess('ai-agents')
     if (err instanceof CourseTutorError) {
       return res.status(502).json({ message: err.message });
     }
+    throw err;
+  }
+});
+
+// Design Studio AI mentor — same users who may open the studio
+// (subscription, active course or admin, see workspaceAccessService). Replies
+// in the site language the student has selected (`locale`).
+const designMentorSchema = z.object({
+  locale: z.enum(DESIGN_MENTOR_LOCALES),
+  mode: z.enum(['photo', 'vector']),
+  activeTool: z.string().max(80).optional(),
+  documentInfo: z.string().max(200).optional(),
+  message: z.string().trim().min(1).max(2000),
+  history: z.array(z.object({ role: z.enum(['USER', 'ASSISTANT']), content: z.string().max(4000) })).max(24).default([]),
+});
+
+router.post('/design-mentor', authenticate, courseTutorRateLimit, async (req: Request, res: Response) => {
+  if (!isCourseTutorConfigured()) {
+    return res.status(501).json({ message: 'AI mentor is not configured yet.' });
+  }
+  const parsed = designMentorSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
+
+  const access = await resolveStudentWorkspaceAccess(req.user!.id);
+  if (!access.hasDesignStudioAccess) {
+    return res.status(403).json({ message: 'Design Studio access is required.' });
+  }
+
+  try {
+    const reply = await askDesignMentor(parsed.data);
+    res.json({ reply });
+  } catch (err) {
+    if (err instanceof CourseTutorError) return res.status(502).json({ message: err.message });
     throw err;
   }
 });
