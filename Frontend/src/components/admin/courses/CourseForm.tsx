@@ -13,6 +13,7 @@ import { createCourse, updateCourse, uploadCourseThumbnail, uploadCourseCoverIma
 import { DISCOUNT_PRESETS, emptyForm, formatGel, inputClass } from './courseAdminShared';
 
 import { at } from '../../../i18n/admin';
+import { useCanSeeMoney } from '../useCanSeeMoney';
 export function CourseForm({
   editingCourse,
   onSaved,
@@ -22,6 +23,7 @@ export function CourseForm({
   onSaved: (course: Course) => void;
   onCancel: () => void;
 }) {
+  const canSeeMoney = useCanSeeMoney();
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +50,8 @@ export function CourseForm({
         description: editingCourse.description,
         descriptionEn: editingCourse.descriptionEn ?? '',
         category: editingCourse.category,
-        originalPrice: editingCourse.originalPrice / 100,
+        // Money fields are absent for non-SUPER_ADMIN tiers (API strips them).
+        originalPrice: (editingCourse.originalPrice ?? 0) / 100,
         maxCapacity: editingCourse.maxCapacity != null ? String(editingCourse.maxCapacity) : '',
         published: editingCourse.published,
         mentorName: editingCourse.mentorName ?? '',
@@ -59,7 +62,7 @@ export function CourseForm({
         mentorAvatarUrl: editingCourse.mentorAvatarUrl ?? '',
         language: editingCourse.language ?? 'GEORGIAN',
         skillsTaught: editingCourse.skillsTaught ?? [],
-        isOnSale: editingCourse.isOnSale,
+        isOnSale: editingCourse.isOnSale ?? false,
         discountPercent: presetMatch ? editingCourse.discountPercent! : DISCOUNT_PRESETS[1],
         discountPercentCustom: !presetMatch && editingCourse.discountPercent != null ? String(editingCourse.discountPercent) : '',
         useCustomDiscount: !presetMatch && editingCourse.discountPercent != null,
@@ -122,6 +125,7 @@ export function CourseForm({
         description: form.description.trim(),
         descriptionEn: form.descriptionEn.trim() || undefined,
         category: form.category.trim(),
+        // Ignored by the API for non-SUPER_ADMIN tiers; sent as-is otherwise.
         originalPrice: Math.round((Number(form.originalPrice) || 0) * 100),
         maxCapacity: form.maxCapacity.trim() ? Math.round(Number(form.maxCapacity)) : null,
         published: form.published,
@@ -259,6 +263,7 @@ export function CourseForm({
         <SkillPicker value={form.skillsTaught} onChange={(skills) => setForm({ ...form, skillsTaught: skills })} lang="en" />
       </div>
       <div className="grid md:grid-cols-3 gap-5">
+        {canSeeMoney ? (
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{at("Original Price (GEL / ₾)")}</label>
           <input
@@ -271,6 +276,9 @@ export function CourseForm({
           />
           <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{formatGel(form.originalPrice * 100)}</p>
         </div>
+        ) : (
+          <p className="text-xs text-gray-500 dark:text-slate-400 self-center">{at("Price is set by a Super Admin. A new course stays a draft until it has a price.")}</p>
+        )}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">
             {at("Max Capacity")}{" "}<span className="text-gray-400 font-normal">{at("— blank = unlimited")}</span>
@@ -399,6 +407,7 @@ export function CourseForm({
         </div>
       </div>
 
+      {canSeeMoney && (
       <div className="rounded-xl border border-gray-200 dark:border-slate-800 p-4">
         <label className="flex items-center gap-2 text-sm font-semibold text-gray-800 dark:text-slate-200 cursor-pointer">
           <input
@@ -477,6 +486,7 @@ export function CourseForm({
           </div>
         )}
       </div>
+      )}
 
       <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
         <input

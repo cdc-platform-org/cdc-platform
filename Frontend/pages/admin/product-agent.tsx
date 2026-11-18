@@ -23,6 +23,7 @@ import {
   updateProductAgentSettings,
 } from '../../src/services/adminProductAgentService';
 import { approveProduct } from '../../src/services/productService';
+import { useCanSeeMoney } from '../../src/components/admin/useCanSeeMoney';
 
 function errorText(err: unknown, fallback: string): string {
   const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -30,6 +31,7 @@ function errorText(err: unknown, fallback: string): string {
 }
 
 function ProductAgentAdmin() {
+  const canSeeMoney = useCanSeeMoney();
   const [data, setData] = useState<ProductAgentOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -122,7 +124,8 @@ function ProductAgentAdmin() {
             </h1>
             <p className="text-sm text-gray-500 mt-1">ქმნის ციფრულ პროდუქტებს მაღაზიისთვის. ყველა ახალი პროდუქტი ჯერ დამტკიცებას ელოდება.</p>
           </div>
-          {data && (
+          {/* Azure spend is money — SUPER_ADMIN only (the API omits `spend` otherwise). */}
+          {data && canSeeMoney && data.spend && (
             <div className="flex gap-3 text-sm">
               <div className="bg-white border border-gray-200 rounded-lg px-4 py-2">
                 <div className="text-xs text-gray-500">დღეს დაიხარჯა</div>

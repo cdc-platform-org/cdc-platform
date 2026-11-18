@@ -5,7 +5,7 @@ import AdminGuard from '../../../src/components/admin/AdminGuard';
 import AdminLayout from '../../../src/components/admin/AdminLayout';
 import { getDisputes, DisputeRow } from '../../../src/services/adminDisputesService';
 
-import { adminLocale, at } from '../../../src/i18n/admin';
+import { adminLocale, at, atEnum } from '../../../src/i18n/admin';
 const STATUS_BADGE: Record<string, string> = {
   OPEN: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20 shadow-amber-400/30 dark:shadow-amber-500/20',
   RESOLVED_REFUND: 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-500/20 shadow-purple-400/30 dark:shadow-purple-500/20',
@@ -50,7 +50,7 @@ function AdminDisputesDashboard() {
               onClick={() => setStatusFilter(s)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors ${statusFilter === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-slate-900/60 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800'}`}
             >
-              {s || at("All")}
+              {s ? atEnum(s) : at("All")}
             </button>
           ))}
         </div>

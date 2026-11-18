@@ -6,7 +6,7 @@ import AdminLayout from '../../src/components/admin/AdminLayout';
 import { getAdminSubmissions, gradeSubmission } from '../../src/services/courseService';
 import { AdminAssignmentSubmission, AssignmentStatus } from '../../src/types/lms';
 
-import { at } from '../../src/i18n/admin';
+import { at, atEnum } from '../../src/i18n/admin';
 const STATUS_BADGE: Record<string, string> = {
   PENDING: 'bg-amber-50 text-amber-700 border-amber-200',
   APPROVED: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -119,7 +119,7 @@ function AdminAssignmentsDashboard() {
               onClick={() => setStatusFilter(s)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${statusFilter === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}
             >
-              {s ? s.replace('_', ' ') : at("All")}
+              {s ? atEnum(s) : at("All")}
             </button>
           ))}
         </div>

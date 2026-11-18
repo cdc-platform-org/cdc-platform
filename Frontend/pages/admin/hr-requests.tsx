@@ -16,6 +16,7 @@ import {
 import { getAllHRSupportRequests, getHRSpecialists, assignHRSpecialist, resolveHRSupportDispute } from '../../src/services/adminHRSupportService';
 
 import { at, atEnum, atf, getAdminLang } from '../../src/i18n/admin';
+import { useCanSeeMoney } from '../../src/components/admin/useCanSeeMoney';
 const EN_STRINGS = {
   title: 'HR Assistance Requests',
   loading: 'Loading…',
@@ -255,6 +256,7 @@ function RequestDetail({
   t: typeof EN_STRINGS;
   onChange: (updated: HRSupportRequest) => void;
 }) {
+  const canResolveMoney = useCanSeeMoney();
   const { user } = useAuth();
   const [evaluations, setEvaluations] = useState<CandidateEvaluation[]>(request.candidateEvaluations ?? []);
   const [reportSummary, setReportSummary] = useState(request.reportSummary ?? '');
@@ -371,7 +373,8 @@ function RequestDetail({
             <ShieldAlert className="w-4 h-4" /> {t.disputeRaised}
           </p>
           <p className="text-xs text-amber-800/90 dark:text-amber-200/80 mb-3">{request.disputeReason}</p>
-          {isAdmin && (
+          {/* Escrow release/refund — SUPER_ADMIN only (API enforces it too). */}
+          {isAdmin && canResolveMoney && (
             <div className="flex gap-2">
               <button
                 type="button"
@@ -474,6 +477,7 @@ function HRRequestsPortal() {
   const [loading, setLoading] = useState(true);
 
   const isAdmin = !!user?.adminRole;
+  const canSeeMoney = useCanSeeMoney();
   const hasAccess = isAdmin || !!user?.isHrSpecialist;
 
   const load = useCallback(async () => {
@@ -556,7 +560,7 @@ function HRRequestsPortal() {
                     <span className="text-[10px] font-black uppercase tracking-wide px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400">
                       {atEnum(r.status)}
                     </span>
-                    <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{formatGel(r.grossAmount)} {r.currency}</span>
+                    {canSeeMoney && <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">{formatGel(r.grossAmount)} {r.currency}</span>}
                   </div>
                   {r.disputeRaisedAt && !r.disputeResolvedAt && (
                     <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-black text-amber-600 dark:text-amber-400">
@@ -572,9 +576,11 @@ function HRRequestsPortal() {
                 <div className="rounded-2xl border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-6">
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                     <h2 className="text-lg font-black text-gray-900 dark:text-white">{selected.vacancy.title}</h2>
-                    <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">
-                      {formatGel(selected.grossAmount)} {selected.currency}
-                    </span>
+                    {canSeeMoney && (
+                      <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">
+                        {formatGel(selected.grossAmount)} {selected.currency}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500 dark:text-slate-400 mb-6">
                     {t.employer}: {selected.requestedBy.name} ({selected.requestedBy.email}) · {t.specialist}:{' '}

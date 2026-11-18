@@ -29,6 +29,14 @@ export const KA_PEOPLE: Record<string, string> = {
   " · until {0}": " · {0}-მდე",
   "Revoke": "გაუქმება",
   "No grants yet.": "წვდომები ჯერ არ არის.",
+  "No user found with this email.": "ამ ელფოსტით მომხმარებელი ვერ მოიძებნა.",
+  "Free AI access for course students": "კურსის სტუდენტების უფასო AI წვდომა",
+  "A student of a paid course gets all AI tools free until the course is finished or 90 days pass since enrollment.": "ფასიანი კურსის სტუდენტი ყველა AI ხელსაწყოს უფასოდ იყენებს, სანამ კურსს არ დაასრულებს ან ჩარიცხვიდან 90 დღე არ გავა.",
+  "Checking…": "მოწმდება…",
+  "Check": "შემოწმება",
+  "active until {0}": "აქტიურია {0}-მდე",
+  "course access has ended": "კურსით წვდომა დასრულდა",
+  "no paid course enrollment": "ფასიან კურსზე ჩარიცხული არ არის",
 
   // candidate-verifications
   "Unable to load candidate verifications.": "კანდიდატების ვერიფიკაციების ჩატვირთვა ვერ მოხერხდა.",

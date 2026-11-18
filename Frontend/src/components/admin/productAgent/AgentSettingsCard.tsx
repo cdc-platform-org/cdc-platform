@@ -7,6 +7,7 @@ import { useRouter } from 'next/router';
 import { AgentCategory, AgentCategoryKey, ProductAgentSettings } from '../../../services/adminProductAgentService';
 
 import { at } from '../../../i18n/admin';
+import { useCanSeeMoney } from '../useCanSeeMoney';
 interface Props {
   settings: ProductAgentSettings;
   categories: AgentCategory[];
@@ -27,9 +28,10 @@ export default function AgentSettingsCard({ settings, categories, busy, configur
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState<string | null>(null);
   useEffect(() => setDraft(settings), [settings]);
+  const canSeeMoney = useCanSeeMoney();
 
   const daily = useMemo(
-    () => categories.reduce((sum, c) => sum + (draft.dailyCounts[c.key] ?? 0) * c.estimatedCostUsd * qualityFactor(draft.imageQuality, c), 0),
+    () => categories.reduce((sum, c) => sum + (draft.dailyCounts[c.key] ?? 0) * (c.estimatedCostUsd ?? 0) * qualityFactor(draft.imageQuality, c), 0),
     [categories, draft]
   );
   const perDay = categories.reduce((s, c) => s + (draft.dailyCounts[c.key] ?? 0), 0);
@@ -77,8 +79,8 @@ export default function AgentSettingsCard({ settings, categories, busy, configur
             <tr className="text-left text-xs text-gray-500 border-b">
               <th className="py-2 pr-3">კატეგორია</th>
               <th className="py-2 pr-3">დღეში</th>
-              <th className="py-2 pr-3">ფასი</th>
-              <th className="py-2 pr-3">ხარჯი / პროდუქტი</th>
+              {canSeeMoney && <th className="py-2 pr-3">ფასი</th>}
+              {canSeeMoney && <th className="py-2 pr-3">ხარჯი / პროდუქტი</th>}
               <th className="py-2" />
             </tr>
           </thead>
@@ -100,8 +102,8 @@ export default function AgentSettingsCard({ settings, categories, busy, configur
                     className="w-20 rounded-lg border border-gray-300 px-2 py-1"
                   />
                 </td>
-                <td className="py-2 pr-3 text-gray-700">{c.defaultPriceGel} ₾</td>
-                <td className="py-2 pr-3 text-gray-700">≈ ${(c.estimatedCostUsd * qualityFactor(draft.imageQuality, c)).toFixed(2)}</td>
+                {canSeeMoney && <td className="py-2 pr-3 text-gray-700">{c.defaultPriceGel} ₾</td>}
+                {canSeeMoney && <td className="py-2 pr-3 text-gray-700">≈ ${(c.estimatedCostUsd * qualityFactor(draft.imageQuality, c)).toFixed(2)}</td>}
                 <td className="py-2 text-right">
                   <button
                     type="button"
@@ -126,10 +128,12 @@ export default function AgentSettingsCard({ settings, categories, busy, configur
             <option value="medium">საშუალო (იაფი)</option>
           </select>
         </label>
+        {canSeeMoney && (
         <label className="text-sm">
           <span className="block text-xs text-gray-500 mb-1">თვის ბიუჯეტი (USD) — მიღწევისას ჩერდება</span>
           <input type="number" min={0} max={5000} value={draft.monthlyBudgetUsd} onChange={(e) => setDraft({ ...draft, monthlyBudgetUsd: Number(e.target.value) || 0 })} className="w-full rounded-lg border border-gray-300 px-2 py-1.5" />
         </label>
+        )}
         <label className="text-sm">
           <span className="block text-xs text-gray-500 mb-1">დაწყების საათი (თბილისის დროით)</span>
           <select
@@ -146,7 +150,8 @@ export default function AgentSettingsCard({ settings, categories, busy, configur
 
       <div className="flex items-center justify-between gap-4 flex-wrap bg-gray-50 rounded-lg px-4 py-3">
         <p className="text-sm text-gray-700">
-          დღეში <b>{perDay}</b> პროდუქტი · სავარაუდო ხარჯი ≈ <b>${daily.toFixed(2)}</b> დღეში, ≈ <b>${(daily * 30).toFixed(0)}</b> თვეში (Azure)
+          დღეში <b>{perDay}</b> პროდუქტი
+          {canSeeMoney && <> · სავარაუდო ხარჯი ≈ <b>${daily.toFixed(2)}</b> დღეში, ≈ <b>${(daily * 30).toFixed(0)}</b> თვეში (Azure)</>}
         </p>
         <button
           type="button"

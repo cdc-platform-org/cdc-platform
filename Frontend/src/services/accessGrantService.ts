@@ -28,3 +28,16 @@ export async function createAccessGrant(input: {
 export async function revokeAccessGrant(id: string): Promise<void> {
   await apiClient.post(`/admin/access-grants/${encodeURIComponent(id)}/revoke`);
 }
+
+// A student's free AI tool access through an unfinished paid course
+// (derived live by the backend — not an AccessGrant row).
+export interface CollegeAiAccess {
+  user: { id: string; name: string; email: string };
+  active: boolean;
+  endsAt: string | null;
+  ended: boolean;
+  windowDays: number;
+}
+export async function getCollegeAiAccess(email: string): Promise<CollegeAiAccess> {
+  return (await apiClient.get<{ data: CollegeAiAccess }>('/admin/access-grants/college-ai-access', { params: { email } })).data.data;
+}

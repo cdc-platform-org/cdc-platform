@@ -73,7 +73,7 @@ function AdminStudioDashboard() {
               onClick={() => setStatusFilter(s)}
               className={`text-xs font-medium px-3 py-1.5 rounded-lg border ${statusFilter === s ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-600 border-gray-200'}`}
             >
-              {s || at("All")}
+              {s ? atEnum(s) : at("All")}
             </button>
           ))}
         </div>
@@ -140,7 +140,7 @@ function AdminStudioDashboard() {
                 <p className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 rounded-lg p-3">{inq.message}</p>
                 {inq.reviewedBy && (
                   <p className="text-[11px] text-gray-400 mt-2">
-                    {at("Reviewed by")}{" "}{inq.reviewedBy.name}{inq.resolvedAt ? atf(" on {0}", new Date(inq.resolvedAt).toLocaleDateString()) : ''}
+                    {at("Reviewed by")}{" "}{inq.reviewedBy.name}{inq.resolvedAt ? atf(" on {0}", new Date(inq.resolvedAt).toLocaleDateString(adminLocale())) : ''}
                   </p>
                 )}
               </div>

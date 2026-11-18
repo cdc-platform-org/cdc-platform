@@ -82,74 +82,74 @@ interface NavItem {
   seenSection?: AdminSeenSection;
 }
 
-// Grouped to mirror the public site's own menu (src/data/siteNavigation.ts:
-// სწავლა · AI ხელსაწყოები · მაღაზია · კარიერა · ბლოგი · ჩვენ შესახებ), plus the
-// admin-only areas (people, moderation, finance, system). Every admin page
-// that renders inside AdminLayout has exactly one entry here; nested pages
-// (e.g. /admin/live-trainings/[id]/leads) highlight their parent entry.
+// Grouped to mirror the public one-site menu (src/data/siteNavigation.ts):
+// ციფრული კოლეჯი · ციფრული მარკეტი (AI tools live inside the store) ·
+// დასაქმება · ფორუმი · ჩვენ შესახებ — plus the admin-only areas (people,
+// finance, system). Every admin page that renders inside AdminLayout has
+// exactly one entry here; nested pages (e.g. /admin/live-trainings/[id]/leads)
+// highlight their parent entry. Money pages are SUPER_ADMIN-only, and the
+// API enforces the same (Backend/src/middleware/moneyVisibility.ts).
 const NAV_ITEMS: NavItem[] = [
   // Overview
   { href: '/admin', labelKey: 'dashboard', icon: LayoutDashboard, section: 'overview' },
   { href: '/admin/analytics', labelKey: 'analytics', icon: BarChart3, tiers: ['SUPER_ADMIN'], section: 'overview' },
 
-  // Users & verification
-  { href: '/admin/users', labelKey: 'users', icon: Users, section: 'people' },
-  { href: '/admin/companies', labelKey: 'companies', icon: ShieldCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'people', badgeKey: 'businessVerifications' },
-  { href: '/admin/candidate-verifications', labelKey: 'candidateVerifications', icon: UserCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'people' },
-  { href: '/admin/mentor-applications', labelKey: 'mentorApplications', icon: UserCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'people', badgeKey: 'pendingMentorApplications' },
-  { href: '/admin/trainers', labelKey: 'trainers', icon: UserCog, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'people' },
-  { href: '/admin/access-grants', labelKey: 'accessGrants', icon: KeyRound, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'people' },
-
-  // Learning (site: სწავლა)
+  // Digital College (site: ციფრული კოლეჯი)
   { href: '/admin/courses', labelKey: 'courses', icon: GraduationCap, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning', badgeKey: 'newCourseEnrollments', badgeColor: 'blue', seenSection: 'courses' },
   { href: '/admin/course-moderation', labelKey: 'courseModeration', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning', badgeKey: 'pendingCourseReviews', badgeColor: 'yellow' },
   { href: '/admin/live-trainings', labelKey: 'liveTrainings', icon: Video, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning', badgeKey: 'newLiveTrainingLeads', badgeColor: 'blue', seenSection: 'liveTrainings' },
   { href: '/admin/assignments', labelKey: 'assignments', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning' },
-  { href: '/admin/mentorship', labelKey: 'mentorship', icon: GraduationCap, section: 'learning' },
   { href: '/admin/certificates/issue', labelKey: 'certificates', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning' },
+  { href: '/admin/mentorship', labelKey: 'mentorship', icon: GraduationCap, section: 'learning' },
+  { href: '/admin/mentor-applications', labelKey: 'mentorApplications', icon: UserCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning', badgeKey: 'pendingMentorApplications' },
   { href: '/admin/tutorials', labelKey: 'tutorials', icon: PlayCircle, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning' },
   { href: '/admin/tutor', labelKey: 'tutor', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning' },
   { href: '/admin/iako/profiles', labelKey: 'iakoProfiles', icon: Bot, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning' },
   { href: '/admin/iako/usage', labelKey: 'iakoUsage', icon: Gauge, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'learning' },
 
-  // AI tools & store (site: AI ხელსაწყოები, მაღაზია)
-  { href: '/admin/tools', labelKey: 'toolsCms', icon: Wrench, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools' },
+  // Digital Market incl. AI tools (site: ციფრული მარკეტი)
   { href: '/admin/products', labelKey: 'products', icon: ShoppingBag, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools', badgeKey: 'pendingProducts' },
+  { href: '/admin/tools', labelKey: 'toolsCms', icon: Wrench, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools' },
   { href: '/admin/product-agent', labelKey: 'productAgent', icon: Bot, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools' },
   { href: '/admin/product-reviews', labelKey: 'productReviews', icon: Star, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools' },
   { href: '/admin/cyber-sentinel', labelKey: 'cyberSentinel', icon: Bug, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'tools', badgeKey: 'waitlistEntries', seenSection: 'waitlist' },
 
-  // Career & gigs (site: კარიერა)
+  // Jobs (site: დასაქმება)
   { href: '/admin/gigs', labelKey: 'gigs', icon: Briefcase, section: 'career' },
-  { href: '/admin/disputes', labelKey: 'disputes', icon: Scale, tiers: ['SUPER_ADMIN'], section: 'career' },
+  { href: '/admin/companies', labelKey: 'companies', icon: ShieldCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'career', badgeKey: 'businessVerifications' },
+  { href: '/admin/candidate-verifications', labelKey: 'candidateVerifications', icon: UserCheck, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'career' },
   { href: '/admin/opportunities', labelKey: 'opportunities', icon: Radar, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'career' },
+  { href: '/admin/studio', labelKey: 'studio', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'career', badgeKey: 'studioInquiries' },
 
-  // Site content (site: მთავარი, ბლოგი, ჩვენ შესახებ)
+  // Forum & communication (site: ფორუმი)
+  { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare, section: 'moderation', badgeKey: 'reportedForumPosts', badgeColor: 'yellow' },
+  { href: '/admin/chat-moderation', labelKey: 'chatModeration', icon: ShieldBan, tiers: ['SUPER_ADMIN', 'MANAGER', 'MODERATOR'], section: 'moderation', badgeKey: 'highSeverityChatFlags' },
+  { href: '/admin/messages', labelKey: 'messages', icon: ShieldAlert, section: 'moderation' },
+  { href: '/admin/notifications', labelKey: 'notifications', icon: Bell, section: 'moderation' },
+
+  // About us & site content (site: მთავარი, ჩვენ შესახებ, ბლოგი)
   { href: '/admin/cms/homepage', labelKey: 'cms', icon: PenTool, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/cms/about', labelKey: 'aboutCms', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
-  { href: '/admin/blog', labelKey: 'blog', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
-  { href: '/admin/success-stories', labelKey: 'successStories', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/team-trainers', labelKey: 'teamTrainers', icon: UsersRound, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/success-stories', labelKey: 'successStories', icon: Award, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/projects', labelKey: 'projects', icon: Sparkles, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/cms/gallery', labelKey: 'gallery', icon: ImageIcon, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/cms/agency', labelKey: 'agencyCms', icon: Building2, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/studio-cases', labelKey: 'studioCases', icon: Layers, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/blog', labelKey: 'blog', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/bot-knowledge', labelKey: 'botKnowledge', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/marketing', labelKey: 'marketing', icon: Megaphone, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
 
-  // CDC Studio (agency)
-  { href: '/admin/studio', labelKey: 'studio', icon: ClipboardList, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'studio', badgeKey: 'studioInquiries' },
-  { href: '/admin/cms/agency', labelKey: 'agencyCms', icon: Building2, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'studio' },
-  { href: '/admin/studio-cases', labelKey: 'studioCases', icon: Layers, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'studio' },
+  // Users & access
+  { href: '/admin/users', labelKey: 'users', icon: Users, section: 'people' },
+  { href: '/admin/trainers', labelKey: 'trainers', icon: UserCog, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'people' },
+  { href: '/admin/access-grants', labelKey: 'accessGrants', icon: KeyRound, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'people' },
 
-  // Communication & moderation
-  { href: '/admin/notifications', labelKey: 'notifications', icon: Bell, section: 'moderation' },
-  { href: '/admin/messages', labelKey: 'messages', icon: ShieldAlert, section: 'moderation' },
-  { href: '/admin/chat-moderation', labelKey: 'chatModeration', icon: ShieldBan, tiers: ['SUPER_ADMIN', 'MANAGER', 'MODERATOR'], section: 'moderation', badgeKey: 'highSeverityChatFlags' },
-  { href: '/admin/forum', labelKey: 'forum', icon: MessageSquare, section: 'moderation', badgeKey: 'reportedForumPosts', badgeColor: 'yellow' },
-
-  // Finance
+  // Finance — SUPER_ADMIN only
   { href: '/admin/finance', labelKey: 'finance', icon: CreditCard, tiers: ['SUPER_ADMIN'], section: 'financial' },
   { href: '/admin/financials', labelKey: 'financials', icon: Wallet, tiers: ['SUPER_ADMIN'], section: 'financial' },
   { href: '/admin/finance/payouts', labelKey: 'payouts', icon: Landmark, tiers: ['SUPER_ADMIN'], section: 'financial' },
+  { href: '/admin/disputes', labelKey: 'disputes', icon: Scale, tiers: ['SUPER_ADMIN'], section: 'financial' },
   { href: '/admin/commissions', labelKey: 'commissions', icon: Percent, tiers: ['SUPER_ADMIN'], section: 'financial' },
   { href: '/admin/promos', labelKey: 'promos', icon: Tag, tiers: ['SUPER_ADMIN'], section: 'financial' },
   { href: '/admin/gift-cards', labelKey: 'giftCards', icon: Gift, tiers: ['SUPER_ADMIN'], section: 'financial' },
@@ -161,13 +161,12 @@ const NAV_ITEMS: NavItem[] = [
 
 const SECTION_ORDER: (keyof typeof adminDict.en.navSections)[] = [
   'overview',
-  'people',
   'learning',
   'tools',
   'career',
-  'content',
-  'studio',
   'moderation',
+  'content',
+  'people',
   'financial',
   'admin',
 ];
