@@ -195,12 +195,12 @@ export default function BusinessAiAgentsSuite({ lang }: { lang: SupportedLocale 
           {collegeAccess ? (lang === 'ka' ? 'AI წვდომა ჩართულია სწავლის დასრულებამდე' : 'AI access is included until your studies are complete') : accessState?.source === 'TOOL_SUBSCRIPTION' ? (lang === 'ka' ? 'თვიური გამოწერა აქტიურია' : 'Monthly subscription active') : unlimited ? t.unlimited : hasAccess ? t.trialActive(daysRemaining) : verificationPending ? t.verificationPending : t.trialExpired}
         </p>
         {!hasAccess && !verificationPending && (
-          <a
+          <Link
             href="/marketplace?category=ai-tools"
             className="text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 px-4 py-2 rounded-lg no-underline"
           >
             {t.contactUs}
-          </a>
+          </Link>
         )}
       </div>
 

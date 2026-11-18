@@ -15,6 +15,7 @@ import BetaModeBanner from '@/src/components/layout/BetaModeBanner';
 import TermsConsentModal from '@/src/components/auth/TermsConsentModal';
 import AdminModeBar from '@/src/components/layout/AdminModeBar';
 import { useAdminLangVersion } from '@/src/i18n/admin';
+import MotionLayer from '@/src/components/layout/MotionLayer';
 import MobileTabBar from '@/src/components/layout/MobileTabBar';
 import { resolveLocale } from '@/src/utils/locale';
 import type { AppProps } from 'next/app';
@@ -173,6 +174,7 @@ function App({ Component, pageProps }: AppProps) {
               {/* Admin pages re-mount when the admin KA/EN switch flips, so
                   every at()-translated string re-evaluates (src/i18n/admin). */}
               <Component key={isAdminRoute ? `admin-lang-${adminLangVersion}` : undefined} {...pageProps} />
+              <MotionLayer />
               <MobileTabBar />
               <ScrollToTop positionClassName={scrollToTopPosition} />
               <FloatingButtons />
