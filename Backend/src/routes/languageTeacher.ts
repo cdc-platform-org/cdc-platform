@@ -202,14 +202,14 @@ export function parseAnalysis(raw: string, learning: SupportedLanguage, native: 
 export function buildAnalysisPrompt(text: string, learning: SupportedLanguage, native: SupportedLanguage): string {
   const short = text.trim().split(/\s+/).length <= SHORT_TEXT_WORD_THRESHOLD;
   const task = short
-    ? `The input is a single word or short phrase: explain what it means and how it is used (2-3 sentences).`
-    : `Summarize the text and explain what it says (2-4 sentences).`;
+    ? `The input is a single word or short phrase: explain what it means, when and how it is used, and any nuance a learner should know (2-3 sentences).`
+    : `Explain the text to the student like a teacher (3-5 sentences): what its main idea is, what any idioms or figurative expressions really mean (e.g. "opens doors" = creates opportunities), and one grammar or usage point worth noticing. Do NOT simply translate the text and do NOT repeat it word for word: explain it in your own words.`;
   return `You are a friendly language teacher. The student's native language is ${native}. The student is learning ${learning}; the text below is written in ${learning} (if it is clearly in another language, treat that language as the source language instead).
 ${task}
 Rules:
 - "explanation": written ENTIRELY in ${native}${native === 'English' ? '' : ' (do NOT answer in English)'}.
-- "explanationSource": the same explanation written in the text's own language (${learning})${learning === native ? '; use an empty string because both languages are the same' : ''}.
-- "vocabulary": the ${short ? '1-3' : '3-6'} most useful or difficult words/expressions from the text, each with "word" (exactly as in the text), "meaning" (short ${native} translation) and "explanation" (one short sentence in ${native}).
+- "explanationSource": ${learning === native ? 'an empty string, because both languages are the same.' : `the SAME teacher explanation, rewritten in simple ${learning} for a learner. It must be an explanation, never a copy of the original text.`}
+- "vocabulary": ${short ? 'the word/phrase itself, plus at most 2 closely related words a learner should know' : 'the 3-6 most useful or difficult words/expressions from the text'}, each with "word" (in ${learning}), "meaning" (short ${native} translation) and "explanation" (one short sentence in ${native}).
 - "cefrLevel": the text's CEFR level, one of A1, A2, B1, B2, C1, C2.
 Respond with strict JSON only: {"explanation": string, "explanationSource": string, "vocabulary": [{"word": string, "meaning": string, "explanation": string}], "cefrLevel": string}
 
