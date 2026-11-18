@@ -26,7 +26,7 @@ const EN_STRINGS = {
     DEACTIVATED: 'This account has been deactivated',
     DAILY_LIMIT: "You've reached your daily posting limit",
     ROLE_RESTRICTED: 'This action is not available for your account',
-    VERIFICATION_REQUIRED: 'Verification required',
+    VERIFICATION_REQUIRED: 'Employer verification required',
   },
   bodies: {
     PENDING_APPROVAL: 'An administrator needs to approve your account before you can do this. This is usually quick — check back soon, or reach out if it has been a while.',
@@ -35,11 +35,11 @@ const EN_STRINGS = {
     DAILY_LIMIT: "You've reached your daily posting limit. Try again tomorrow.",
     postingRoleRestricted: 'Posting is open to any approved account. If you\'re seeing this, something is misconfigured on our side — please contact support so we can fix it for you.',
     applyingRoleRestricted: "Applying to jobs is available for Student/Freelancer accounts. If you're a business looking to hire, use \"Post a Vacancy\" instead.",
-    VERIFICATION_REQUIRED: 'Publishing a listing (vacancy/gig) requires account verification. The process is simple and keeps the platform secure.',
+    VERIFICATION_REQUIRED: 'Publishing a job post (vacancy or order) or sending a paid offer requires employer verification. It takes a few minutes and keeps the platform safe from fraud. Posts you already published stay live.',
   },
   contactSupport: 'Contact Support',
   postAJob: 'Post a Vacancy',
-  getVerified: 'Get Verified',
+  getVerified: 'Start employer verification',
   close: 'Close',
 };
 
@@ -51,7 +51,7 @@ const dict = {
       DEACTIVATED: 'ეს ანგარიში დეაქტივირებულია',
       DAILY_LIMIT: 'განცხადებების გამოქვეყნების დღიური ლიმიტი ამოწურულია',
       ROLE_RESTRICTED: 'ეს მოქმედება თქვენი ანგარიშისთვის მიუწვდომელია',
-      VERIFICATION_REQUIRED: 'ვერიფიკაცია აუცილებელია',
+      VERIFICATION_REQUIRED: 'საჭიროა დამსაქმებლის ვერიფიკაცია',
     },
     bodies: {
       PENDING_APPROVAL: 'ამ მოქმედების შესასრულებლად საჭიროა ადმინისტრატორის დამტკიცება. ჩვეულებრივ ეს სწრაფად ხდება — შეამოწმეთ მოგვიანებით, ან დაგვიკავშირდით, თუ დიდი დრო გავიდა.',
@@ -60,11 +60,11 @@ const dict = {
       DAILY_LIMIT: 'თქვენ ამოწურეთ განცხადებების გამოქვეყნების დღიური ლიმიტი.',
       postingRoleRestricted: 'გამოქვეყნება ხელმისაწვდომია ნებისმიერი დამტკიცებული ანგარიშისთვის. თუ ამ შეტყობინებას ხედავთ, ესეიგი რაღაც ხარვეზია ჩვენს მხარეს — გთხოვთ დაგვიკავშირდეთ, რომ გამოვასწოროთ.',
       applyingRoleRestricted: 'ვაკანსიაზე განაცხადის გაგზავნა შესაძლებელია სტუდენტის/ფრილანსერის ანგარიშიდან. თუ ბიზნესის სახელით ეძებთ თანამშრომელს, გამოიყენეთ „ვაკანსიის გამოქვეყნება“.',
-      VERIFICATION_REQUIRED: 'განცხადების (ვაკანსია/შეკვეთა) გამოსაქვეყნებლად აუცილებელია გაიაროთ ანგარიშის ვერიფიკაცია. პროცესი მარტივია და უზრუნველყოფს პლატფორმის უსაფრთხოებას.',
+      VERIFICATION_REQUIRED: 'ვაკანსიის ან შეკვეთის გამოსაქვეყნებლად და ფასიანი შეთავაზების გასაგზავნად საჭიროა დამსაქმებლის ვერიფიკაცია. ეს რამდენიმე წუთს მოითხოვს და იცავს პლატფორმას თაღლითობისგან. უკვე გამოქვეყნებული განცხადებები აქტიური რჩება.',
     },
     contactSupport: 'მხარდაჭერასთან დაკავშირება',
     postAJob: 'ვაკანსიის გამოქვეყნება',
-    getVerified: 'ვერიფიკაციის გავლა',
+    getVerified: 'დამსაქმებლის ვერიფიკაციის დაწყება',
     close: 'დახურვა',
   },
   en: EN_STRINGS,
@@ -94,7 +94,9 @@ export default function PermissionDeniedModal({ reason, context, onClose }: Perm
 
   const handleGetVerified = () => {
     onClose();
-    openVerificationDrawer();
+    // Job posts and paid offers need employer verification — open on the
+    // business tab (an individual employer can still switch tabs).
+    openVerificationDrawer({ initialTab: 'business' });
   };
 
   const body =

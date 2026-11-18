@@ -535,19 +535,18 @@ export async function sendLiveTrainingEnrollmentEmail(params: {
 }
 
 // Fired once, the moment a Business account's public registry extract is
-// approved (routes/adminCompanies.ts's setVerified) — the same trigger
-// point that starts the 7-day AI Agents Suite trial, so this email is what
-// tells the business that trial is now live.
+// approved (routes/adminCompanies.ts's setVerified). Tells the employer what
+// verification actually unlocks: publishing job posts and paid offers.
 export async function sendBusinessVerifiedEmail(email: string, companyName: string): Promise<void> {
-  const link = `${FRONTEND_URL}/dashboard/ai-tools`;
+  const link = `${FRONTEND_URL}/vacancies/post`;
   const html = wrapTemplate(
-    'თქვენი ბიზნეს ანგარიში დადასტურდა! ✅',
+    'დამსაქმებლის ვერიფიკაცია დადასტურდა! ✅',
     `გილოცავთ! <strong>${companyName || 'თქვენი კომპანია'}</strong>-ს საჯარო რეესტრის ამონაწერი დადასტურდა ადმინისტრაციის მიერ. ` +
-      `AI ინსტრუმენტები და 7-დღიანი უფასო საცდელი პერიოდი უკვე გააქტიურებულია თქვენი ანგარიშისთვის.`,
-    'AI ინსტრუმენტების გახსნა',
+      `ახლა შეგიძლიათ გამოაქვეყნოთ ვაკანსიები და შეკვეთები და გაუგზავნოთ ფასიანი შეთავაზებები ფრილანსერებს. თქვენს განცხადებებს გამოუჩნდება 🏢 ნიშანი.`,
+    'ვაკანსიის გამოქვეყნება',
     link
   );
-  await sendEmail(email, 'თქვენი ბიზნეს ანგარიში დადასტურდა! ✅', html, link);
+  await sendEmail(email, 'დამსაქმებლის ვერიფიკაცია დადასტურდა! ✅', html, link);
 }
 
 // Distinct from the auto-verify path's silence-on-pending: this fires only

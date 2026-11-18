@@ -12,7 +12,7 @@ const dictBase = {
     trialActive: (days: number) => `თქვენი უფასო 7-დღიანი საცდელი პერიოდი აქტიურია (დარჩენილია ${days} დღე)`,
     trialExpired: 'თქვენი საცდელი პერიოდი ამოიწურა — დაუკავშირდით CDC-ს გასაგრძელებლად.',
     verificationPending:
-      'საჯარო რეესტრის ამონაწერი განხილვის პროცესშია. AI ინსტრუმენტები და 7-დღიანი საცდელი ვადა გააქტიურდება ადმინისტრაციის დადასტურებისთანავე.',
+      'საჯარო რეესტრის ამონაწერი განხილვის პროცესშია. AI ინსტრუმენტები ხელმისაწვდომია თვიური გამოწერით ან კურსის სწავლის პერიოდში.',
     unlimited: 'შეუზღუდავი წვდომა აქტიურია',
     contactUs: 'AI ინსტრუმენტების მარკეტი',
     contentTitle: 'B2B კონტენტ გენერატორი',
@@ -36,7 +36,7 @@ const dictBase = {
     trialActive: (days: number) => `Your free 7-day trial is active (${days} day${days === 1 ? '' : 's'} remaining)`,
     trialExpired: 'Your trial has expired — contact CDC to continue.',
     verificationPending:
-      'Your public registry extract is under review. AI tools and the 7-day trial will activate as soon as our team approves it.',
+      'Your public registry extract is under review. AI tools are available with the monthly subscription or while you study a course.',
     unlimited: 'Unlimited access active',
     contactUs: 'Contact Us',
     contentTitle: 'B2B Content Generator',

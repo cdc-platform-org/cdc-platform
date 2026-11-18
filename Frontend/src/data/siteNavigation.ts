@@ -15,8 +15,7 @@ import {
   FolderKanban,
   Award,
   Handshake,
-  type LucideIcon,
-} from 'lucide-react';
+  type LucideIcon, ShieldCheck } from 'lucide-react';
 import type { SupportedLocale } from '../utils/locale';
 import { MARKETPLACE_CATEGORIES } from './marketplaceCategories';
 
@@ -31,7 +30,7 @@ import { MARKETPLACE_CATEGORIES } from './marketplaceCategories';
 export type NavItemKey =
   | 'courses' | 'liveTrainings' | 'careerTest' | 'tutorials'
   | 'ebooks' | 'designAssets' | 'allProducts' | 'aiToolsLink'
-  | 'jobs' | 'mentors' | 'studio' | 'forum'
+  | 'jobs' | 'employerVerification' | 'mentors' | 'studio' | 'forum'
   | 'aboutCenter' | 'trainers' | 'team' | 'gallery' | 'contact' | 'terms' | 'blog'
   | 'projects' | 'successStories' | 'partners';
 
@@ -94,6 +93,7 @@ export function getSiteNavigation(locale: SupportedLocale): NavEntry[] {
       href: '/community',
       items: [
         { key: 'jobs', href: '/community', icon: Briefcase },
+        { key: 'employerVerification', href: '/employer-verification', icon: ShieldCheck },
         { key: 'mentors', href: '/mentors', icon: Users },
         { key: 'studio', href: '/agency', icon: Building2 },
       ],
@@ -140,6 +140,7 @@ const ka: NavDict = {
     allProducts: { title: 'ყველა პროდუქტი', desc: 'მაღაზიის სრული კატალოგი' },
     aiToolsLink: { title: 'AI ხელსაწყოები', desc: 'ონლაინ სერვისები, რომლებსაც პლატფორმაზე იყენებ' },
     jobs: { title: 'ვაკანსიები', desc: 'სამუშაო და სტაჟირება' },
+    employerVerification: { title: 'დამსაქმებლის ვერიფიკაცია', desc: 'ვაკანსიის და ფასიანი შეკვეთის გამოსაქვეყნებლად' },
     mentors: { title: 'მენტორები', desc: 'ინდივიდუალური კონსულტაცია' },
     studio: { title: 'CDC სტუდიო', desc: 'ციფრული სერვისები ბიზნესისთვის' },
     forum: { title: 'ფორუმი', desc: 'კითხვები და განხილვები' },
@@ -169,6 +170,7 @@ const en: NavDict = {
     allProducts: { title: 'All products', desc: 'The full shop catalog' },
     aiToolsLink: { title: 'AI Tools', desc: 'Online services you use on the platform' },
     jobs: { title: 'Jobs', desc: 'Jobs and internships' },
+    employerVerification: { title: 'Employer verification', desc: 'Required to publish jobs and paid orders' },
     mentors: { title: 'Mentors', desc: 'One-on-one guidance' },
     studio: { title: 'CDC Studio', desc: 'Digital services for business' },
     forum: { title: 'Forum', desc: 'Questions and discussions' },
@@ -198,6 +200,7 @@ const de: NavDict = {
     allProducts: { title: 'Alle Produkte', desc: 'Der komplette Katalog' },
     aiToolsLink: { title: 'KI-Tools', desc: 'Online-Dienste auf der Plattform' },
     jobs: { title: 'Jobs', desc: 'Jobs und Praktika' },
+    employerVerification: { title: 'Employer verification', desc: 'Required to publish jobs and paid orders' },
     mentors: { title: 'Mentoren', desc: 'Persönliche Beratung' },
     studio: { title: 'CDC Studio', desc: 'Digitale Dienste für Unternehmen' },
     forum: { title: 'Forum', desc: 'Fragen und Diskussionen' },
@@ -227,6 +230,7 @@ const es: NavDict = {
     allProducts: { title: 'Todos los productos', desc: 'El catálogo completo' },
     aiToolsLink: { title: 'Herramientas IA', desc: 'Servicios en línea de la plataforma' },
     jobs: { title: 'Empleos', desc: 'Empleos y prácticas' },
+    employerVerification: { title: 'Employer verification', desc: 'Required to publish jobs and paid orders' },
     mentors: { title: 'Mentores', desc: 'Orientación personalizada' },
     studio: { title: 'CDC Studio', desc: 'Servicios digitales para empresas' },
     forum: { title: 'Foro', desc: 'Preguntas y debates' },
@@ -256,6 +260,7 @@ const fr: NavDict = {
     allProducts: { title: 'Tous les produits', desc: 'Le catalogue complet' },
     aiToolsLink: { title: 'Outils IA', desc: 'Services en ligne de la plateforme' },
     jobs: { title: 'Emplois', desc: 'Emplois et stages' },
+    employerVerification: { title: 'Employer verification', desc: 'Required to publish jobs and paid orders' },
     mentors: { title: 'Mentors', desc: 'Accompagnement individuel' },
     studio: { title: 'CDC Studio', desc: 'Services numériques pour les entreprises' },
     forum: { title: 'Forum', desc: 'Questions et discussions' },
@@ -285,6 +290,7 @@ const uk: NavDict = {
     allProducts: { title: 'Усі товари', desc: 'Повний каталог магазину' },
     aiToolsLink: { title: 'AI-інструменти', desc: 'Онлайн-сервіси на платформі' },
     jobs: { title: 'Вакансії', desc: 'Робота та стажування' },
+    employerVerification: { title: 'Employer verification', desc: 'Required to publish jobs and paid orders' },
     mentors: { title: 'Ментори', desc: 'Індивідуальні консультації' },
     studio: { title: 'CDC Studio', desc: 'Цифрові послуги для бізнесу' },
     forum: { title: 'Форум', desc: 'Питання та обговорення' },

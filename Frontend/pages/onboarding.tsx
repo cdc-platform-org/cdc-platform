@@ -62,8 +62,8 @@ function OnboardingPage() {
           </h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 mb-6">
             {lang === 'ka'
-              ? 'საჯარო რეესტრის ამონაწერი განხილვის პროცესშია. AI ინსტრუმენტები და 7-დღიანი საცდელი ვადა გააქტიურდება ადმინისტრაციის დადასტურებისთანავე.'
-              : 'Your public registry extract is under review. AI tools and the 7-day trial will activate as soon as our team approves it.'}
+              ? 'საჯარო რეესტრის ამონაწერი განხილვის პროცესშია. დადასტურების შემდეგ შეძლებთ ვაკანსიების, შეკვეთების და ფასიანი შეთავაზებების გამოქვეყნებას.'
+              : 'Your public registry extract is under review. Once it is approved you can publish job posts, orders and paid offers.'}
           </p>
           <button
             type="button"
@@ -86,7 +86,7 @@ function OnboardingPage() {
           </span>
           <div>
             <h1 className="text-lg font-bold text-gray-900 dark:text-white">
-              {lang === 'ka' ? 'ბიზნეს ვერიფიკაცია' : 'Business Verification'}
+              {lang === 'ka' ? 'დამსაქმებლის ვერიფიკაცია' : 'Employer Verification'}
             </h1>
             <p className="text-xs text-gray-500 dark:text-slate-400">
               {lang === 'ka' ? 'დაასრულეთ ანგარიშის დადასტურება' : 'Finish verifying your account'}

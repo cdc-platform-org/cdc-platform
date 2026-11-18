@@ -8,6 +8,7 @@ import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireRole, requireApproved } from '../middleware/auth';
 import { createDirectOfferSchema } from '../schemas/directOfferSchemas';
+import { canPostListing, employerVerificationRequiredBody } from '../utils/freelancerVerification';
 
 const router = Router();
 const participantSelect = { select: { id: true, name: true, role: true, isVerifiedGraduate: true } };
@@ -19,6 +20,11 @@ router.post(
   requireApproved,
   requireRole('Client', 'SuperAdmin'),
   async (req: Request, res: Response) => {
+    // A direct offer is a paid order — employer verification required
+    // (admins/SuperAdmin bypass inside canPostListing).
+    if (!(await canPostListing(prisma, req.user!.id, req.user!.role))) {
+      return res.status(403).json(employerVerificationRequiredBody());
+    }
     const result = createDirectOfferSchema.safeParse(req.body);
     if (!result.success) return res.status(400).json({ errors: result.error.errors });
     const { freelancerId, gigId, ...offerData } = result.data;
