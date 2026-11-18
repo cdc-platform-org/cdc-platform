@@ -4,7 +4,9 @@
    soft lavender day-sky with violet grid; `.dark` switches to the night sky.
    Negative margins cancel _app.tsx's px-4/sm:px-6 gutter. */
 .hero { margin: 0 -1rem; --h-ink: #14122B; --h-muted: #5B5878; --h-line: rgb(124 58 237 / .14); }
-.band { position: relative; overflow: hidden; background: linear-gradient(180deg, #F4F1FF 0%, #FBFAFF 60%, #FFFFFF 100%); color: var(--h-ink); }
+.band { position: relative; overflow: hidden; background: linear-gradient(180deg, #F4F1FF 0%, #FAF9FF 55%, rgb(var(--cdc-bg)) 100%); color: var(--h-ink); }
+/* Soft bottom edge: the neon grid fades into the next section's colour. */
+.band::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 200px; z-index: 1; pointer-events: none; background: linear-gradient(to bottom, transparent 0%, rgb(var(--cdc-bg) / .6) 55%, rgb(var(--cdc-bg)) 100%); }
 .sky { position: absolute; inset: 0; pointer-events: none; background:
   radial-gradient(900px 420px at 15% -10%, rgb(167 139 250 / .45), transparent 60%),
   radial-gradient(700px 380px at 95% 0%, rgb(34 211 238 / .28), transparent 60%),
@@ -59,7 +61,7 @@
 @keyframes pop { 50% { transform: scale(1.06); box-shadow: 0 0 24px rgb(103 232 249 / .6); } }
 .term { grid-column: 1 / -1; border-top: 1px solid rgb(255 255 255 / .06); padding: 12px 18px; font: 12.5px/1.7 'JetBrains Mono', ui-monospace, monospace; color: #9ae6b4; background: #0a0919; }
 .ai { color: #f0abfc; }
-.cam { position: absolute; left: -40px; bottom: -78px; width: 230px; border-radius: 16px; overflow: hidden; border: 1px solid rgb(255 255 255 / .6); box-shadow: 0 20px 50px -10px rgb(30 10 70 / .55), 0 0 0 4px rgb(224 64 251 / .2); background: #000; animation: float 6s ease-in-out infinite; }
+.cam { position: absolute; left: -40px; bottom: -78px; width: 230px; border-radius: 16px; overflow: hidden; border: 1px solid rgb(255 255 255 / .6); box-shadow: 0 20px 50px -10px rgb(30 10 70 / .55), 0 0 0 4px rgb(224 64 251 / .2); background: #000; }
 .camImg { display: block; width: 100%; height: 140px; object-fit: cover; object-position: 62% 30%; }
 .cam > div { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; background: rgb(10 8 30 / .92); color: #fff; font-size: 12px; }
 .cam b { font-weight: 700; }
@@ -78,11 +80,11 @@
 @media (min-width: 960px) { .term { padding-left: 200px; } .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); gap: 56px; } }
 @media (min-width: 1200px) { .wrap { padding-top: 88px; gap: 72px; } }
 @media (max-width: 639px) { .sub { font-size: 15px; } .stats { gap: 22px; } .cta { flex: 1 1 100%; justify-content: center; } .cam { left: 8px; width: 170px; bottom: -70px; } .camImg { height: 104px; } .badge { right: 6px; top: -22px; } .winBody { grid-template-columns: 1fr; } .preview { display: none; } .life { aspect-ratio: 4 / 3; } .wrap { padding-bottom: 150px; } }
-@media (prefers-reduced-motion: reduce) { .plane, .stars, .cam, .badge, .pvCard button, .kicker i, .live i { animation: none; } .cta { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .plane, .stars, .badge, .pvCard button, .kicker i, .live i { animation: none; } .cta { transition: none; } }
 
 /* ---- Night sky (dark theme) ---- */
 :global(.dark) .hero { --h-ink: #F4F2FF; --h-muted: #A9A6C9; --h-line: rgb(255 255 255 / .14); }
-:global(.dark) .band { background: #060514; }
+:global(.dark) .band { background: linear-gradient(180deg, #060514 0%, #060514 70%, rgb(var(--cdc-bg)) 100%); }
 :global(.dark) .sky { background:
   radial-gradient(900px 420px at 18% -10%, rgb(124 58 237 / .45), transparent 60%),
   radial-gradient(700px 380px at 92% 5%, rgb(34 211 238 / .28), transparent 60%),
