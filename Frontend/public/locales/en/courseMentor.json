@@ -1,6 +1,6 @@
 {
   "pageTitle": "Personal Assistant Mentor",
-  "pageSubtitle": "Upload your teaching materials, set the calendar and the goal — the agent plans and teaches the course.",
+  "pageSubtitle": "Upload any learning material, say who it is for, the result you want and the schedule — the mentor plans and teaches it.",
   "loading": "Loading...",
   "actions": {
     "newCourse": "New course",
@@ -39,7 +39,9 @@
     "excludedDates": "Days without class",
     "excludedHint": "One date per line, YYYY-MM-DD (holidays, breaks).",
     "teachingLocale": "Main teaching language",
-    "teachingLocaleHint": "The mentor talks to each student in their site language."
+    "teachingLocaleHint": "The mentor talks to each student in their site language.",
+    "taskTypes": "Task types",
+    "taskTypesHint": "Pick the kinds of tasks learners need. If you pick none, the mentor chooses what suits the subject."
   },
   "weekday": {
     "1": "Mon",
@@ -52,7 +54,7 @@
   },
   "documents": {
     "title": "Teaching materials",
-    "subtitle": "PDF, DOCX, Markdown or TXT. This is the agent's main source for the course.",
+    "subtitle": "A file, a link or pasted text. This is the mentor's main source.",
     "upload": "Upload file",
     "uploading": "Uploading {{name}}: {{pct}}%",
     "empty": "No documents uploaded yet.",
@@ -62,7 +64,23 @@
     "ready": "Ready",
     "failed": "Failed",
     "delete": "Delete",
-    "confirmDelete": "Delete \"{{name}}\"?"
+    "confirmDelete": "Delete \"{{name}}\"?",
+    "tooLarge": "The file is larger than 40 MB.",
+    "addLink": "Add link",
+    "addLinkSubmit": "Add",
+    "addingLink": "Processing the link...",
+    "pasteText": "Paste text",
+    "addTextSubmit": "Add text",
+    "addingText": "Adding the text...",
+    "pastedDefaultTitle": "Pasted text",
+    "pastedTitlePlaceholder": "Title (e.g. video transcript)",
+    "pastedTextPlaceholder": "Paste text here: an article, notes, a YouTube transcript...",
+    "rulesTitle": "What you can add",
+    "rulesFiles": "Files: PDF, Word (DOCX, DOC), RTF, PowerPoint (PPTX), Excel (XLSX), CSV, OpenDocument (ODT, ODP, ODS), EPUB, TXT, Markdown, HTML, photos (PNG, JPG, WEBP).",
+    "rulesLinks": "Links: any public web page, Google Docs / Slides / Sheets / Drive (shared with \"anyone with the link\"), YouTube (if YouTube blocks the transcript download, paste it as text).",
+    "rulesScans": "Scanned PDFs and photos are turned into text automatically (max 300 pages per document).",
+    "rulesLimits": "Limits: 40 MB per file, 20 materials per course.",
+    "rulesNot": "Not supported: password-protected / private links, DRM-protected e-books, audio and video files without a transcript."
   },
   "errors": {
     "upload": "Upload failed.",
@@ -100,13 +118,17 @@
     "sources": "Source"
   },
   "practiceType": {
-    "quiz": "Quiz",
-    "coding": "Coding",
-    "debugging": "Debugging",
-    "short-answer": "Short answer",
-    "design": "Design",
-    "project": "Project",
-    "matching": "Matching"
+    "QUIZ": "Quiz",
+    "SHORT_ANSWER": "Short answer",
+    "ESSAY": "Essay",
+    "CALCULATION": "Problem / calculation",
+    "CASE_STUDY": "Case study",
+    "MATCHING": "Matching",
+    "PRACTICAL": "Practical activity",
+    "DESIGN": "Design",
+    "PROJECT": "Project",
+    "CODING": "Coding",
+    "DEBUGGING": "Debugging"
   },
   "difficulty": {
     "easy": "easy",
@@ -136,7 +158,8 @@
     "subtitle": "{{start}} – {{end}} · {{days}} class days · {{minutes}} min",
     "settingsHint": "After changing dates or days, build the plan again.",
     "joinCode": "Class code:",
-    "joinCodeHint": "Students join the course with this code (the student side arrives in the next stage)."
+    "joinCodeHint": "Students join the course with this code (the student side arrives in the next stage).",
+    "joinLink": "Link for students"
   },
   "locale": {
     "ka": "ქართული",
@@ -148,5 +171,38 @@
     "uk": "Українська",
     "az": "Azərbaycan",
     "hy": "Հայերեն"
+  },
+  "learn": {
+    "iAmStudent": "I'm a student",
+    "subtitle": "Join a class with your teacher's code and learn with your personal mentor.",
+    "joinLabel": "Class code",
+    "join": "Join",
+    "noCourses": "You haven't joined any course yet.",
+    "progressShort": "{{done}} / {{total}} lessons done",
+    "progressLong": "{{done}} / {{total}} lessons done · planned so far: {{due}}",
+    "average": "Average score {{score}}",
+    "lessons": "Lessons",
+    "statusDone": "Completed",
+    "statusActive": "In progress",
+    "startLesson": "Start lesson",
+    "continueLesson": "Continue",
+    "allDone": "All lessons are completed.",
+    "homework": "Homework",
+    "answerPlaceholder": "Your answer...",
+    "attachFile": "Attach a file",
+    "feedback": "Mentor's feedback",
+    "submit": "Submit",
+    "resubmit": "Submit again",
+    "mentorTyping": "The mentor is typing...",
+    "chatPlaceholder": "Ask a question or answer the mentor...",
+    "send": "Send",
+    "getTasks": "Tasks",
+    "getHomework": "Homework",
+    "finish": "Finish lesson",
+    "confirmFinish": "Finish the lesson? The mentor will evaluate you.",
+    "lessonDone": "Lesson completed",
+    "strengths": "Went well",
+    "struggles": "To practise",
+    "nextSteps": "Next steps"
   }
 }

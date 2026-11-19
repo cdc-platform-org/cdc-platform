@@ -6299,6 +6299,10 @@ model MentorSourceDocument {
   // Private blob marker of the original file (null when storage is not
   // configured, e.g. local dev) — the parsed text lives in the chunks.
   storageUrl String?
+  // Set when the material came from a link (web page, Google, YouTube).
+  sourceUrl  String?
+  // Processing info for the teacher, e.g. "OCR: 120 pages", "YouTube captions (ka)".
+  note       String?
   status     MentorDocumentStatus @default(PROCESSING)
   error      String?              @db.Text
   charCount  Int                  @default(0)

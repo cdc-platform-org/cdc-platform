@@ -1,6 +1,6 @@
 {
   "pageTitle": "Şəxsi köməkçi mentor",
-  "pageSubtitle": "Tədris materiallarını yükləyin, təqvimi və məqsədi göstərin — agent kursu planlaşdırıb tədris edəcək.",
+  "pageSubtitle": "İstənilən tədris materialını yükləyin, kimin üçün olduğunu, istədiyiniz nəticəni və cədvəli göstərin — mentor planlaşdırıb öyrədəcək.",
   "loading": "Yüklənir...",
   "actions": {
     "newCourse": "Yeni kurs",
@@ -39,7 +39,9 @@
     "excludedDates": "Dərs olmayan günlər",
     "excludedHint": "Hər sətirdə bir tarix, İİİİ-AA-GG (bayramlar, tətillər).",
     "teachingLocale": "Əsas tədris dili",
-    "teachingLocaleHint": "Mentor hər tələbə ilə onun sayt dilində danışır."
+    "teachingLocaleHint": "Mentor hər tələbə ilə onun sayt dilində danışır.",
+    "taskTypes": "Tapşırıq növləri",
+    "taskTypesHint": "Lazım olan tapşırıq növlərini seçin. Heç birini seçməsəniz, mentor fənnə uyğun seçəcək."
   },
   "weekday": {
     "1": "B.e",
@@ -52,7 +54,7 @@
   },
   "documents": {
     "title": "Tədris materialları",
-    "subtitle": "PDF, DOCX, Markdown və ya TXT. Bu, agentin kurs üçün əsas mənbəyidir.",
+    "subtitle": "Fayl, keçid və ya yapışdırılmış mətn. Bu, mentorun əsas mənbəyidir.",
     "upload": "Fayl yüklə",
     "uploading": "{{name}} yüklənir: {{pct}}%",
     "empty": "Hələ sənəd yüklənməyib.",
@@ -62,7 +64,23 @@
     "ready": "Hazırdır",
     "failed": "Alınmadı",
     "delete": "Sil",
-    "confirmDelete": "\"{{name}}\" silinsin?"
+    "confirmDelete": "\"{{name}}\" silinsin?",
+    "tooLarge": "Fayl 40 MB-dan böyükdür.",
+    "addLink": "Keçid əlavə et",
+    "addLinkSubmit": "Əlavə et",
+    "addingLink": "Keçid emal olunur...",
+    "pasteText": "Mətn yapışdır",
+    "addTextSubmit": "Mətni əlavə et",
+    "addingText": "Mətn əlavə olunur...",
+    "pastedDefaultTitle": "Yapışdırılmış mətn",
+    "pastedTitlePlaceholder": "Başlıq (məs. video transkripti)",
+    "pastedTextPlaceholder": "Mətni bura yapışdırın: məqalə, konspekt, YouTube transkripti...",
+    "rulesTitle": "Nə əlavə edə bilərsiniz",
+    "rulesFiles": "Fayllar: PDF, Word (DOCX, DOC), RTF, PowerPoint (PPTX), Excel (XLSX), CSV, OpenDocument (ODT, ODP, ODS), EPUB, TXT, Markdown, HTML, şəkillər (PNG, JPG, WEBP).",
+    "rulesLinks": "Keçidlər: istənilən açıq veb səhifə, Google Docs / Slides / Sheets / Drive (\"keçidi olan hər kəs\" üçün paylaşılmış), YouTube (YouTube transkripti bloklasa, mətn kimi yapışdırın).",
+    "rulesScans": "Skan edilmiş PDF və şəkillər avtomatik mətnə çevrilir (sənəd başına maksimum 300 səhifə).",
+    "rulesLimits": "Limitlər: fayl başına 40 MB, kurs başına 20 material.",
+    "rulesNot": "Dəstəklənmir: parollu / şəxsi keçidlər, DRM ilə qorunan elektron kitablar, transkriptsiz audio və video fayllar."
   },
   "errors": {
     "upload": "Yükləmə alınmadı.",
@@ -100,13 +118,17 @@
     "sources": "Mənbə"
   },
   "practiceType": {
-    "quiz": "Test",
-    "coding": "Kod yazmaq",
-    "debugging": "Xəta axtarışı",
-    "short-answer": "Qısa cavab",
-    "design": "Dizayn",
-    "project": "Layihə",
-    "matching": "Uyğunlaşdırma"
+    "QUIZ": "Test",
+    "SHORT_ANSWER": "Qısa cavab",
+    "ESSAY": "Esse",
+    "CALCULATION": "Məsələ / hesablama",
+    "CASE_STUDY": "Keys",
+    "MATCHING": "Uyğunlaşdırma",
+    "PRACTICAL": "Praktiki fəaliyyət",
+    "DESIGN": "Dizayn",
+    "PROJECT": "Layihə",
+    "CODING": "Kod yazmaq",
+    "DEBUGGING": "Xəta axtarışı"
   },
   "difficulty": {
     "easy": "asan",
@@ -136,7 +158,8 @@
     "subtitle": "{{start}} – {{end}} · {{days}} dərs günü · {{minutes}} dəq",
     "settingsHint": "Tarixləri və ya günləri dəyişdikdən sonra planı yenidən tərtib edin.",
     "joinCode": "Sinif kodu:",
-    "joinCodeHint": "Tələbələr kursa bu kodla qoşulur (tələbə hissəsi növbəti mərhələdə əlavə olunacaq)."
+    "joinCodeHint": "Tələbələr kursa bu kodla qoşulur (tələbə hissəsi növbəti mərhələdə əlavə olunacaq).",
+    "joinLink": "Tələbələr üçün keçid"
   },
   "locale": {
     "ka": "ქართული",
@@ -148,5 +171,38 @@
     "uk": "Українська",
     "az": "Azərbaycan",
     "hy": "Հայերեն"
+  },
+  "learn": {
+    "iAmStudent": "Mən tələbəyəm",
+    "subtitle": "Müəlliminizin kodu ilə sinfə qoşulun və şəxsi mentorunuzla öyrənin.",
+    "joinLabel": "Sinif kodu",
+    "join": "Qoşul",
+    "noCourses": "Hələ heç bir kursa qoşulmamısınız.",
+    "progressShort": "{{done}} / {{total}} dərs keçilib",
+    "progressLong": "{{done}} / {{total}} dərs keçilib · bu günə qədər planlaşdırılan: {{due}}",
+    "average": "Orta bal {{score}}",
+    "lessons": "Dərslər",
+    "statusDone": "Tamamlandı",
+    "statusActive": "Davam edir",
+    "startLesson": "Dərsə başla",
+    "continueLesson": "Davam et",
+    "allDone": "Bütün dərslər tamamlanıb.",
+    "homework": "Ev tapşırığı",
+    "answerPlaceholder": "Cavabınız...",
+    "attachFile": "Fayl əlavə et",
+    "feedback": "Mentorun rəyi",
+    "submit": "Göndər",
+    "resubmit": "Yenidən göndər",
+    "mentorTyping": "Mentor yazır...",
+    "chatPlaceholder": "Sual verin və ya mentora cavab yazın...",
+    "send": "Göndər",
+    "getTasks": "Tapşırıqlar",
+    "getHomework": "Ev tapşırığı",
+    "finish": "Dərsi bitir",
+    "confirmFinish": "Dərs bitirilsin? Mentor sizi qiymətləndirəcək.",
+    "lessonDone": "Dərs tamamlandı",
+    "strengths": "Yaxşı alınanlar",
+    "struggles": "Təkrar lazımdır",
+    "nextSteps": "Növbəti addımlar"
   }
 }

@@ -20,7 +20,13 @@ export interface CourseInput {
   weekdays: number[];
   minutesPerLesson: number;
   excludedDates: string[];
+  // Empty = the agent picks task types that suit the subject.
+  taskTypes: string[];
 }
+
+// Must match Backend services/courseMentorAgent/taskTypes.ts.
+export const TASK_TYPE_KEYS = ['QUIZ', 'SHORT_ANSWER', 'ESSAY', 'CALCULATION', 'CASE_STUDY', 'MATCHING', 'PRACTICAL', 'DESIGN', 'PROJECT', 'CODING', 'DEBUGGING'] as const;
+export type TaskTypeKey = typeof TASK_TYPE_KEYS[number];
 
 export interface MentorCourseListItem {
   id: string;
@@ -37,6 +43,8 @@ export interface MentorDocument {
   id: string;
   filename: string;
   sizeBytes: number;
+  sourceUrl: string | null;
+  note: string | null;
   status: MentorDocumentStatus;
   error: string | null;
   charCount: number;
@@ -130,6 +138,14 @@ export async function uploadDocument(id: string, file: File, onProgress?: (pct: 
   });
 }
 
+export async function addLink(id: string, url: string, locale?: string): Promise<void> {
+  await apiClient.post(`${BASE}/${id}/links`, { url, locale });
+}
+
+export async function addPastedText(id: string, title: string, text: string): Promise<void> {
+  await apiClient.post(`${BASE}/${id}/texts`, { title, text });
+}
+
 export async function deleteDocument(id: string, documentId: string): Promise<void> {
   await apiClient.delete(`${BASE}/${id}/documents/${documentId}`);
 }
@@ -150,4 +166,112 @@ export async function updateLesson(id: string, lessonId: string, edit: LessonEdi
 export function apiErrorMessage(err: unknown, fallback: string): string {
   const data = (err as { response?: { data?: { message?: string } } })?.response?.data;
   return data?.message || fallback;
+}
+
+// ============================================================
+// Student side — Backend routes/courseMentorLearn.ts (/api/course-mentor/learn).
+// ============================================================
+
+const LEARN = '/course-mentor/learn';
+
+export interface MyMentorCourse {
+  courseId: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  lessonCount: number;
+  completedLessons: number;
+}
+
+export interface StudentLesson {
+  id: string;
+  moduleId: string;
+  position: number;
+  date: string;
+  kind: MentorLessonKind;
+  title: string;
+  objectives: string[];
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+  score: number | null;
+}
+
+export interface StudentCourse {
+  id: string;
+  title: string;
+  minutesPerLesson: number;
+  modules: { id: string; position: number; title: string }[];
+  lessons: StudentLesson[];
+  currentLessonId: string | null;
+  progress: { completed: number; total: number; dueByToday: number; averageScore: number | null };
+}
+
+export interface MentorTask {
+  id: string;
+  type: TaskTypeKey;
+  isHomework: boolean;
+  difficulty: 'easy' | 'medium' | 'hard';
+  content: { title: string; instructions: string; options?: string[]; starterCode?: string; language?: string };
+  answer: string | null;
+  attachment: string | boolean | null;
+  score: number | null;
+  feedback: string | null;
+  submittedAt: string | null;
+  gradedAt: string | null;
+}
+
+export interface LessonEvaluation {
+  summary: string;
+  objectivesReached: string[];
+  strengths: string[];
+  struggles: string[];
+  nextSteps: string[];
+}
+
+export interface LessonSession {
+  id: string;
+  status: 'IN_PROGRESS' | 'COMPLETED';
+  score: number | null;
+  evaluation: LessonEvaluation | null;
+  lesson: { id: string; position: number; title: string; kind: MentorLessonKind; objectives: string[]; date: string };
+  messages: { id: string; role: 'student' | 'mentor'; content: string; createdAt: string }[];
+  tasks: MentorTask[];
+}
+
+export async function joinMentorCourse(code: string): Promise<{ courseId: string; title: string }> {
+  return (await apiClient.post<{ courseId: string; title: string }>(`${LEARN}/join`, { code })).data;
+}
+
+export async function listMyMentorCourses(): Promise<MyMentorCourse[]> {
+  return (await apiClient.get<{ courses: MyMentorCourse[] }>(`${LEARN}/courses`)).data.courses;
+}
+
+export async function getStudentCourse(courseId: string): Promise<StudentCourse> {
+  return (await apiClient.get<{ course: StudentCourse }>(`${LEARN}/courses/${courseId}`)).data.course;
+}
+
+export async function startLesson(courseId: string, lessonId: string, locale: string): Promise<LessonSession> {
+  return (await apiClient.post<{ session: LessonSession }>(`${LEARN}/courses/${courseId}/lessons/${lessonId}/start`, { locale }, { timeout: 120_000 })).data.session;
+}
+
+export async function getSession(sessionId: string): Promise<LessonSession> {
+  return (await apiClient.get<{ session: LessonSession }>(`${LEARN}/sessions/${sessionId}`)).data.session;
+}
+
+export async function sendMentorMessage(sessionId: string, text: string): Promise<{ reply: string; escalated: boolean }> {
+  return (await apiClient.post<{ reply: string; escalated: boolean }>(`${LEARN}/sessions/${sessionId}/messages`, { text }, { timeout: 120_000 })).data;
+}
+
+export async function requestTasks(sessionId: string, homework: boolean): Promise<MentorTask[]> {
+  return (await apiClient.post<{ tasks: MentorTask[] }>(`${LEARN}/sessions/${sessionId}/tasks`, { homework }, { timeout: 180_000 })).data.tasks;
+}
+
+export async function submitMentorTask(taskId: string, answer: string, file?: File): Promise<MentorTask> {
+  const form = new FormData();
+  if (answer) form.append('answer', answer);
+  if (file) form.append('file', file);
+  return (await apiClient.post<{ task: MentorTask }>(`${LEARN}/tasks/${taskId}/submit`, form, { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 180_000 })).data.task;
+}
+
+export async function finishLesson(sessionId: string): Promise<LessonSession> {
+  return (await apiClient.post<{ session: LessonSession }>(`${LEARN}/sessions/${sessionId}/finish`, {}, { timeout: 180_000 })).data.session;
 }

@@ -281,6 +281,8 @@ app.use(
 // services cap them at MAX_DESIGN_JSON_BYTES; this parser runs first so the
 // global one below skips already-parsed bodies.
 app.use(['/api/designs', '/api/admin/product-templates'], express.json({ limit: '2mb' }));
+// Personal Mentor: teachers may paste whole transcripts / articles as material.
+app.use('/api/course-mentor/courses', express.json({ limit: '3mb' }));
 app.use(express.json({ verify: (req, _res, buf) => { (req as express.Request).rawBody = buf; } }));
 app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 

@@ -6,7 +6,7 @@
 import { FormEvent, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Loader2, Save, CalendarDays } from 'lucide-react';
-import type { CourseInput } from '../../../services/courseMentorService';
+import { TASK_TYPE_KEYS, type CourseInput } from '../../../services/courseMentorService';
 
 export const SITE_LOCALES = ['ka', 'en', 'de', 'es', 'fr', 'tr', 'uk', 'az', 'hy'] as const;
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7];
@@ -27,6 +27,7 @@ export function emptyCourseInput(locale: string): CourseInput {
     weekdays: [1, 2, 3, 4, 5],
     minutesPerLesson: 180,
     excludedDates: [],
+    taskTypes: [],
   };
 }
 
@@ -44,6 +45,8 @@ export default function CourseForm({ initial, submitLabel, busy, error, onSubmit
   const [excludedText, setExcludedText] = useState(initial.excludedDates.join('\n'));
 
   const set = <K extends keyof CourseInput>(key: K, value: CourseInput[K]) => setForm((f) => ({ ...f, [key]: value }));
+  const toggleType = (k: string) =>
+    set('taskTypes', form.taskTypes.includes(k) ? form.taskTypes.filter((x) => x !== k) : [...form.taskTypes, k]);
   const toggleDay = (d: number) =>
     set('weekdays', form.weekdays.includes(d) ? form.weekdays.filter((x) => x !== d) : [...form.weekdays, d].sort());
 
@@ -77,6 +80,22 @@ export default function CourseForm({ initial, submitLabel, busy, error, onSubmit
         <label className={labelClass} htmlFor="cm-instructions">{t('form.instructions')}</label>
         <textarea id="cm-instructions" rows={3} className={inputClass} value={form.instructions ?? ''}
           placeholder={t('form.instructionsPlaceholder')} onChange={(e) => set('instructions', e.target.value)} />
+      </div>
+
+      <div>
+        <span className={labelClass}>{t('form.taskTypes')}</span>
+        <p className="text-xs text-cdc-muted mb-2">{t('form.taskTypesHint')}</p>
+        <div className="flex flex-wrap gap-2">
+          {TASK_TYPE_KEYS.map((k) => {
+            const on = form.taskTypes.includes(k);
+            return (
+              <button key={k} type="button" aria-pressed={on} onClick={() => toggleType(k)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border cursor-pointer ${on ? 'bg-cdc-primary text-white border-cdc-primary' : 'bg-cdc-bg text-cdc-muted border-cdc-border'}`}>
+                {t(`practiceType.${k}`)}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="rounded-2xl border border-cdc-border bg-cdc-surface p-4 md:p-5 space-y-4">

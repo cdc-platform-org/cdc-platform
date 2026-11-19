@@ -164,6 +164,7 @@ function CourseMentorDetail({ id }: { id: string }) {
             title: course.title, audience: course.audience, goals: course.goals, instructions: course.instructions,
             teachingLocale: course.teachingLocale, startDate: course.startDate, endDate: course.endDate,
             weekdays: course.weekdays, minutesPerLesson: course.minutesPerLesson, excludedDates: course.excludedDates,
+            taskTypes: course.taskTypes ?? [],
           }}submitLabel={t('actions.save')} busy={busy === 'settings'} error={null} onSubmit={saveSettings} />
         </section>
       )}
@@ -219,6 +220,9 @@ function CourseMentorDetail({ id }: { id: string }) {
                 <Copy className="w-3.5 h-3.5" aria-hidden />{copied ? t('actions.copied') : t('actions.copy')}
               </button>
               <span className="text-xs text-emerald-800 dark:text-emerald-300 w-full">{t('detail.joinCodeHint')}</span>
+              <code className="text-xs text-emerald-900 dark:text-emerald-200 break-all w-full">
+                {t('detail.joinLink')}: {typeof window !== 'undefined' ? window.location.origin : ''}/dashboard/tools/course-mentor/learn?code={course.joinCode}
+              </code>
             </div>
           )}
         </section>

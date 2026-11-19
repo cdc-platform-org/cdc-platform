@@ -1,6 +1,6 @@
 {
   "pageTitle": "Kişisel Asistan Mentor",
-  "pageSubtitle": "Ders materyallerini yükleyin, takvimi ve hedefi belirleyin; ajan kursu planlar ve öğretir.",
+  "pageSubtitle": "Her türlü öğrenme materyalini yükleyin, kimin için olduğunu, istediğiniz sonucu ve takvimi belirtin; mentor planlar ve öğretir.",
   "loading": "Yükleniyor...",
   "actions": {
     "newCourse": "Yeni kurs",
@@ -39,7 +39,9 @@
     "excludedDates": "Ders olmayan günler",
     "excludedHint": "Her satıra bir tarih, YYYY-AA-GG (tatiller).",
     "teachingLocale": "Ana öğretim dili",
-    "teachingLocaleHint": "Mentor her öğrenciyle sitenin kendi dilinde konuşur."
+    "teachingLocaleHint": "Mentor her öğrenciyle sitenin kendi dilinde konuşur.",
+    "taskTypes": "Görev türleri",
+    "taskTypesHint": "Gereken görev türlerini seçin. Hiçbirini seçmezseniz mentor konuya göre seçer."
   },
   "weekday": {
     "1": "Pzt",
@@ -52,7 +54,7 @@
   },
   "documents": {
     "title": "Ders materyalleri",
-    "subtitle": "PDF, DOCX, Markdown veya TXT. Ajanın kurs için ana kaynağı budur.",
+    "subtitle": "Bir dosya, bağlantı veya yapıştırılmış metin. Mentorun ana kaynağı budur.",
     "upload": "Dosya yükle",
     "uploading": "{{name}} yükleniyor: %{{pct}}",
     "empty": "Henüz belge yüklenmedi.",
@@ -62,7 +64,23 @@
     "ready": "Hazır",
     "failed": "Başarısız",
     "delete": "Sil",
-    "confirmDelete": "\"{{name}}\" silinsin mi?"
+    "confirmDelete": "\"{{name}}\" silinsin mi?",
+    "tooLarge": "Dosya 40 MB'den büyük.",
+    "addLink": "Bağlantı ekle",
+    "addLinkSubmit": "Ekle",
+    "addingLink": "Bağlantı işleniyor...",
+    "pasteText": "Metin yapıştır",
+    "addTextSubmit": "Metni ekle",
+    "addingText": "Metin ekleniyor...",
+    "pastedDefaultTitle": "Yapıştırılan metin",
+    "pastedTitlePlaceholder": "Başlık (örn. video dökümü)",
+    "pastedTextPlaceholder": "Metni buraya yapıştırın: makale, notlar, YouTube dökümü...",
+    "rulesTitle": "Neler eklenebilir",
+    "rulesFiles": "Dosyalar: PDF, Word (DOCX, DOC), RTF, PowerPoint (PPTX), Excel (XLSX), CSV, OpenDocument (ODT, ODP, ODS), EPUB, TXT, Markdown, HTML, fotoğraflar (PNG, JPG, WEBP).",
+    "rulesLinks": "Bağlantılar: herhangi bir herkese açık web sayfası, Google Docs / Slides / Sheets / Drive (\"bağlantıya sahip olan herkes\" ile paylaşılmış), YouTube (YouTube dökümü engellerse metin olarak yapıştırın).",
+    "rulesScans": "Taranmış PDF'ler ve fotoğraflar otomatik olarak metne dönüştürülür (belge başına en fazla 300 sayfa).",
+    "rulesLimits": "Sınırlar: dosya başına 40 MB, kurs başına 20 materyal.",
+    "rulesNot": "Desteklenmez: şifreli / özel bağlantılar, DRM korumalı e-kitaplar, dökümü olmayan ses ve video dosyaları."
   },
   "errors": {
     "upload": "Yükleme başarısız.",
@@ -100,13 +118,17 @@
     "sources": "Kaynak"
   },
   "practiceType": {
-    "quiz": "Test",
-    "coding": "Kodlama",
-    "debugging": "Hata ayıklama",
-    "short-answer": "Kısa cevap",
-    "design": "Tasarım",
-    "project": "Proje",
-    "matching": "Eşleştirme"
+    "QUIZ": "Test",
+    "SHORT_ANSWER": "Kısa cevap",
+    "ESSAY": "Kompozisyon",
+    "CALCULATION": "Problem / hesaplama",
+    "CASE_STUDY": "Vaka analizi",
+    "MATCHING": "Eşleştirme",
+    "PRACTICAL": "Uygulamalı etkinlik",
+    "DESIGN": "Tasarım",
+    "PROJECT": "Proje",
+    "CODING": "Kodlama",
+    "DEBUGGING": "Hata ayıklama"
   },
   "difficulty": {
     "easy": "kolay",
@@ -136,7 +158,8 @@
     "subtitle": "{{start}} – {{end}} · {{days}} ders günü · {{minutes}} dk",
     "settingsHint": "Tarihleri veya günleri değiştirdikten sonra planı yeniden oluşturun.",
     "joinCode": "Sınıf kodu:",
-    "joinCodeHint": "Öğrenciler kursa bu kodla katılır (öğrenci bölümü bir sonraki aşamada gelecek)."
+    "joinCodeHint": "Öğrenciler kursa bu kodla katılır (öğrenci bölümü bir sonraki aşamada gelecek).",
+    "joinLink": "Öğrenciler için bağlantı"
   },
   "locale": {
     "ka": "ქართული",
@@ -148,5 +171,38 @@
     "uk": "Українська",
     "az": "Azərbaycan",
     "hy": "Հայերեն"
+  },
+  "learn": {
+    "iAmStudent": "Öğrenciyim",
+    "subtitle": "Öğretmeninizin koduyla sınıfa katılın ve kişisel mentorunuzla öğrenin.",
+    "joinLabel": "Sınıf kodu",
+    "join": "Katıl",
+    "noCourses": "Henüz bir kursa katılmadınız.",
+    "progressShort": "{{done}} / {{total}} ders tamamlandı",
+    "progressLong": "{{done}} / {{total}} ders tamamlandı · bugüne kadar planlanan: {{due}}",
+    "average": "Ortalama puan {{score}}",
+    "lessons": "Dersler",
+    "statusDone": "Tamamlandı",
+    "statusActive": "Devam ediyor",
+    "startLesson": "Dersi başlat",
+    "continueLesson": "Devam et",
+    "allDone": "Tüm dersler tamamlandı.",
+    "homework": "Ödev",
+    "answerPlaceholder": "Cevabınız...",
+    "attachFile": "Dosya ekle",
+    "feedback": "Mentorun geri bildirimi",
+    "submit": "Gönder",
+    "resubmit": "Tekrar gönder",
+    "mentorTyping": "Mentor yazıyor...",
+    "chatPlaceholder": "Bir soru sorun veya mentora cevap verin...",
+    "send": "Gönder",
+    "getTasks": "Görevler",
+    "getHomework": "Ödev",
+    "finish": "Dersi bitir",
+    "confirmFinish": "Ders bitirilsin mi? Mentor sizi değerlendirecek.",
+    "lessonDone": "Ders tamamlandı",
+    "strengths": "İyi gidenler",
+    "struggles": "Tekrar edilecekler",
+    "nextSteps": "Sonraki adımlar"
   }
 }

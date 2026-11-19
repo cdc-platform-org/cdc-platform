@@ -9,12 +9,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
-import { GraduationCap, Plus, Loader2, ChevronRight } from 'lucide-react';
+import { GraduationCap, Plus, Loader2, ChevronRight, BookOpen } from 'lucide-react';
 import ProtectedRoute from '../../../../src/components/auth/ProtectedRoute';
 import AdminOnlyToolGate from '../../../../src/components/tools/AdminOnlyToolGate';
 import ToolErrorBoundary from '../../../../src/components/common/ToolErrorBoundary';
 import SEOHead from '../../../../src/components/seo/SEOHead';
 import ToolShell, { ToolPageHeader } from '../../../../src/components/tools/ToolShell';
+import ToolMediaBanner from '../../../../src/components/tools/ToolMediaBanner';
 import CourseForm, { emptyCourseInput } from '../../../../src/components/tools/courseMentor/CourseForm';
 import StatusChip from '../../../../src/components/tools/courseMentor/StatusChip';
 import { listCourses, createCourse, MentorCourseListItem, CourseInput, apiErrorMessage } from '../../../../src/services/courseMentorService';
@@ -57,14 +58,21 @@ function CourseMentorHome() {
         title={t('pageTitle')}
         subtitle={t('pageSubtitle')}
         actions={
-          !showForm && (
-            <button type="button" onClick={() => setShowForm(true)}
-              className="inline-flex items-center gap-2 rounded-xl bg-cdc-primary px-4 py-2.5 text-sm font-bold text-white border-none cursor-pointer">
-              <Plus className="w-4 h-4" aria-hidden />{t('actions.newCourse')}
-            </button>
-          )
+          <>
+            <Link href="/dashboard/tools/course-mentor/learn"
+              className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-cdc-ink bg-cdc-surface border border-cdc-border no-underline">
+              <BookOpen className="w-4 h-4" aria-hidden />{t('learn.iAmStudent')}
+            </Link>
+            {!showForm && (
+              <button type="button" onClick={() => setShowForm(true)}
+                className="inline-flex items-center gap-2 rounded-xl bg-cdc-primary px-4 py-2.5 text-sm font-bold text-white border-none cursor-pointer">
+                <Plus className="w-4 h-4" aria-hidden />{t('actions.newCourse')}
+              </button>
+            )}
+          </>
         }
       />
+      <ToolMediaBanner slug="course-mentor" alt={t('pageTitle')} />
 
       {showForm && (
         <section className="rounded-2xl border border-cdc-border bg-cdc-surface p-4 md:p-6 mb-8">

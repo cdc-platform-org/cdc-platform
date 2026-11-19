@@ -17,12 +17,13 @@
  *   enrollmentService.ts   students join by class code, progress overview
  *   lessonRunner.ts        one lesson: opening, chat turns, end-of-lesson evaluation
  *   taskService.ts         practice tasks, tests, homework; grading
+ *   sources/               every file format, links (web, Google, YouTube), OCR
  *   prompts/               all prompt text, separate from control flow
  * HTTP layer: routes/courseMentor.ts (mounted at /api/course-mentor).
  */
 export * from './types';
 export { listClassDays, allocateLessonsToModules } from './calendar';
-export { ingestDocument, SUPPORTED_UPLOAD_EXTENSIONS, MAX_UPLOAD_BYTES } from './documentIngestion';
+export { ingestDocument, ingestUrl, ingestText, SUPPORTED_UPLOAD_EXTENSIONS, MAX_UPLOAD_BYTES } from './documentIngestion';
 export { startCoursePlanning } from './curriculumPlanner';
 export { searchCourseChunks } from './retrieval';
 export { isEmbeddingConfigured } from './embeddings';

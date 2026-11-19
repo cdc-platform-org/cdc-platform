@@ -118,7 +118,7 @@ export async function getTeacherCourse(teacherId: string, courseId: string) {
     include: {
       documents: {
         orderBy: { createdAt: 'asc' },
-        select: { id: true, filename: true, sizeBytes: true, status: true, error: true, charCount: true, chunkCount: true, createdAt: true },
+        select: { id: true, filename: true, sizeBytes: true, sourceUrl: true, note: true, status: true, error: true, charCount: true, chunkCount: true, createdAt: true },
       },
       modules: { orderBy: { position: 'asc' }, select: { id: true, position: true, title: true, summary: true, weight: true } },
       lessons: {

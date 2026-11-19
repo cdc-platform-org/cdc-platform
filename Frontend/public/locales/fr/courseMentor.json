@@ -1,6 +1,6 @@
 {
   "pageTitle": "Mentor assistant personnel",
-  "pageSubtitle": "Téléversez vos supports, fixez le calendrier et l'objectif : l'agent planifie et enseigne le cours.",
+  "pageSubtitle": "Ajoutez n'importe quel support, indiquez le public, le résultat voulu et le planning : le mentor planifie et enseigne.",
   "loading": "Chargement...",
   "actions": {
     "newCourse": "Nouveau cours",
@@ -39,7 +39,9 @@
     "excludedDates": "Jours sans cours",
     "excludedHint": "Une date par ligne, AAAA-MM-JJ (jours fériés, vacances).",
     "teachingLocale": "Langue principale d'enseignement",
-    "teachingLocaleHint": "Le mentor parle à chaque élève dans la langue de son site."
+    "teachingLocaleHint": "Le mentor parle à chaque élève dans la langue de son site.",
+    "taskTypes": "Types d'exercices",
+    "taskTypesHint": "Choisissez les types d'exercices utiles. Sans choix, le mentor décide selon la matière."
   },
   "weekday": {
     "1": "Lun",
@@ -52,7 +54,7 @@
   },
   "documents": {
     "title": "Supports de cours",
-    "subtitle": "PDF, DOCX, Markdown ou TXT. C'est la source principale de l'agent pour le cours.",
+    "subtitle": "Un fichier, un lien ou un texte collé. C'est la source principale du mentor.",
     "upload": "Téléverser un fichier",
     "uploading": "Téléversement de {{name}} : {{pct}} %",
     "empty": "Aucun document pour l'instant.",
@@ -62,7 +64,23 @@
     "ready": "Prêt",
     "failed": "Échec",
     "delete": "Supprimer",
-    "confirmDelete": "Supprimer « {{name}} » ?"
+    "confirmDelete": "Supprimer « {{name}} » ?",
+    "tooLarge": "Le fichier dépasse 40 Mo.",
+    "addLink": "Ajouter un lien",
+    "addLinkSubmit": "Ajouter",
+    "addingLink": "Traitement du lien...",
+    "pasteText": "Coller un texte",
+    "addTextSubmit": "Ajouter le texte",
+    "addingText": "Ajout du texte...",
+    "pastedDefaultTitle": "Texte collé",
+    "pastedTitlePlaceholder": "Titre (ex. transcription de vidéo)",
+    "pastedTextPlaceholder": "Collez le texte ici : article, notes, transcription YouTube...",
+    "rulesTitle": "Ce que vous pouvez ajouter",
+    "rulesFiles": "Fichiers : PDF, Word (DOCX, DOC), RTF, PowerPoint (PPTX), Excel (XLSX), CSV, OpenDocument (ODT, ODP, ODS), EPUB, TXT, Markdown, HTML, photos (PNG, JPG, WEBP).",
+    "rulesLinks": "Liens : toute page web publique, Google Docs / Slides / Sheets / Drive (partagé avec « tous les utilisateurs disposant du lien »), YouTube (si YouTube bloque la transcription, collez-la en texte).",
+    "rulesScans": "Les PDF scannés et les photos sont convertis en texte automatiquement (300 pages max. par document).",
+    "rulesLimits": "Limites : 40 Mo par fichier, 20 supports par cours.",
+    "rulesNot": "Non pris en charge : liens privés ou protégés par mot de passe, livres numériques avec DRM, fichiers audio et vidéo sans transcription."
   },
   "errors": {
     "upload": "Échec du téléversement.",
@@ -100,13 +118,17 @@
     "sources": "Source"
   },
   "practiceType": {
-    "quiz": "Quiz",
-    "coding": "Code",
-    "debugging": "Débogage",
-    "short-answer": "Réponse courte",
-    "design": "Design",
-    "project": "Projet",
-    "matching": "Association"
+    "QUIZ": "Quiz",
+    "SHORT_ANSWER": "Réponse courte",
+    "ESSAY": "Rédaction",
+    "CALCULATION": "Problème / calcul",
+    "CASE_STUDY": "Étude de cas",
+    "MATCHING": "Association",
+    "PRACTICAL": "Activité pratique",
+    "DESIGN": "Design",
+    "PROJECT": "Projet",
+    "CODING": "Code",
+    "DEBUGGING": "Débogage"
   },
   "difficulty": {
     "easy": "facile",
@@ -136,7 +158,8 @@
     "subtitle": "{{start}} – {{end}} · {{days}} jours de cours · {{minutes}} min",
     "settingsHint": "Après avoir changé les dates ou les jours, refaites le plan.",
     "joinCode": "Code de la classe :",
-    "joinCodeHint": "Les élèves rejoignent le cours avec ce code (la partie élève arrive à l'étape suivante)."
+    "joinCodeHint": "Les élèves rejoignent le cours avec ce code (la partie élève arrive à l'étape suivante).",
+    "joinLink": "Lien pour les élèves"
   },
   "locale": {
     "ka": "ქართული",
@@ -148,5 +171,38 @@
     "uk": "Українська",
     "az": "Azərbaycan",
     "hy": "Հայերեն"
+  },
+  "learn": {
+    "iAmStudent": "Je suis élève",
+    "subtitle": "Rejoignez une classe avec le code de votre enseignant et apprenez avec votre mentor personnel.",
+    "joinLabel": "Code de la classe",
+    "join": "Rejoindre",
+    "noCourses": "Vous n'avez rejoint aucun cours.",
+    "progressShort": "{{done}} / {{total}} séances faites",
+    "progressLong": "{{done}} / {{total}} séances faites · prévues à ce jour : {{due}}",
+    "average": "Moyenne {{score}}",
+    "lessons": "Séances",
+    "statusDone": "Terminée",
+    "statusActive": "En cours",
+    "startLesson": "Commencer la séance",
+    "continueLesson": "Continuer",
+    "allDone": "Toutes les séances sont terminées.",
+    "homework": "Devoir",
+    "answerPlaceholder": "Votre réponse...",
+    "attachFile": "Joindre un fichier",
+    "feedback": "Retour du mentor",
+    "submit": "Envoyer",
+    "resubmit": "Renvoyer",
+    "mentorTyping": "Le mentor écrit...",
+    "chatPlaceholder": "Posez une question ou répondez au mentor...",
+    "send": "Envoyer",
+    "getTasks": "Exercices",
+    "getHomework": "Devoir",
+    "finish": "Terminer la séance",
+    "confirmFinish": "Terminer la séance ? Le mentor va vous évaluer.",
+    "lessonDone": "Séance terminée",
+    "strengths": "Points forts",
+    "struggles": "À retravailler",
+    "nextSteps": "Prochaines étapes"
   }
 }

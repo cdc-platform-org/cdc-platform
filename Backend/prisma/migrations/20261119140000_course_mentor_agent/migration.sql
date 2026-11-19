@@ -48,6 +48,8 @@ CREATE TABLE "mentor_source_documents" (
     "mimeType" TEXT NOT NULL,
     "sizeBytes" INTEGER NOT NULL,
     "storageUrl" TEXT,
+    "sourceUrl" TEXT,
+    "note" TEXT,
     "status" "MentorDocumentStatus" NOT NULL DEFAULT 'PROCESSING',
     "error" TEXT,
     "charCount" INTEGER NOT NULL DEFAULT 0,

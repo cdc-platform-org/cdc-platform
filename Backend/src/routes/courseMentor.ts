@@ -8,6 +8,8 @@
  *   PUT    /courses/:courseId
  *   DELETE /courses/:courseId
  *   POST   /courses/:courseId/documents          (multipart "file")
+ *   POST   /courses/:courseId/links              { url } (web page, Google Docs/Drive, YouTube)
+ *   POST   /courses/:courseId/texts              { title, text } (pasted material)
  *   DELETE /courses/:courseId/documents/:documentId
  *   POST   /courses/:courseId/plan               (start / re-run the planner)
  *   POST   /courses/:courseId/approve
@@ -16,6 +18,7 @@
  */
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
+import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
@@ -34,6 +37,8 @@ import {
   updateLesson,
   approvePlan,
   ingestDocument,
+  ingestUrl,
+  ingestText,
   startCoursePlanning,
   SUPPORTED_UPLOAD_EXTENSIONS,
   MAX_UPLOAD_BYTES,
@@ -54,7 +59,7 @@ const documentUpload = multer({
     file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
     const ext = file.originalname.split('.').pop()?.toLowerCase() ?? '';
     if (SUPPORTED_UPLOAD_EXTENSIONS.includes(ext)) cb(null, true);
-    else cb(new Error('Only PDF, DOCX, Markdown or TXT files are allowed.'));
+    else cb(new Error(`Supported files: ${SUPPORTED_UPLOAD_EXTENSIONS.join(', ')}.`));
   },
 });
 
@@ -119,6 +124,24 @@ router.post(
     res.status(202).json({ document: doc });
   })
 );
+
+router.post('/courses/:courseId/links', uploadRateLimit, handle(async (req, res) => {
+  const { url, locale } = z.object({ url: z.string().trim().url().max(2000), locale: z.string().max(5).optional() }).parse(req.body);
+  const course = await assertTeacherOwnsCourse(req.user!.id, req.params.courseId);
+  if (course.status === 'PLANNING') throw new CourseMentorError(409, 'Wait until the plan is generated.', 'ALREADY_PLANNING');
+  const count = await prisma.mentorSourceDocument.count({ where: { courseId: course.id } });
+  if (count >= MAX_DOCUMENTS_PER_COURSE) throw new CourseMentorError(400, `A course can have at most ${MAX_DOCUMENTS_PER_COURSE} documents.`, 'TOO_MANY_DOCUMENTS');
+  res.status(202).json({ document: await ingestUrl(course.id, url, locale ?? course.teachingLocale) });
+}));
+
+router.post('/courses/:courseId/texts', uploadRateLimit, handle(async (req, res) => {
+  const { title, text } = z.object({ title: z.string().trim().min(1).max(250), text: z.string().trim().min(20).max(2_000_000) }).parse(req.body);
+  const course = await assertTeacherOwnsCourse(req.user!.id, req.params.courseId);
+  if (course.status === 'PLANNING') throw new CourseMentorError(409, 'Wait until the plan is generated.', 'ALREADY_PLANNING');
+  const count = await prisma.mentorSourceDocument.count({ where: { courseId: course.id } });
+  if (count >= MAX_DOCUMENTS_PER_COURSE) throw new CourseMentorError(400, `A course can have at most ${MAX_DOCUMENTS_PER_COURSE} documents.`, 'TOO_MANY_DOCUMENTS');
+  res.status(202).json({ document: await ingestText(course.id, title, text) });
+}));
 
 router.delete('/courses/:courseId/documents/:documentId', handle(async (req, res) => {
   await deleteDocument(req.user!.id, req.params.courseId, req.params.documentId);

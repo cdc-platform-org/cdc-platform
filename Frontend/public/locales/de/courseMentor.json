@@ -1,6 +1,6 @@
 {
   "pageTitle": "Persönlicher Assistenz-Mentor",
-  "pageSubtitle": "Laden Sie Ihre Lehrmaterialien hoch, legen Sie Kalender und Ziel fest – der Agent plant und unterrichtet den Kurs.",
+  "pageSubtitle": "Laden Sie beliebiges Lernmaterial hoch, sagen Sie für wen, welches Ergebnis und welcher Zeitplan – der Mentor plant und unterrichtet.",
   "loading": "Wird geladen...",
   "actions": {
     "newCourse": "Neuer Kurs",
@@ -39,7 +39,9 @@
     "excludedDates": "Tage ohne Unterricht",
     "excludedHint": "Ein Datum pro Zeile, JJJJ-MM-TT (Feiertage, Ferien).",
     "teachingLocale": "Hauptunterrichtssprache",
-    "teachingLocaleHint": "Der Mentor spricht mit jedem Lernenden in dessen Website-Sprache."
+    "teachingLocaleHint": "Der Mentor spricht mit jedem Lernenden in dessen Website-Sprache.",
+    "taskTypes": "Aufgabentypen",
+    "taskTypesHint": "Wählen Sie die passenden Aufgabentypen. Ohne Auswahl entscheidet der Mentor je nach Fach."
   },
   "weekday": {
     "1": "Mo",
@@ -52,7 +54,7 @@
   },
   "documents": {
     "title": "Lehrmaterialien",
-    "subtitle": "PDF, DOCX, Markdown oder TXT. Das ist die Hauptquelle des Agenten für den Kurs.",
+    "subtitle": "Eine Datei, ein Link oder eingefügter Text. Das ist die Hauptquelle des Mentors.",
     "upload": "Datei hochladen",
     "uploading": "{{name}} wird hochgeladen: {{pct}} %",
     "empty": "Noch keine Dokumente hochgeladen.",
@@ -62,7 +64,23 @@
     "ready": "Bereit",
     "failed": "Fehlgeschlagen",
     "delete": "Löschen",
-    "confirmDelete": "„{{name}}“ löschen?"
+    "confirmDelete": "„{{name}}“ löschen?",
+    "tooLarge": "Die Datei ist größer als 40 MB.",
+    "addLink": "Link hinzufügen",
+    "addLinkSubmit": "Hinzufügen",
+    "addingLink": "Link wird verarbeitet...",
+    "pasteText": "Text einfügen",
+    "addTextSubmit": "Text hinzufügen",
+    "addingText": "Text wird hinzugefügt...",
+    "pastedDefaultTitle": "Eingefügter Text",
+    "pastedTitlePlaceholder": "Titel (z. B. Video-Transkript)",
+    "pastedTextPlaceholder": "Text hier einfügen: Artikel, Notizen, YouTube-Transkript...",
+    "rulesTitle": "Was Sie hinzufügen können",
+    "rulesFiles": "Dateien: PDF, Word (DOCX, DOC), RTF, PowerPoint (PPTX), Excel (XLSX), CSV, OpenDocument (ODT, ODP, ODS), EPUB, TXT, Markdown, HTML, Fotos (PNG, JPG, WEBP).",
+    "rulesLinks": "Links: jede öffentliche Webseite, Google Docs / Slides / Sheets / Drive (für „Jeder mit dem Link“ freigegeben), YouTube (blockiert YouTube das Transkript, als Text einfügen).",
+    "rulesScans": "Gescannte PDFs und Fotos werden automatisch in Text umgewandelt (max. 300 Seiten pro Dokument).",
+    "rulesLimits": "Limits: 40 MB pro Datei, 20 Materialien pro Kurs.",
+    "rulesNot": "Nicht unterstützt: passwortgeschützte / private Links, DRM-geschützte E-Books, Audio- und Videodateien ohne Transkript."
   },
   "errors": {
     "upload": "Hochladen fehlgeschlagen.",
@@ -100,13 +118,17 @@
     "sources": "Quelle"
   },
   "practiceType": {
-    "quiz": "Quiz",
-    "coding": "Programmieren",
-    "debugging": "Fehlersuche",
-    "short-answer": "Kurzantwort",
-    "design": "Design",
-    "project": "Projekt",
-    "matching": "Zuordnung"
+    "QUIZ": "Quiz",
+    "SHORT_ANSWER": "Kurzantwort",
+    "ESSAY": "Aufsatz",
+    "CALCULATION": "Aufgabe / Berechnung",
+    "CASE_STUDY": "Fallstudie",
+    "MATCHING": "Zuordnung",
+    "PRACTICAL": "Praktische Übung",
+    "DESIGN": "Design",
+    "PROJECT": "Projekt",
+    "CODING": "Programmieren",
+    "DEBUGGING": "Fehlersuche"
   },
   "difficulty": {
     "easy": "leicht",
@@ -136,7 +158,8 @@
     "subtitle": "{{start}} – {{end}} · {{days}} Unterrichtstage · {{minutes}} Min.",
     "settingsHint": "Nach Änderung von Daten oder Tagen den Plan neu erstellen.",
     "joinCode": "Klassencode:",
-    "joinCodeHint": "Mit diesem Code treten Lernende dem Kurs bei (der Schülerbereich kommt in der nächsten Stufe)."
+    "joinCodeHint": "Mit diesem Code treten Lernende dem Kurs bei (der Schülerbereich kommt in der nächsten Stufe).",
+    "joinLink": "Link für Lernende"
   },
   "locale": {
     "ka": "ქართული",
@@ -148,5 +171,38 @@
     "uk": "Українська",
     "az": "Azərbaycan",
     "hy": "Հայերեն"
+  },
+  "learn": {
+    "iAmStudent": "Ich bin Lernende/r",
+    "subtitle": "Treten Sie mit dem Code Ihrer Lehrkraft einer Klasse bei und lernen Sie mit Ihrem persönlichen Mentor.",
+    "joinLabel": "Klassencode",
+    "join": "Beitreten",
+    "noCourses": "Sie sind noch keinem Kurs beigetreten.",
+    "progressShort": "{{done}} / {{total}} Stunden erledigt",
+    "progressLong": "{{done}} / {{total}} Stunden erledigt · bisher geplant: {{due}}",
+    "average": "Durchschnitt {{score}}",
+    "lessons": "Stunden",
+    "statusDone": "Abgeschlossen",
+    "statusActive": "Läuft",
+    "startLesson": "Stunde starten",
+    "continueLesson": "Fortsetzen",
+    "allDone": "Alle Stunden sind abgeschlossen.",
+    "homework": "Hausaufgabe",
+    "answerPlaceholder": "Ihre Antwort...",
+    "attachFile": "Datei anhängen",
+    "feedback": "Rückmeldung des Mentors",
+    "submit": "Abgeben",
+    "resubmit": "Erneut abgeben",
+    "mentorTyping": "Der Mentor schreibt...",
+    "chatPlaceholder": "Stellen Sie eine Frage oder antworten Sie dem Mentor...",
+    "send": "Senden",
+    "getTasks": "Aufgaben",
+    "getHomework": "Hausaufgabe",
+    "finish": "Stunde beenden",
+    "confirmFinish": "Stunde beenden? Der Mentor bewertet Sie.",
+    "lessonDone": "Stunde abgeschlossen",
+    "strengths": "Gut gelungen",
+    "struggles": "Zum Üben",
+    "nextSteps": "Nächste Schritte"
   }
 }
