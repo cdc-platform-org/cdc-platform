@@ -39,6 +39,7 @@ export interface CourseInput {
   weekdays: number[];
   minutesPerLesson: number;
   excludedDates: string[];
+  taskTypes: string[];
 }
 
 function toCourseData(input: CourseInput) {
@@ -60,6 +61,7 @@ function toCourseData(input: CourseInput) {
     weekdays,
     minutesPerLesson: input.minutesPerLesson,
     excludedDates: [...new Set(input.excludedDates)].sort(),
+    taskTypes: [...new Set(input.taskTypes)],
   };
 }
 

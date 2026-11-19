@@ -3,6 +3,7 @@
  * Exports: courseInputSchema, lessonEditSchema.
  */
 import { z } from 'zod';
+import { TASK_TYPE_KEYS } from '../services/courseMentorAgent/taskTypes';
 
 const SITE_LOCALES = ['ka', 'en', 'de', 'es', 'fr', 'tr', 'uk', 'az', 'hy'] as const;
 const isoDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD');
@@ -18,6 +19,8 @@ export const courseInputSchema = z.object({
   weekdays: z.array(z.number().int().min(1).max(7)).min(1).max(7),
   minutesPerLesson: z.number().int().min(15).max(480),
   excludedDates: z.array(isoDay).max(400).default([]),
+  // Empty = the agent picks task types that suit the subject.
+  taskTypes: z.array(z.enum(TASK_TYPE_KEYS as [string, ...string[]])).max(TASK_TYPE_KEYS.length).default([]),
 });
 
 export const lessonEditSchema = z

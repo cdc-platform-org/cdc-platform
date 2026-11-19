@@ -9,6 +9,7 @@
  * services/exams/aiExamService.ts).
  */
 import { z } from 'zod';
+import { TASK_TYPE_KEYS, normalizeTaskType } from './taskTypes';
 
 // What the teacher tells the agent about the course.
 export interface CourseBrief {
@@ -18,6 +19,8 @@ export interface CourseBrief {
   instructions?: string | null;
   teachingLocale: string;
   minutesPerLesson: number;
+  // Task types the teacher asked for; empty = agent decides per subject.
+  taskTypes: string[];
   totalLessons: number;
   startDate: string;
   endDate: string;
@@ -75,7 +78,7 @@ export const lessonBlueprintSchema = z.object({
   practiceIdeas: z
     .array(
       z.object({
-        type: z.enum(['quiz', 'coding', 'debugging', 'short-answer', 'design', 'project', 'matching']),
+        type: z.preprocess(normalizeTaskType, z.enum(TASK_TYPE_KEYS as [string, ...string[]])),
         description: z.string().trim().min(2).max(600),
         difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
       })

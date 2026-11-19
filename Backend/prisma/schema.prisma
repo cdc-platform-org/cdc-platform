@@ -797,6 +797,7 @@ model User {
   billingSubscriptions          BillingSubscription[]
   educatorGenerations           EducatorGeneration[]
   mentorCourses                 MentorCourse[]
+  mentorEnrollments             MentorEnrollment[]
   teacherQuizzes                TeacherQuiz[]
   blogComments                  BlogComment[]
   mentorshipRequestsMade        MentorshipRequest[]            @relation("MentorshipRequestsMade")
@@ -6262,6 +6263,9 @@ model MentorCourse {
   // ISO weekdays the class meets on: 1 = Monday ... 7 = Sunday.
   weekdays         Int[]
   minutesPerLesson Int
+  // Task types the teacher wants (MentorTaskType names, see
+  // courseMentorAgent/taskTypes.ts); empty = the agent picks per subject.
+  taskTypes        String[]
   // YYYY-MM-DD dates with no class (holidays, exam weeks).
   excludedDates    String[]
   status           MentorCourseStatus @default(DRAFT)
@@ -6277,8 +6281,9 @@ model MentorCourse {
 
   documents MentorSourceDocument[]
   chunks    MentorSourceChunk[]
-  modules   MentorModule[]
-  lessons   MentorLesson[]
+  modules     MentorModule[]
+  lessons     MentorLesson[]
+  enrollments MentorEnrollment[]
 
   @@index([teacherId, createdAt])
   @@map("mentor_courses")
@@ -6363,8 +6368,118 @@ model MentorLesson {
   teacherEdited  Boolean          @default(false)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+  sessions       MentorLessonSession[]
 
   @@unique([courseId, position])
   @@index([courseId, date])
   @@map("mentor_lessons")
+}
+
+// ---- Stage 2: students learning with the mentor ----
+
+model MentorEnrollment {
+  id        String       @id @default(uuid())
+  courseId  String
+  course    MentorCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  joinedAt  DateTime     @default(now())
+  active    Boolean      @default(true)
+  sessions  MentorLessonSession[]
+
+  @@unique([courseId, studentId])
+  @@index([studentId])
+  @@map("mentor_enrollments")
+}
+
+enum MentorSessionStatus {
+  IN_PROGRESS
+  COMPLETED
+}
+
+// One student working through one lesson: the mentor chat, the tasks and
+// the end-of-lesson evaluation that stage 3's teacher report is built from.
+model MentorLessonSession {
+  id           String              @id @default(uuid())
+  enrollmentId String
+  enrollment   MentorEnrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  lessonId     String
+  lesson       MentorLesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  status       MentorSessionStatus @default(IN_PROGRESS)
+  // Language the mentor teaches this student in (their site locale).
+  locale       String              @default("ka")
+  startedAt    DateTime            @default(now())
+  completedAt  DateTime?
+  // 0-100 from graded tasks; null until something is graded.
+  score        Float?
+  // End-of-lesson evaluation: { strengths, struggles, nextSteps, summary }.
+  evaluation   Json?
+  messages     MentorAgentMessage[]
+  tasks        MentorTask[]
+
+  @@unique([enrollmentId, lessonId])
+  @@map("mentor_lesson_sessions")
+}
+
+model MentorAgentMessage {
+  id        String              @id @default(uuid())
+  sessionId String
+  session   MentorLessonSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String // "student" | "mentor"
+  content   String              @db.Text
+  createdAt DateTime            @default(now())
+
+  @@index([sessionId, createdAt])
+  @@map("mentor_agent_messages")
+}
+
+enum MentorTaskType {
+  QUIZ
+  SHORT_ANSWER
+  ESSAY
+  CALCULATION
+  CASE_STUDY
+  PRACTICAL
+  CODING
+  DEBUGGING
+  MATCHING
+  DESIGN
+  PROJECT
+}
+
+model MentorTask {
+  id          String              @id @default(uuid())
+  sessionId   String
+  session     MentorLessonSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  type        MentorTaskType
+  isHomework  Boolean             @default(false)
+  difficulty  String              @default("medium")
+  // { title, instructions, options?, starterCode?, language? } — never the answer key.
+  content     Json
+  // Kept server-side only: { correctOption?, modelAnswer?, rubric[] }.
+  answerKey   Json
+  answer      String?             @db.Text
+  // Private blob marker of an uploaded file (design / project work).
+  attachment  String?
+  score       Float?
+  feedback    String?             @db.Text
+  submittedAt DateTime?
+  gradedAt    DateTime?
+  createdAt   DateTime            @default(now())
+
+  @@index([sessionId])
+  @@map("mentor_tasks")
+}
+
+// Daily per-student AI call counter — the cost cap behind the seat price.
+model MentorUsageDay {
+  studentId String
+  day       String // YYYY-MM-DD (UTC)
+  messages  Int    @default(0)
+  aiCalls   Int    @default(0)
+  // Chat turns escalated from gpt-4o-mini to gpt-4o (student stuck / hard code).
+  escalations Int  @default(0)
+
+  @@id([studentId, day])
+  @@map("mentor_usage_days")
 }

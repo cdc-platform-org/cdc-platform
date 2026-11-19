@@ -161,6 +161,7 @@ export async function runCoursePlanning(courseId: string): Promise<void> {
       instructions: course.instructions,
       teachingLocale: course.teachingLocale,
       minutesPerLesson: course.minutesPerLesson,
+      taskTypes: course.taskTypes,
       totalLessons: classDays.length,
       startDate: isoDate(course.startDate),
       endDate: isoDate(course.endDate),

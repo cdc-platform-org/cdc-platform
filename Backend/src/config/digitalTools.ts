@@ -27,7 +27,7 @@ export const DIGITAL_TOOLS: readonly DigitalToolDefinition[] = [
   { key: 'educator-hub', label: 'Educator Hub', linkedProductId: null },
   // Separate product from the Educator Hub: seat-priced per class (its own
   // checkout comes with the pricing stage) — until then admin / AccessGrant only.
-  { key: 'course-mentor', label: 'AI Course Mentor', linkedProductId: null },
+  { key: 'course-mentor', label: 'Personal Assistant Mentor', linkedProductId: null },
   { key: 'media-studio', label: 'Media Studio', linkedProductId: null },
   { key: 'chatbot-builder', label: 'AI Chatbot Builder', linkedProductId: null },
 ];

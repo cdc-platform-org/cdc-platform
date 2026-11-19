@@ -12,6 +12,11 @@
  *   documentIngestion.ts   upload -> parsed chunks (background job)
  *   curriculumPlanner.ts   documents + brief -> modules and dated lessons
  *   courseService.ts       teacher CRUD with ownership checks
+ *   mentorModels.ts        gpt-4o-mini vs gpt-4o routing, escalation rules (cost control)
+ *   usageLimits.ts         per-student daily caps behind the seat price
+ *   enrollmentService.ts   students join by class code, progress overview
+ *   lessonRunner.ts        one lesson: opening, chat turns, end-of-lesson evaluation
+ *   taskService.ts         practice tasks, tests, homework; grading
  *   prompts/               all prompt text, separate from control flow
  * HTTP layer: routes/courseMentor.ts (mounted at /api/course-mentor).
  */
@@ -33,3 +38,6 @@ export {
   approvePlan,
 } from './courseService';
 export type { CourseInput, LessonEdit } from './courseService';
+export { joinCourseByCode, listMyCourses, getMyCourse } from './enrollmentService';
+export { startLessonSession, getLessonSession, sendStudentMessage, finishLessonSession } from './lessonRunner';
+export { generateTasks, submitTask } from './taskService';

@@ -45,6 +45,7 @@ async function main() {
     instructions: 'ასწავლე როგორც პროფესიონალმა Full-stack დეველოპერმა, რეალურ მაგალითებზე',
     teachingLocale: 'ka',
     minutesPerLesson: 180,
+    taskTypes: [],
     totalLessons: days.length,
     startDate: start,
     endDate: end,
