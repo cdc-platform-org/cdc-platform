@@ -16,6 +16,8 @@ import { BUSINESS_AI_PRICE_GEL } from '../ai/agentSubscriptionService';
 import { calculateBookPrice } from '../childrensBook/bookStateService';
 import { calculateTotalBookPrice } from '../childrensBook/bookNarrationService';
 import { ANIMATION_PRICE_TETRI } from '../childrensBook/bookAnimationPlan';
+import { findColoringPack } from '../coloringPages/coloringPacks';
+import { AI_SUBSCRIPTION_TOOLS, AI_TOOL_MONTHLY_PRICE_MINOR } from '../../config/aiToolSubscriptions';
 
 // ============================================================
 // Universal promo-code validation/pricing — the single place every checkout
@@ -59,8 +61,14 @@ export function giftCardAmountOf(promo: PromoCode | null | undefined): number {
 }
 
 function promoMatchTargetId(targetType: CouponTargetType, targetId: string): string {
-  return targetType === 'CHILDRENS_BOOK' ? CHILDRENS_BOOK_PROMO_TARGET_ID : targetId;
+  if (targetType === 'CHILDRENS_BOOK') return CHILDRENS_BOOK_PROMO_TARGET_ID;
+  // Coloring credit packs are quoted per pack ('coloring-pages:pack-10') but
+  // a promo is scoped to the tool as a whole.
+  if (targetType === 'AI_TOOL' && targetId.startsWith(`${COLORING_PROMO_TARGET_ID}:`)) return COLORING_PROMO_TARGET_ID;
+  return targetId;
 }
+
+export const COLORING_PROMO_TARGET_ID = 'coloring-pages';
 
 // Re-validated at checkout time (never trusting whatever discountedAmount
 // the client saw from a prior POST /promos/validate call), same posture the
@@ -136,12 +144,15 @@ export async function resolveTargetPrice(targetType: CouponTargetType, targetId:
       return { currentPrice: getCurrentProductPrice(product), originalPrice: product.price };
     }
     case 'AI_TOOL': {
-      // No unified paid AI-tool catalog exists yet (see this session's own
-      // notes — Business AI tools are free-access, Educator VIP is a
-      // trial+billing subscription, not a one-off checkout) — English
-      // Tutor is the one flat-price AI-tool purchase with a real checkout
-      // route today. Extend this map as more are added.
+      // Every 30-day AI tool purchase (config/aiToolSubscriptions.ts) plus the
+      // per-item AI add-ons that have their own checkout.
+      if (targetId.startsWith(`${COLORING_PROMO_TARGET_ID}:`)) {
+        const pack = findColoringPack(targetId.slice(COLORING_PROMO_TARGET_ID.length + 1));
+        if (!pack) throw new CouponTargetNotFoundError('Unknown coloring pack.');
+        return { currentPrice: pack.priceTetri, originalPrice: pack.priceTetri };
+      }
       const AI_TOOL_PRICES: Record<string, number> = {
+        ...Object.fromEntries(AI_SUBSCRIPTION_TOOLS.map(key => [key, AI_TOOL_MONTHLY_PRICE_MINOR])),
         'english-tutor': TUTOR_SUBSCRIPTION_PRICE_GEL,
         'educator-hub': EDUCATOR_VIP_PRICE_GEL,
         'business-ai': BUSINESS_AI_PRICE_GEL,

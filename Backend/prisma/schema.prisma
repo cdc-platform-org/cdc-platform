@@ -845,6 +845,7 @@ model User {
   iakoUsageGrantsCreated        IakoUsageGrant[]               @relation("IakoUsageGrantsCreated")
   accessGrantsReceived          AccessGrant[]                  @relation("AccessGrantsReceived")
   accessGrantsCreated           AccessGrant[]                  @relation("AccessGrantsCreated")
+  aiToolTrials                  AiToolTrial[]
   liveTrainingInvitesCreated    LiveTrainingInvite[]
   liveTrainingInviteRedemptions LiveTrainingInviteRedemption[]
   // A separate, opt-in capability layered on top of this account — see
@@ -1394,6 +1395,11 @@ model Course {
   // payments.ts/stripePayments.ts against a live CourseEnrollment count
   // (never a stored counter, so it can't drift out of sync with reality).
   maxCapacity       Int?
+  // Digital Tool keys (config/digitalTools.ts) an enrolled, unfinished
+  // student of this paid course may use for free — see
+  // services/learning/collegeAiAccessService.ts. Admin-edited on the course
+  // edit page; empty = the course includes no AI tools.
+  aiToolKeys        String[]       @default([])
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
@@ -2873,6 +2879,26 @@ model AccessGrant {
   @@index([userId])
   @@index([email])
   @@map("access_grants")
+}
+
+// One free 3-day trial per user per AI tool (config/aiToolTrials.ts).
+// usedUnits counts the tool's real cost unit (books, generations, messages)
+// and is incremented atomically by services/marketplace/aiToolTrialService.ts;
+// the unique (userId, toolKey) pair is what makes a trial once-only.
+model AiToolTrial {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  toolKey   String
+  startedAt DateTime @default(now())
+  endsAt    DateTime
+  usedUnits Int      @default(0)
+  capUnits  Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, toolKey])
+  @@index([userId])
+  @@map("ai_tool_trials")
 }
 
 // ============================================================

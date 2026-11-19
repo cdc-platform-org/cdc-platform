@@ -539,6 +539,8 @@ router.get('/submissions/:submissionToken/results', candidateRateLimit, async (r
 // to its own creator via loadOwnedSession's businessId check, not a role
 // gate.
 router.use(authenticate, requireApproved, requireDigitalToolAccess('proctoring'));
+// Creating an exam (AI-written questions) or a retest is what a trial counts.
+const meterExam = requireDigitalToolAccess('proctoring', { meter: 1 });
 
 // Parses an optional PDF/DOCX exam-source upload (job description, existing
 // test bank, etc.) into plain text — returned to the client, then passed
@@ -665,7 +667,7 @@ router.get('/sessions', async (req: Request, res: Response) => {
   res.json({ data: sessions });
 });
 
-router.post('/sessions', async (req: Request, res: Response) => {
+router.post('/sessions', meterExam, async (req: Request, res: Response) => {
   if (!isExamProctoringConfigured()) {
     return res.status(501).json({ message: 'AI Exam Proctoring is not configured on this server.' });
   }
@@ -786,7 +788,7 @@ router.get('/submissions/:id/report.pdf', async (req: Request, res: Response) =>
 // the business to send the candidate as a retest. Idempotent-ish: calling
 // again replaces the previous retestExamSessionId link rather than piling
 // up orphaned retest sessions.
-router.post('/submissions/:id/generate-retest', async (req: Request, res: Response) => {
+router.post('/submissions/:id/generate-retest', meterExam, async (req: Request, res: Response) => {
   const owned = await loadOwnedSubmission(req.params.id, req.user!.id);
   if (!owned) return res.status(404).json({ message: 'Submission not found.' });
 

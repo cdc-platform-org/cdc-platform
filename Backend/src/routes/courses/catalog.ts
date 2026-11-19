@@ -136,6 +136,8 @@ router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideM
   if (req.adminRole !== 'SUPER_ADMIN' && req.body && typeof req.body === 'object') {
     req.body.originalPrice = 0;
     req.body.status = 'DRAFT';
+    // Included AI tools are paid products given away free — a pricing decision.
+    delete req.body.aiToolKeys;
   }
   const result = courseCreateSchema.safeParse(req.body);
   if (!result.success) {
@@ -156,6 +158,8 @@ router.post('/', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideM
 });
 
 router.put('/:id', authenticate, requireAdminRole('SUPER_ADMIN', 'MANAGER'), hideMoneyFromNonSuperAdmin, async (req, res) => {
+  // Included AI tools (Course.aiToolKeys) give paid tools away: SUPER_ADMIN only, like prices.
+  if (req.adminRole !== 'SUPER_ADMIN' && req.body && typeof req.body === 'object') delete req.body.aiToolKeys;
   const result = courseUpdateSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.errors });

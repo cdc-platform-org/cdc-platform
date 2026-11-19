@@ -33,6 +33,7 @@ beforeAll(async () => { const app = express(); app.set('trust proxy', true); app
 beforeEach(() => { jest.clearAllMocks(); jest.mocked(createBogOrder).mockImplementation(async () => ({ bogOrderId: `ai-tool-${randomUUID()}`, redirectUrl: 'https://payments.example.test/ai-tool' })); });
 afterAll(async () => {
  if (server) await new Promise<void>(resolve => server.close(() => resolve()));
+ await prisma.aiToolTrial.deleteMany({ where: { userId: { in: users } } });
  await prisma.accessGrant.deleteMany({ where: { OR: [{ userId: { in: users } }, { createdById: { in: users } }] } });
  await prisma.bogPayment.deleteMany({ where: { userId: { in: users } } });
  await prisma.courseEnrollment.deleteMany({ where: { userId: { in: users } } });
@@ -41,10 +42,13 @@ afterAll(async () => {
  await prisma.$disconnect();
 });
 
-test('all registered AI tools expose the same 29 GEL monthly price', async () => {
+test('monthly AI tools share the 29 GEL price; pay-per-use tools keep their own pricing; all offer a 3-day trial', async () => {
  const response = await api(null, '/api/digital-tools/catalog'); expect(response.status).toBe(200);
- const { data } = await response.json() as { data: { key: string; priceMinor: number; periodDays: number }[] };
- expect(data.length).toBeGreaterThanOrEqual(9); expect(data.every(tool => tool.priceMinor === 2900 && tool.periodDays === 30)).toBe(true);
+ const { data } = await response.json() as { data: { key: string; model: string; priceMinor: number; periodDays: number | null; trial: { days: number; cap: number } | null }[] };
+ const monthly = data.filter(tool => tool.model === 'MONTHLY');
+ expect(monthly.length).toBeGreaterThanOrEqual(9); expect(monthly.every(tool => tool.priceMinor === 2900 && tool.periodDays === 30)).toBe(true);
+ expect(data.find(tool => tool.key === 'childrens-book')).toMatchObject({ model: 'PER_BOOK', trial: { days: 3, cap: 3 } });
+ expect(data.every(tool => tool.trial?.days === 3)).toBe(true);
 });
 test('checkout ignores a forged price and does not grant access before payment', async () => {
  const user = await buyer(); const response = await api(user, '/api/payments/checkout/ai-tool/media-studio', { price: 1, periodDays: 99999 }); expect(response.status).toBe(201);
@@ -81,13 +85,42 @@ test('a rejected payment grants no subscription', async () => {
  expect(await prisma.accessGrant.count({ where: { userId: user.id } })).toBe(0);
  expect(await hasDigitalToolAccess(user.id, user.email, 'media-studio')).toBe(false);
 });
-test('active college learners receive included access without opening a payment', async () => {
+test('learners of a course that includes the tool receive it without opening a payment', async () => {
  const user = await buyer(); const course = await createCourse({}); courses.push(course.id);
+ await prisma.course.update({ where: { id: course.id }, data: { aiToolKeys: ['media-studio'] } });
  await prisma.courseSection.create({ data: { courseId: course.id, title: 'Learning', order: 0, lessons: { create: { title: 'Foundations', order: 0 } } } });
  await prisma.courseEnrollment.create({ data: { userId: user.id, courseId: course.id } });
  const response = await api(user, '/api/payments/checkout/ai-tool/media-studio', {}); expect(response.status).toBe(200);
  expect(await response.json()).toMatchObject({ included: true, enrolled: true, redirectUrl: null });
  expect(createBogOrder).not.toHaveBeenCalled();
+ // A tool the course does not include is bought normally.
+ expect((await api(user, '/api/payments/checkout/ai-tool/educator-hub', {})).status).toBe(201);
+});
+test('a trial starts once, is capped, and ends in a paywall code instead of a dead end', async () => {
+ const user = await buyer();
+ const first = await api(user, '/api/digital-tools/smart-reader/trial', {}); expect(first.status).toBe(201);
+ expect((await api(user, '/api/digital-tools/smart-reader/trial', {})).status).toBe(409);
+ const access = await (await api(user, '/api/digital-tools/smart-reader/access')).json() as { data: { allowed: boolean; source: string; trial: { cap: number; remaining: number } } };
+ expect(access.data).toMatchObject({ allowed: true, source: 'TRIAL', trial: { cap: 30, remaining: 30 } });
+ await prisma.aiToolTrial.updateMany({ where: { userId: user.id, toolKey: 'smart-reader' }, data: { usedUnits: 30 } });
+ const locked = await (await api(user, '/api/digital-tools/smart-reader/access')).json() as { data: { allowed: boolean; lockedReason: string } };
+ expect(locked.data).toMatchObject({ allowed: false, lockedReason: 'TRIAL_LIMIT_REACHED' });
+ // Buying after the trial works and unlocks the tool.
+ const { paymentId } = await order(user, 'smart-reader'); await applyBogPaymentResult(paymentId, 'completed', {});
+ expect(await hasDigitalToolAccess(user.id, user.email, 'smart-reader')).toBe(true);
+});
+test('a 100% promo code grants the 30-day period without a BOG order', async () => {
+ const user = await buyer(); const code = `FREE${randomUUID().slice(0, 8).toUpperCase()}`;
+ const promo = await prisma.promoCode.create({ data: { code, discountPercent: 100, applicableType: 'AI_TOOL', applicableTargetIds: ['media-studio'], isActive: true } });
+ try {
+  const response = await api(user, '/api/payments/checkout/ai-tool/media-studio', { promoCode: code }); expect(response.status).toBe(201);
+  expect(await response.json()).toMatchObject({ enrolled: true, redirectUrl: null });
+  expect(createBogOrder).not.toHaveBeenCalled();
+  expect(await hasDigitalToolAccess(user.id, user.email, 'media-studio')).toBe(true);
+ } finally {
+  await prisma.bogPayment.deleteMany({ where: { promoCodeId: promo.id } });
+  await prisma.promoCode.delete({ where: { id: promo.id } });
+ }
 });
 test('unknown tools and unsigned requests cannot create subscription payments', async () => {
  const user = await buyer(); expect((await api(user, '/api/payments/checkout/ai-tool/unknown', {})).status).toBe(404);

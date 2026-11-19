@@ -34,6 +34,8 @@ router.use(authenticate, requireApproved, requireDigitalToolAccess('chatbot-buil
 
 // Starter Plan limits — see Frontend's data/productOverviews.ts (the
 // Product Overview tab this backs) for the exact copy shown to admins.
+// The 3-day trial uses the same 1-agent limit;
+// its replies are capped in chatApi.ts.
 // Only a TRIAL/ACTIVE agent counts against this — a PAUSED one (expired
 // trial or manually paused) doesn't block creating a fresh replacement,
 // so a lapsed trial always has a clear path forward rather than a dead end.
@@ -102,7 +104,8 @@ router.put('/:id', loadOwnedAgent, async (req: Request, res: Response) => {
   if (result.data.status === 'ACTIVE' && req.agent!.status !== 'ACTIVE') {
     const isAdmin = req.user!.role === 'SuperAdmin';
     const paid = !!req.agent!.paidUntil && req.agent!.paidUntil.getTime() > Date.now();
-    if (!isAdmin && !paid && !await hasIncludedAiToolAccess(req.user!.id, 'chatbot-builder')) {
+    const trial = res.locals.toolAccess?.source === 'TRIAL';
+    if (!isAdmin && !paid && !trial && !await hasIncludedAiToolAccess(req.user!.id, 'chatbot-builder')) {
       return res.status(402).json({ code: 'PAYMENT_REQUIRED', message: 'To switch this agent on, pay for a month first.' });
     }
     const others = await prisma.agent.count({ where: { businessId: req.agent!.businessId, id: { not: req.agent!.id }, status: { in: ['TRIAL', 'ACTIVE'] } } });

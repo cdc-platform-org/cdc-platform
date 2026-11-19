@@ -1,6 +1,7 @@
 /**
  * Express router mounted at `/api/ai-agents` (see server.ts).
  * Endpoints:
+ *   GET /state
  *   POST /generate
  */
 import { Router, Request, Response } from 'express';
@@ -9,13 +10,18 @@ import { authenticate, requireApproved } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { isAiAgentConfigured, generateAiAgentSuiteResponse, AiAgentSuiteTool, AiAgentError } from '../services/ai/aiAgentService';
 import { getSubscriptionState } from '../services/payments/subscriptionStateService';
+import { requireDigitalToolAccess, resolveDigitalToolAccess } from '../services/marketplace/digitalToolAccessService';
 import { logAiGeneration } from '../services/ai/aiGenerationLogService';
 
 const router = Router();
 router.use(authenticate, requireApproved);
 
+// Same response shape as before (hasAccess/source/trialEndsAt), but the
+// decision is the shared one (paid, course, admin grant, 3-day trial).
 router.get('/state', async (req: Request, res: Response) => {
-  res.json({ data: await getSubscriptionState(req.user!.id) });
+  const [state, access] = await Promise.all([getSubscriptionState(req.user!.id), resolveDigitalToolAccess(req.user!.id, req.user!.email, 'ai-agents')]);
+  const trial = access.source === 'TRIAL' || access.source === 'LEGACY_TRIAL';
+  res.json({ data: { ...state, hasAccess: access.allowed, accessSource: access.source, trialEndsAt: trial ? access.endsAt : state.trialEndsAt, trial: access.trial } });
 });
 
 // This was previously unrated-limited despite every call spending real
@@ -40,18 +46,13 @@ const generateSchema = z.object({
 // regardless of what the frontend banner already shows — the frontend gate
 // is UX only (same "never trust the client for enforcement" pattern as
 // utils/marketplaceCategories.ts's Business Tools purchase gate).
-router.post('/generate', aiAgentGenerateRateLimit, async (req: Request, res: Response) => {
+router.post('/generate', aiAgentGenerateRateLimit, requireDigitalToolAccess('ai-agents', { meter: 1 }), async (req: Request, res: Response) => {
   if (!isAiAgentConfigured()) {
     return res.status(501).json({ message: 'AI agent is not configured yet (GEMINI_API_KEY).' });
   }
 
   const result = generateSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ errors: result.error.errors });
-
-  const { hasAccess } = await getSubscriptionState(req.user!.id);
-  if (!hasAccess) {
-    return res.status(403).json({ message: 'Your AI Agents Suite trial has expired. Upgrade to keep using these tools.' });
-  }
 
   try {
     const response = await generateAiAgentSuiteResponse(result.data.tool as AiAgentSuiteTool, result.data.prompt, result.data.lang ?? 'ka');

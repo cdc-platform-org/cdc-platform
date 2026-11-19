@@ -40,21 +40,15 @@ import {
   DialogueTurn,
   PlacementQuestion,
 } from '../services/educator/englishTutorService';
-import { hasAccessGrant } from '../services/account/accessGrantService';
-import { hasActiveCollegeAiAccess } from '../services/learning/collegeAiAccessService';
-import { hasEnglishTutorProAccess } from '../utils/englishTutorAccess';
+import { resolveDigitalToolAccess } from '../services/marketplace/digitalToolAccessService';
+import { startAiToolTrial, AiToolTrialError } from '../services/marketplace/aiToolTrialService';
 import {
   hasReachedDailyLessonGenerationLimit,
   recordLessonGeneration,
   getDailyLessonGenerationUsage,
   DAILY_FREE_LESSON_GENERATION_LIMIT,
 } from '../services/educator/englishTutorQuotaService';
-import {
-  startTutorTrial,
-  TutorTrialAlreadyUsedError,
-  cancelTutorSubscriptionAutoRenew,
-  TUTOR_TRIAL_DAYS,
-} from '../services/educator/englishTutorSubscriptionService';
+import { cancelTutorSubscriptionAutoRenew } from '../services/educator/englishTutorSubscriptionService';
 
 const router = Router();
 router.use(authenticate, requireApproved);
@@ -120,11 +114,13 @@ async function loadGenerationExtras(taskType: TutorTaskType, learningGoal: Tutor
 router.get('/state', async (req: Request, res: Response) => {
   const user = await loadAccessUser(req.user!.id);
   if (!user) return res.status(404).json({ message: 'User not found.' });
-  const collegeAccess = await hasActiveCollegeAiAccess(req.user!.id);
-  const toolSubscription = await hasAccessGrant('DIGITAL_TOOL', 'english-tutor', { userId: req.user!.id });
-  const isPro = collegeAccess || toolSubscription || hasEnglishTutorProAccess({ role: user.role, tutorSubscriptionTier: user.tutorSubscriptionTier, tutorTrialEndDate: user.tutorTrialEndDate, tutorSubscriptionPeriodEnd: user.tutorSubscriptionPeriodEnd });
+  // One access decision for the whole tool (paid, course, admin grant,
+  // legacy trial or the unified 3-day trial) — digitalToolAccessService.ts.
+  const access = await resolveDigitalToolAccess(req.user!.id, req.user!.email, 'english-tutor');
+  const collegeAccess = access.source === 'COURSE';
+  const isPro = access.allowed;
   const usage = await getDailyLessonGenerationUsage(req.user!.id, isPro);
-  const trialActive = !!user.tutorTrialEndDate && user.tutorTrialEndDate.getTime() > Date.now();
+  const trialActive = access.source === 'TRIAL' || access.source === 'LEGACY_TRIAL';
   res.json({
     data: {
       isPro,
@@ -133,9 +129,10 @@ router.get('/state', async (req: Request, res: Response) => {
       tutorLearningGoal: user.tutorLearningGoal,
       dailyGenerationUsed: usage.used,
       dailyGenerationLimit: usage.limit,
-      trialAvailable: !user.tutorTrialStartDate,
+      trialAvailable: access.trial.state === 'AVAILABLE',
       trialActive,
-      tutorTrialEndDate: user.tutorTrialEndDate,
+      tutorTrialEndDate: trialActive ? access.endsAt : null,
+      trial: access.trial,
       subscriptionTier: user.tutorSubscriptionTier,
       subscriptionAutoRenew: user.tutorSubscriptionAutoRenew,
       subscriptionPeriodEnd: user.tutorSubscriptionPeriodEnd,
@@ -143,14 +140,15 @@ router.get('/state', async (req: Request, res: Response) => {
   });
 });
 
-// Cardless 5-day trial — POST-only, one-time (see startTutorTrial's own
-// comment). No card/payment step at all.
+// Cardless 3-day trial — POST-only, one-time per tool, capped in AI
+// requests (config/aiToolTrials.ts). Same as POST /digital-tools/english-tutor/trial.
 router.post('/trial/start', async (req: Request, res: Response) => {
   try {
-    const { tutorTrialEndDate } = await startTutorTrial(req.user!.id);
-    res.status(201).json({ data: { tutorTrialEndDate, trialDays: TUTOR_TRIAL_DAYS } });
+    // Starts the unified 3-day, request-capped trial (aiToolTrialService).
+    const trial = await startAiToolTrial(req.user!.id, 'english-tutor');
+    res.status(201).json({ data: { tutorTrialEndDate: trial.endsAt, trialDays: trial.days, trial } });
   } catch (err) {
-    if (err instanceof TutorTrialAlreadyUsedError) return res.status(400).json({ message: err.message });
+    if (err instanceof AiToolTrialError) return res.status(400).json({ code: err.code, message: err.message });
     throw err;
   }
 });
@@ -199,7 +197,7 @@ router.put('/resume-state', async (req: Request, res: Response) => {
 });
 
 // ---- Placement test (onboarding step 3) ----
-router.get('/placement-test', requireDigitalToolAccess('english-tutor'), placementTestRateLimit, async (req: Request, res: Response) => {
+router.get('/placement-test', requireDigitalToolAccess('english-tutor', { meter: 1 }), placementTestRateLimit, async (req: Request, res: Response) => {
   if (!isEnglishTutorConfigured()) {
     return res.status(501).json({ message: 'AI English Tutor is not configured yet (GEMINI_API_KEY).' });
   }
@@ -252,7 +250,7 @@ const generateSchema = z.object({
   topic: z.string().trim().min(1).max(200).optional(),
 });
 
-router.post('/lessons/generate', requireDigitalToolAccess('english-tutor'), generateRateLimit, async (req: Request, res: Response) => {
+router.post('/lessons/generate', requireDigitalToolAccess('english-tutor', { meter: 1 }), generateRateLimit, async (req: Request, res: Response) => {
   if (!isEnglishTutorConfigured()) {
     return res.status(501).json({ message: 'AI English Tutor is not configured yet (GEMINI_API_KEY).' });
   }
@@ -263,9 +261,8 @@ router.post('/lessons/generate', requireDigitalToolAccess('english-tutor'), gene
 
   const user = await loadAccessUser(req.user!.id);
   if (!user) return res.status(404).json({ message: 'User not found.' });
-  const collegeAccess = await hasActiveCollegeAiAccess(req.user!.id);
-  const toolSubscription = await hasAccessGrant('DIGITAL_TOOL', 'english-tutor', { userId: req.user!.id });
-  const isPro = collegeAccess || toolSubscription || hasEnglishTutorProAccess({ role: user.role, tutorSubscriptionTier: user.tutorSubscriptionTier, tutorTrialEndDate: user.tutorTrialEndDate, tutorSubscriptionPeriodEnd: user.tutorSubscriptionPeriodEnd });
+  // requireDigitalToolAccess above already decided access; every route here is behind it.
+  const isPro = !!res.locals.toolAccess?.allowed;
 
   // Server-side re-check regardless of what the frontend's level picker
   // already restricts — never trust the client for enforcement (same
@@ -372,7 +369,7 @@ const submitSchema = z.object({ responseData: z.unknown() });
 // Grades against the lesson's real (un-sanitized) content read straight
 // from the DB — the client only ever sees the sanitized version, so there
 // is nothing for it to tamper with the answer key of.
-router.post('/lessons/:id/submit', requireDigitalToolAccess('english-tutor'), async (req: Request, res: Response) => {
+router.post('/lessons/:id/submit', requireDigitalToolAccess('english-tutor', { meter: 1 }), async (req: Request, res: Response) => {
   const lesson = await loadOwnedLesson(req.params.id, req.user!.id);
   if (!lesson) return res.status(404).json({ message: 'Lesson not found.' });
 
@@ -459,7 +456,7 @@ const dialogueMessageSchema = z.object({
   message: z.string().trim().min(1).max(2000),
 });
 
-router.post('/lessons/:id/dialogue-message', requireDigitalToolAccess('english-tutor'), dialogueReplyRateLimit, async (req: Request, res: Response) => {
+router.post('/lessons/:id/dialogue-message', requireDigitalToolAccess('english-tutor', { meter: 1 }), dialogueReplyRateLimit, async (req: Request, res: Response) => {
   if (!isEnglishTutorConfigured()) {
     return res.status(501).json({ message: 'AI English Tutor is not configured yet (GEMINI_API_KEY).' });
   }

@@ -1,4 +1,3 @@
-import { hasIncludedAiToolAccess } from '../services/payments/aiToolSubscriptionService';
 /**
  * Express router mounted at `/api/v1` (see server.ts).
  * Endpoints:
@@ -11,6 +10,15 @@ import { rateLimit } from '../middleware/rateLimit';
 import { chatRequestSchema } from '../schemas/agentSchemas';
 import { generateAgentReply, isBusinessAiChatConfigured, BusinessAiChatError, ChatTurn } from '../services/ai/businessAiChatService';
 import { recordAgentUsage } from '../services/payments/billingService';
+import { hasIncludedAiToolAccess } from '../services/payments/aiToolSubscriptionService';
+import { getAiToolTrialStatus, consumeAiToolTrialUnits, refundAiToolTrialUnits } from '../services/marketplace/aiToolTrialService';
+
+// The owner's chatbot answers while it is paid, included (course / admin /
+// 30-day purchase) or inside the owner's 3-day trial with messages left.
+async function ownerChatAccess(businessId: string): Promise<'INCLUDED' | 'TRIAL' | 'NONE'> {
+  if (await hasIncludedAiToolAccess(businessId, 'chatbot-builder')) return 'INCLUDED';
+  return (await getAiToolTrialStatus(businessId, 'chatbot-builder')).state === 'ACTIVE' ? 'TRIAL' : 'NONE';
+}
 
 const router = Router();
 
@@ -65,9 +73,9 @@ router.get('/agents/:agentId/config', async (req: Request, res: Response) => {
     return res.status(403).json({ message: 'This origin is not authorized to use this agent.' });
   }
 
-  const includedAccess = await hasIncludedAiToolAccess(agent.businessId, 'chatbot-builder');
+  const ownerAccess = await ownerChatAccess(agent.businessId);
   const validPaidPeriod = !!agent.paidUntil && agent.paidUntil.getTime() > Date.now();
-  const trialExpired = !includedAccess && !validPaidPeriod && !(agent.status === 'TRIAL' && agent.trialEndsAt.getTime() > Date.now());
+  const trialExpired = ownerAccess === 'NONE' && !validPaidPeriod && !(agent.status === 'TRIAL' && agent.trialEndsAt.getTime() > Date.now());
   res.json({
     id: agent.id,
     name: agent.name,
@@ -100,9 +108,15 @@ router.post('/chat', chatRateLimit, async (req: Request, res: Response) => {
   // Subscription/trial guard — never auto-charges anything here, just
   // decides whether to answer. PAUSED is set explicitly (by the business,
   // or by the trial-expiry cron, see services/agentBillingService.ts).
-  const includedAccess = await hasIncludedAiToolAccess(agent.businessId, 'chatbot-builder');
+  const ownerAccess = await ownerChatAccess(agent.businessId);
   const validPaidPeriod = !!agent.paidUntil && agent.paidUntil.getTime() > Date.now();
-  const trialExpired = !includedAccess && !validPaidPeriod && !(agent.status === 'TRIAL' && agent.trialEndsAt.getTime() > Date.now());
+  const legacyAgentTrial = agent.status === 'TRIAL' && agent.trialEndsAt.getTime() > Date.now();
+  // A 3-day-trial chatbot spends one trial message per reply; when they run
+  // out it answers like an expired trial (no LLM call, no cost).
+  const usesTrial = ownerAccess === 'TRIAL' && !validPaidPeriod && !legacyAgentTrial && agent.status !== 'PAUSED';
+  const trialCharged = usesTrial && await consumeAiToolTrialUnits(agent.businessId, 'chatbot-builder', 1);
+  const trialSpent = usesTrial && !trialCharged;
+  const trialExpired = trialSpent || (ownerAccess === 'NONE' && !validPaidPeriod && !legacyAgentTrial);
   if (agent.status === 'PAUSED' || trialExpired) {
     // No LLM call is made — this is the actual "reject the completion
     // request" enforcement, before any usage/cost is incurred. `reason`
@@ -171,6 +185,7 @@ router.post('/chat', chatRateLimit, async (req: Request, res: Response) => {
   } catch (err) {
     const errMessage = err instanceof BusinessAiChatError ? err.message : 'Unexpected error generating a reply.';
     console.error('[chatApi] generateAgentReply failed:', errMessage);
+    if (trialCharged) await refundAiToolTrialUnits(agent.businessId, 'chatbot-builder', 1);
     return res.status(502).json({
       conversationId: conversation.id,
       reply: agent.fallbackPhone

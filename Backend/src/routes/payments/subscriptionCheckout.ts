@@ -1,9 +1,9 @@
-import { hasActiveCollegeAiAccess } from '../../services/learning/collegeAiAccessService';
 /**
  * BOG checkout for flat-price AI subscriptions: English tutor (IMIAKO),
  * Educator VIP and Business AI agents.
  */
 import { Router, Request, Response } from 'express';
+import { hasCourseToolAccess } from '../../services/learning/collegeAiAccessService';
 import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
 import { PromoCode } from '@prisma/client';
@@ -47,7 +47,8 @@ router.post(
   authenticate,
   requireApproved,
   async (req: Request, res: Response) => {
-    if (await hasActiveCollegeAiAccess(req.user!.id)) return res.json({ enrolled: true, redirectUrl: null, included: true });
+    // Only a course that includes the tutor makes it free (Course.aiToolKeys).
+    if (await hasCourseToolAccess(req.user!.id, 'english-tutor')) return res.json({ enrolled: true, redirectUrl: null, included: true });
     // A pending order is only reused when it was opened with the same promo
     // code (or none), so a buyer who comes back with a code never lands on
     // an earlier full-price BOG order.
@@ -142,6 +143,8 @@ async function flatAiToolCheckout(
   res: Response,
   opts: {
     purpose: 'EDUCATOR_VIP' | 'BUSINESS_AI_AGENT';
+    // Digital Tool key a linked course would include for free.
+    courseToolKey: string;
     referenceId: string;
     price: number;
     promoTargetId: string;
@@ -149,7 +152,7 @@ async function flatAiToolCheckout(
     complete: () => Promise<unknown>;
   }
 ) {
-  if (await hasActiveCollegeAiAccess(req.user!.id)) return res.json({ enrolled: true, redirectUrl: null, included: true });
+  if (await hasCourseToolAccess(req.user!.id, opts.courseToolKey)) return res.json({ enrolled: true, redirectUrl: null, included: true });
   const requestedPromoCode = typeof req.body?.promoCode === 'string' ? req.body.promoCode.trim().toUpperCase() : '';
   const requestedPromoId = requestedPromoCode
     ? (await prisma.promoCode.findUnique({ where: { code: requestedPromoCode }, select: { id: true } }))?.id ?? 'unknown-promo'
@@ -228,6 +231,7 @@ router.post('/checkout/educator-vip', checkoutRateLimit, authenticate, requireAp
   const userId = req.user!.id;
   await flatAiToolCheckout(req, res, {
     purpose: 'EDUCATOR_VIP',
+    courseToolKey: 'educator-hub',
     referenceId: userId,
     price: EDUCATOR_VIP_PRICE_GEL,
     promoTargetId: 'educator-hub',
@@ -248,6 +252,7 @@ router.post('/checkout/business-ai/:agentId', checkoutRateLimit, authenticate, r
   }
   await flatAiToolCheckout(req, res, {
     purpose: 'BUSINESS_AI_AGENT',
+    courseToolKey: 'chatbot-builder',
     referenceId: agentId,
     price: BUSINESS_AI_PRICE_GEL,
     promoTargetId: 'business-ai',

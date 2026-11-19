@@ -20,10 +20,9 @@ import { prisma } from '../lib/prisma';
 import { authenticate, requireApproved, requireCurrentEducatorSession } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { multerErrorHandler } from '../middleware/productUploads';
-import { hasAccessGrant } from '../services/account/accessGrantService';
-import { hasActiveCollegeAiAccess } from '../services/learning/collegeAiAccessService';
-import { hasEducatorVipAccess } from '../utils/educatorVipAccess';
-import { startEducatorVipTrial, EducatorTrialAlreadyUsedError, EDUCATOR_TRIAL_DAYS, EDUCATOR_VIP_PRICE_GEL } from '../services/educator/educatorVipService';
+import { EDUCATOR_VIP_PRICE_GEL } from '../services/educator/educatorVipService';
+import { requireDigitalToolAccess, resolveDigitalToolAccess, lockedCode } from '../services/marketplace/digitalToolAccessService';
+import { startAiToolTrial, AiToolTrialError } from '../services/marketplace/aiToolTrialService';
 import { getEducatorUsage, hasReachedGenerationLimit, hasReachedGradingLimit, recordEducatorGeneration } from '../services/educator/educatorUsageService';
 import {
   isAiAgentConfigured,
@@ -41,22 +40,13 @@ import { createTeacherQuiz, getQuizSubmissionsForTeacher, TeacherQuizError } fro
 const router = Router();
 router.use(authenticate, requireApproved);
 
-// ---- VIP access gate — applied only to the 3 real generation routes below,
-// not /state or /trial/start (a non-VIP visitor still needs to see their
-// own trial-availability status and be able to start the trial). ----
-async function requireEducatorVipAccess(req: Request, res: Response, next: NextFunction) {
-  const user = await prisma.user.findUnique({
-    where: { id: req.user!.id },
-    select: { role: true, educatorVipActive: true, educatorVipTrialEndDate: true, educatorVipPaidUntil: true },
-  });
-  if (!user || (!hasEducatorVipAccess(user) && !await hasActiveCollegeAiAccess(req.user!.id) && !await hasAccessGrant('DIGITAL_TOOL', 'educator-hub', { userId: req.user!.id }))) {
-    return res.status(403).json({
-      code: 'VIP_REQUIRED',
-      message: 'AI Educator VIP-ს გამოსაყენებლად საჭიროა აქტიური გამოწერა ან საცდელი პერიოდი.',
-    });
-  }
-  next();
-}
+// ---- Access gate — one decision for the whole tool (VIP, 30-day purchase,
+// course, admin grant, legacy or unified 3-day trial; see
+// digitalToolAccessService.ts). Generation/grading routes spend one trial
+// generation; reads don't. /state and /trial/start stay open so a visitor
+// without access can still see the paywall and start the trial. ----
+const requireEducatorVipAccess = requireDigitalToolAccess('educator-hub');
+const requireEducatorGeneration = requireDigitalToolAccess('educator-hub', { meter: 1 });
 
 const generateRateLimit = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, message: 'Too many generation requests. Please wait a few minutes.' });
 
@@ -67,13 +57,14 @@ const generateRateLimit = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, message
 router.get('/state', async (req: Request, res: Response) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.id },
-    select: { role: true, educatorVipActive: true, educatorVipTrialStartDate: true, educatorVipTrialEndDate: true, educatorVipPaidUntil: true },
+    select: { educatorVipActive: true, educatorVipPaidUntil: true },
   });
   if (!user) return res.status(404).json({ message: 'User not found.' });
 
-  const collegeAccess = await hasActiveCollegeAiAccess(req.user!.id);
-  const hasAccess = collegeAccess || hasEducatorVipAccess(user) || await hasAccessGrant('DIGITAL_TOOL', 'educator-hub', { userId: req.user!.id });
-  const trialActive = !!user.educatorVipTrialEndDate && user.educatorVipTrialEndDate.getTime() > Date.now();
+  const access = await resolveDigitalToolAccess(req.user!.id, req.user!.email, 'educator-hub');
+  const collegeAccess = access.source === 'COURSE';
+  const hasAccess = access.allowed;
+  const trialActive = access.source === 'TRIAL' || access.source === 'LEGACY_TRIAL';
   const usage = hasAccess ? await getEducatorUsage(req.user!.id) : null;
 
   res.json({
@@ -84,21 +75,24 @@ router.get('/state', async (req: Request, res: Response) => {
       // When the paid period ends (null for an admin grant or no purchase).
       educatorVipPaidUntil: user.educatorVipPaidUntil,
       priceGel: EDUCATOR_VIP_PRICE_GEL / 100,
-      trialAvailable: !user.educatorVipTrialStartDate,
+      trialAvailable: access.trial.state === 'AVAILABLE',
       trialActive,
-      educatorVipTrialEndDate: user.educatorVipTrialEndDate,
+      educatorVipTrialEndDate: trialActive ? access.endsAt : null,
+      trial: access.trial,
+      lockedReason: hasAccess ? null : lockedCode(access),
       usage,
     },
   });
 });
 
-// Cardless 5-day trial — POST-only, one-time. No card/payment step at all.
+// Cardless 3-day trial — POST-only, one-time, capped in generations
+// (config/aiToolTrials.ts). Same as POST /digital-tools/educator-hub/trial.
 router.post('/trial/start', async (req: Request, res: Response) => {
   try {
-    const { educatorVipTrialEndDate } = await startEducatorVipTrial(req.user!.id);
-    res.status(201).json({ data: { educatorVipTrialEndDate, trialDays: EDUCATOR_TRIAL_DAYS } });
+    const trial = await startAiToolTrial(req.user!.id, 'educator-hub');
+    res.status(201).json({ data: { educatorVipTrialEndDate: trial.endsAt, trialDays: trial.days, trial } });
   } catch (err) {
-    if (err instanceof EducatorTrialAlreadyUsedError) return res.status(400).json({ message: err.message });
+    if (err instanceof AiToolTrialError) return res.status(400).json({ code: err.code, message: err.message });
     throw err;
   }
 });
@@ -156,7 +150,7 @@ router.post(
   '/generate-test',
   generateRateLimit,
   requireCurrentEducatorSession,
-  requireEducatorVipAccess,
+  requireEducatorGeneration,
   handleTestSourceUpload,
   async (req: Request, res: Response) => {
     if (!isAiAgentConfigured()) return res.status(501).json({ message: 'AI generation is not configured yet.' });
@@ -231,7 +225,7 @@ const generateRubricSchema = z.object({
   language: z.enum(['ka', 'en']),
 });
 
-router.post('/generate-rubric', generateRateLimit, requireCurrentEducatorSession, requireEducatorVipAccess, async (req: Request, res: Response) => {
+router.post('/generate-rubric', generateRateLimit, requireCurrentEducatorSession, requireEducatorGeneration, async (req: Request, res: Response) => {
   if (!isAiAgentConfigured()) return res.status(501).json({ message: 'AI generation is not configured yet.' });
   const parsed = generateRubricSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
@@ -276,7 +270,7 @@ router.post(
   '/grade-homework',
   generateRateLimit,
   requireCurrentEducatorSession,
-  requireEducatorVipAccess,
+  requireEducatorGeneration,
   handleHomeworkUpload,
   async (req: Request, res: Response) => {
     if (!isAiAgentConfigured()) return res.status(501).json({ message: 'AI generation is not configured yet.' });
@@ -316,7 +310,7 @@ const generateDifferentiatedTaskSchema = z.object({
   language: z.enum(['ka', 'en']),
 });
 
-router.post('/generate-differentiated-task', generateRateLimit, requireCurrentEducatorSession, requireEducatorVipAccess, async (req: Request, res: Response) => {
+router.post('/generate-differentiated-task', generateRateLimit, requireCurrentEducatorSession, requireEducatorGeneration, async (req: Request, res: Response) => {
   if (!isAiAgentConfigured()) return res.status(501).json({ message: 'AI generation is not configured yet.' });
   const parsed = generateDifferentiatedTaskSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
@@ -345,7 +339,7 @@ const generateLessonPlanSchema = z.object({
   language: z.enum(['ka', 'en']),
 });
 
-router.post('/generate-lesson-plan', generateRateLimit, requireCurrentEducatorSession, requireEducatorVipAccess, async (req: Request, res: Response) => {
+router.post('/generate-lesson-plan', generateRateLimit, requireCurrentEducatorSession, requireEducatorGeneration, async (req: Request, res: Response) => {
   if (!isAiAgentConfigured()) return res.status(501).json({ message: 'AI generation is not configured yet.' });
   const parsed = generateLessonPlanSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
@@ -373,7 +367,7 @@ const generateBureaucracyDocSchema = z.object({
   language: z.enum(['ka', 'en']),
 });
 
-router.post('/generate-bureaucracy-doc', generateRateLimit, requireCurrentEducatorSession, requireEducatorVipAccess, async (req: Request, res: Response) => {
+router.post('/generate-bureaucracy-doc', generateRateLimit, requireCurrentEducatorSession, requireEducatorGeneration, async (req: Request, res: Response) => {
   if (!isAiAgentConfigured()) return res.status(501).json({ message: 'AI generation is not configured yet.' });
   const parsed = generateBureaucracyDocSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
@@ -401,7 +395,7 @@ const generateParentLetterSchema = z.object({
   language: z.enum(['ka', 'en']),
 });
 
-router.post('/generate-parent-letter', generateRateLimit, requireCurrentEducatorSession, requireEducatorVipAccess, async (req: Request, res: Response) => {
+router.post('/generate-parent-letter', generateRateLimit, requireCurrentEducatorSession, requireEducatorGeneration, async (req: Request, res: Response) => {
   if (!isAiAgentConfigured()) return res.status(501).json({ message: 'AI generation is not configured yet.' });
   const parsed = generateParentLetterSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
