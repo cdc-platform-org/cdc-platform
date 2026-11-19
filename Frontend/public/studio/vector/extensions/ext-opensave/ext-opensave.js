@@ -1,5 +1,5 @@
 import { __vitePreload } from "../_virtual/_vite/preload-helper.js";
-import { fileOpen as n, fileSave as o } from "../node_modules/browser-fs-access/dist/index.modern.js";
+import { fileOpen as n, fileSave as o } from "../vendor/browser-fs-access/index.modern.js";
 //#region src/editor/extensions/ext-opensave/ext-opensave.js
 /**
 * @file ext-opensave.js

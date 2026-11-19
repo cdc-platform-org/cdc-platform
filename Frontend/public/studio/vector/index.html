@@ -71,4 +71,5 @@
   const notify = () => window.parent !== window && window.parent.postMessage({ source: 'cdc-vector', type: 'ready' }, location.origin)
   const wait = setInterval(() => { if (svgEditor.isReady && svgEditor.svgCanvas) { clearInterval(wait); notify() } }, 150)
 </script>
+<script src="./cdc-keys.js"></script>
 </html>
