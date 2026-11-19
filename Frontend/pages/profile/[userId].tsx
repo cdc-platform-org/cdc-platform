@@ -142,7 +142,7 @@ function ProfileContent() {
                 onClick={handleHireClick}
                 className="shrink-0 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 px-6 py-3.5 text-sm font-bold text-white transition-opacity"
               >
-                📩 {t('profilePage.contactButton')}
+                {t('profilePage.contactButton')}
               </button>
             )}
           </div>

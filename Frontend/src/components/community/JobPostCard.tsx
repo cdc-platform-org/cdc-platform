@@ -1,3 +1,4 @@
+import { User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
@@ -126,7 +127,7 @@ export default function JobPostCard({
 
       {gig?.assignedFreelancer && (
         <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 min-w-0">
-          <span aria-hidden="true">👤</span>
+          <User className="h-3.5 w-3.5 inline-block align-[-2px]" aria-hidden="true" />
           <Link href={`/profile/${gig.assignedFreelancer.id}`} className="truncate hover:underline no-underline text-inherit">
             {gig.assignedFreelancer.name}
           </Link>
@@ -159,7 +160,7 @@ export default function JobPostCard({
               </span>
             ) : (
               <button type="button" onClick={onReview} className={`${secondaryBtn} w-full sm:w-auto sm:flex-1 sm:basis-40 min-w-0`}>
-                ⭐ {t('marketplace.leaveReview')}
+                {t('marketplace.leaveReview')}
               </button>
             ))}
           {!isOwnerOrAdmin && !showApply && !showReview && (

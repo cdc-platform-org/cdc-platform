@@ -265,7 +265,7 @@ export default function MyPurchasesPanel({
         <h2 className="text-lg font-extrabold">{t.title}</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t.subtitle}</p>
         <Link href="/dashboard/gift-cards" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-pink-600 dark:text-pink-400">
-          🎁 {t.giftCards}
+          {t.giftCards}
         </Link>
       </div>
       {errors.map((e) => (

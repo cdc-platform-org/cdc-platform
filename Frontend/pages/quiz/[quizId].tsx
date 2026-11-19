@@ -129,7 +129,7 @@ export default function StudentQuizPage() {
           questionElement.classList.add('border-red-500', 'bg-red-100');
           const warning = document.createElement('div');
           warning.className = 'text-red-500 text-sm mb-2';
-          warning.textContent = '⚠️ გთხოვთ აუცილებლად აირჩიოთ პასუხი!';
+          warning.textContent = 'გთხოვთ აუცილებლად აირჩიოთ პასუხი!';
           questionElement.prepend(warning);
         }
       });

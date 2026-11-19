@@ -1121,7 +1121,7 @@ function BusinessDashboardContent() {
       )}
 
       <SiteFooter />
-      {sizeToast && <Toast message={sizeToast} icon="⚠️" />}
+      {sizeToast && <Toast message={sizeToast} icon="warning" />}
     </div>
   );
 }

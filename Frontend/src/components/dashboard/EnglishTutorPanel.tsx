@@ -39,12 +39,12 @@ interface EnglishTutorPanelProps {
 }
 
 const GOAL_OPTIONS: { value: TutorLearningGoal; ka: string; en: string }[] = [
-  { value: 'TRAVEL', ka: '✈️ მოგზაურობა', en: '✈️ Travel' },
-  { value: 'TECHNICAL_IT', ka: '💻 IT / ტექნიკური', en: '💻 IT / Technical' },
-  { value: 'BUSINESS', ka: '💼 ბიზნესი', en: '💼 Business' },
-  { value: 'ACADEMIC', ka: '🎓 აკადემიური', en: '🎓 Academic' },
-  { value: 'GENERAL_DAILY', ka: '🗣️ ყოველდღიური', en: '🗣️ General Daily' },
-  { value: 'INTERVIEW_PREP', ka: '🤝 გასაუბრებისთვის', en: '🤝 Interview Prep' },
+  { value: 'TRAVEL', ka: 'მოგზაურობა', en: 'Travel' },
+  { value: 'TECHNICAL_IT', ka: 'IT / ტექნიკური', en: 'IT / Technical' },
+  { value: 'BUSINESS', ka: 'ბიზნესი', en: 'Business' },
+  { value: 'ACADEMIC', ka: 'აკადემიური', en: 'Academic' },
+  { value: 'GENERAL_DAILY', ka: 'ყოველდღიური', en: 'General Daily' },
+  { value: 'INTERVIEW_PREP', ka: 'გასაუბრებისთვის', en: 'Interview Prep' },
 ];
 
 const TASK_TYPES: { value: TutorTaskType; icon: typeof BookOpen }[] = [
@@ -111,8 +111,8 @@ const dict = {
     noHistory: 'ჯერ არცერთი გაკვეთილი არ გაქვთ.',
     error: 'დაფიქსირდა შეცდომა. სცადეთ ხელახლა.',
     wordCount: (n: number, target: number) => `${n} სიტყვა (სამიზნე: ~${target})`,
-    listenTo: '🔊 მოსმენა',
-    listenToLocked: '🔒 მოსმენა (PRO)',
+    listenTo: 'მოსმენა',
+    listenToLocked: 'მოსმენა (PRO)',
     audioLockedReason: 'გახსენით PRO წვდომა AI ხმოვანი გამოთქმისა და აუდიო ხელსაწყოების გამოსაყენებლად.',
     imiakoGreeting: 'IMIAKO-სთან ერთად ისწავლეთ ინგლისური თქვენს ტემპში.',
     trialActive: (days: number) => `PRO ტესტ-ვერსია — დარჩენილია ${days} დღე`,
@@ -168,8 +168,8 @@ const dict = {
     noHistory: "You haven't taken any lessons yet.",
     error: 'Something went wrong. Please try again.',
     wordCount: (n: number, target: number) => `${n} words (target: ~${target})`,
-    listenTo: '🔊 Listen',
-    listenToLocked: '🔒 Listen (PRO)',
+    listenTo: 'Listen',
+    listenToLocked: 'Listen (PRO)',
     audioLockedReason: 'Upgrade to Premium to unlock AI Voice Pronunciation & Audio Tools.',
     imiakoGreeting: 'Learn English with IMIAKO, at your own pace.',
     trialActive: (days: number) => `PRO trial active — ${days} day${days === 1 ? '' : 's'} left`,

@@ -189,7 +189,7 @@ export default function ApplicationsReviewList({
                   className="mt-3 flex items-center justify-center gap-2.5 w-full rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:opacity-90 text-white font-bold text-sm px-4 py-3.5 no-underline transition-opacity"
                 >
                   <FileText className="w-5 h-5 shrink-0" />
-                  📄 {t.viewCv} / რეზიუმეს ნახვა
+                  {t.viewCv} / რეზიუმეს ნახვა
                 </a>
               )}
 

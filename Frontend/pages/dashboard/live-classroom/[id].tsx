@@ -52,8 +52,8 @@ export default function LiveClassroomRoomPage() {
                   ? 'სტუდიის დამალვა'
                   : 'Hide Practice Studio'
                 : isKa
-                  ? '🎨 პრაქტიკული სტუდიის გახსნა (Ps/Ai)'
-                  : '🎨 Open Practice Studio (Ps/Ai)'}
+                  ? 'პრაქტიკული სტუდიის გახსნა (Ps/Ai)'
+                  : 'Open Practice Studio (Ps/Ai)'}
             </button>
           </div>
 

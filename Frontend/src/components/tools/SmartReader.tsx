@@ -1,3 +1,4 @@
+import { Volume2, BookOpen, Languages } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { speakNaturally, stopNaturalSpeech } from '../../utils/naturalSpeech';
 import { useSmartReader } from '@/src/hooks/useSmartReader';
@@ -315,19 +316,19 @@ export const SmartReader: React.FC = () => {
               onClick={() => handleAction('pronounce')}
               className="px-2.5 py-1 text-xs bg-slate-700 hover:bg-indigo-600 rounded-lg transition-colors flex items-center space-x-1"
             >
-              <span>🔊</span> <span>Pronounce</span>
+              <Volume2 className="h-3.5 w-3.5 inline-block align-[-2px]" aria-hidden="true" /> <span>Pronounce</span>
             </button>
             <button
               onClick={() => handleAction('explain')}
               className="px-2.5 py-1 text-xs bg-slate-700 hover:bg-indigo-600 rounded-lg transition-colors flex items-center space-x-1"
             >
-              <span>📖</span> <span>Explain</span>
+              <BookOpen className="h-3.5 w-3.5 inline-block align-[-2px]" aria-hidden="true" /> <span>Explain</span>
             </button>
             <button
               onClick={() => handleAction('translate')}
               className="px-2.5 py-1 text-xs bg-slate-700 hover:bg-indigo-600 rounded-lg transition-colors flex items-center space-x-1"
             >
-              <span>🌐</span> <span>Translate</span>
+              <Languages className="h-3.5 w-3.5 inline-block align-[-2px]" aria-hidden="true" /> <span>Translate</span>
             </button>
           </div>
         )}
@@ -335,7 +336,7 @@ export const SmartReader: React.FC = () => {
         {(actionLoading || actionResponse || teacherAdvice) && (
           <div className="bg-slate-800/90 border border-indigo-500/30 p-5 rounded-xl space-y-2">
             <div className="flex items-center justify-between text-xs text-indigo-400 font-semibold">
-              <span>🎓 AI Teacher Feedback</span>
+              <span>AI Teacher Feedback</span>
               <button onClick={() => setActionResponse(null)} className="hover:text-white">✕</button>
             </div>
             {actionLoading ? (

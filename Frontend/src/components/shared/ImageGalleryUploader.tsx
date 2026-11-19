@@ -197,7 +197,7 @@ export default function ImageGalleryUploader({
           <p className="text-xs text-gray-500">{uploadingCover ? labels.uploading : labels.coverHint}</p>
         </div>
         {coverIssues.map((msg) => (
-          <p key={msg} className="text-[11px] text-amber-600 mt-1">⚠ {msg}</p>
+          <p key={msg} className="text-[11px] text-amber-600 mt-1">{msg}</p>
         ))}
       </div>
 
@@ -274,7 +274,7 @@ export default function ImageGalleryUploader({
           )}
         </div>
         {galleryIssues.map((msg) => (
-          <p key={msg} className="text-[11px] text-amber-600 mt-1">⚠ {msg}</p>
+          <p key={msg} className="text-[11px] text-amber-600 mt-1">{msg}</p>
         ))}
       </div>
     </div>

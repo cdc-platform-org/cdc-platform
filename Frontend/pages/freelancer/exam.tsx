@@ -196,8 +196,8 @@ function FreelancerExamContent() {
         } else {
           setWarningToast(
             lang === 'ka'
-              ? `⚠️ ${reason} (${next}/${MAX_STRIKES}). კიდევ ერთი დარღვევა და გამოცდა ავტომატურად დასრულდება.`
-              : `⚠️ ${reason} (${next}/${MAX_STRIKES}). One more violation and the exam will auto-submit.`
+              ? `${reason} (${next}/${MAX_STRIKES}). კიდევ ერთი დარღვევა და გამოცდა ავტომატურად დასრულდება.`
+              : `${reason} (${next}/${MAX_STRIKES}). One more violation and the exam will auto-submit.`
           );
         }
         return next;
@@ -490,7 +490,7 @@ function FreelancerExamContent() {
                     questionSecondsLeft <= 10 ? 'text-red-500' : 'text-cyan-600 dark:text-cyan-400'
                   }`}
                 >
-                  ⏱️ {String(Math.floor(questionSecondsLeft / 60)).padStart(2, '0')}:{String(questionSecondsLeft % 60).padStart(2, '0')}
+                  ⏱{String(Math.floor(questionSecondsLeft / 60)).padStart(2, '0')}:{String(questionSecondsLeft % 60).padStart(2, '0')}
                 </span>
                 {strikes > 0 && (
                   <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400">
@@ -553,7 +553,7 @@ function FreelancerExamContent() {
             {result.passed ? (
               <>
                 <CheckCircle2 className="w-14 h-14 text-emerald-500 mx-auto mb-4" />
-                <h2 className="text-xl font-black mb-1">🎉 გილოცავთ — CDC Verified Freelancer!</h2>
+                <h2 className="text-xl font-black mb-1">გილოცავთ — CDC Verified Freelancer!</h2>
               </>
             ) : (
               <>
@@ -605,7 +605,7 @@ function FreelancerExamContent() {
         )}
       </div>
       <SiteFooter />
-      {warningToast && <Toast message={warningToast} icon="⚠️" />}
+      {warningToast && <Toast message={warningToast} icon="warning" />}
     </div>
   );
 }

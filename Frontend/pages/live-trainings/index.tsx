@@ -131,7 +131,7 @@ export default function LiveTrainingsIndexPage() {
                     </span>
                   </div>
                   {tr.scheduleDays && (
-                    <div className="text-xs font-bold text-purple-300 mb-2">📅 {tr.scheduleDays}</div>
+                    <div className="text-xs font-bold text-purple-300 mb-2">{tr.scheduleDays}</div>
                   )}
                   <div className={`flex items-center gap-1.5 text-xs font-bold ${tr.isFull ? 'text-red-400' : 'text-cyan-400'}`}>
                     <Users size={12} />

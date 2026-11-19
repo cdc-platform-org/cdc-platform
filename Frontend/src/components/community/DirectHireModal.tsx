@@ -1,3 +1,4 @@
+import { Lock } from 'lucide-react';
 import { useState, FormEvent } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Gig } from '../../types/community';
@@ -121,14 +122,14 @@ export default function DirectHireModal({
               onClick={() => setStep('offer')}
               className="w-full text-left rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3.5 text-sm font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
             >
-              💼 {t('directHireModal.optionOffer')}
+              {t('directHireModal.optionOffer')}
             </button>
             <button
               type="button"
               onClick={() => setStep('chat')}
               className="w-full text-left rounded-xl border border-gray-200 px-4 py-3.5 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
             >
-              💬 {t('directHireModal.optionChat')}
+              {t('directHireModal.optionChat')}
             </button>
             <button
               type="button"
@@ -278,7 +279,7 @@ export default function DirectHireModal({
             </div>
 
             <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-xs text-emerald-800 flex gap-2">
-              <span>🔒</span>
+              <Lock className="h-3.5 w-3.5 inline-block align-[-2px]" aria-hidden="true" />
               <span>{t('directHireModal.escrowNotice')}</span>
             </div>
 

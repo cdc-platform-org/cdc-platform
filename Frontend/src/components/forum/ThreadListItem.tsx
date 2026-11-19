@@ -34,12 +34,12 @@ export default function ThreadListItem({
           <div className="flex items-center gap-2 flex-wrap">
             {thread.isPinned && (
               <span className="text-xs font-medium text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
-                📌 {t('pinned')}
+                {t('pinned')}
               </span>
             )}
             {thread.isLocked && (
               <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-                🔒 {t('locked')}
+                {t('locked')}
               </span>
             )}
             {thread.author.role !== 'Student' && (

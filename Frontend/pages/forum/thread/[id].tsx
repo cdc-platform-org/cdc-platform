@@ -143,12 +143,12 @@ function ThreadDetailContent() {
           <div className="flex items-center gap-2 flex-wrap mb-2">
             {thread.isPinned && (
               <span className="text-xs font-medium text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full">
-                📌 {t('pinned')}
+                {t('pinned')}
               </span>
             )}
             {thread.isLocked && (
               <span className="text-xs font-medium text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800/60 px-2 py-0.5 rounded-full">
-                🔒 {t('locked')}
+                {t('locked')}
               </span>
             )}
             {thread.author.role !== 'Student' && (
@@ -163,7 +163,7 @@ function ThreadDetailContent() {
               text={thread.content}
               speechLang={lang === 'ka' ? 'ka-GE' : 'en-US'}
               lang={lang}
-              label={lang === 'ka' ? '🎧 სტატიის მოსმენა (Audio Reader)' : '🎧 Listen to Article (Audio Reader)'}
+              label={lang === 'ka' ? 'სტატიის მოსმენა (Audio Reader)' : 'Listen to Article (Audio Reader)'}
             />
           </div>
           <p className="text-sm text-gray-500 dark:text-slate-400 dark:text-slate-400 mt-1 flex items-center gap-2 flex-wrap">

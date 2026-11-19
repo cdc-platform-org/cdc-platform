@@ -43,7 +43,7 @@ export default function WorkspaceAccessCards({ lang = 'ka' }: { lang?: string })
           {isKa ? 'ვერიფიცირებული დოკუმენტი' : 'VERIFIED CREDENTIAL'}
         </span>
         <p className="text-sm font-black text-white mt-1">
-          {isKa ? '🪪 ციფრული პასპორტი & QR' : '🪪 Digital Passport & QR'}
+          {isKa ? 'ციფრული პასპორტი & QR' : 'Digital Passport & QR'}
         </p>
         <p className="text-slate-400 mt-1">
           {isKa ? 'სრული აკადემიური ქრონოლოგია და QR კოდი' : 'Academic timeline & scannable QR'}
@@ -62,7 +62,7 @@ export default function WorkspaceAccessCards({ lang = 'ka' }: { lang?: string })
               : isKa ? 'აქტიური კურსის სივრცე' : 'ACTIVE COURSE WORKSPACE'}
           </span>
           <p className="text-sm font-black text-white mt-1">
-            {isKa ? '🎨 დიზაინის სტუდია (Ps/Ai)' : '🎨 Design Studio (Ps/Ai)'}
+            {isKa ? 'დიზაინის სტუდია (Ps/Ai)' : 'Design Studio (Ps/Ai)'}
           </p>
           <p className="text-slate-400 mt-1">
             {access.designAccessExpiresAt
@@ -79,7 +79,7 @@ export default function WorkspaceAccessCards({ lang = 'ka' }: { lang?: string })
             {isKa ? 'გამოწერით (29 ₾/თვე) ან კურსით' : 'SUBSCRIPTION OR COURSE'}
           </span>
           <p className="text-sm font-bold text-slate-300 mt-1">
-            {isKa ? '🔒 დიზაინის სტუდია (Ps/Ai)' : '🔒 Design Studio (Ps/Ai)'}
+            {isKa ? 'დიზაინის სტუდია (Ps/Ai)' : 'Design Studio (Ps/Ai)'}
           </p>
           <p className="text-slate-500 mt-1">
             {isKa ? 'გაიაქტიურეთ გამოწერა ან ჩაეწერეთ კურსზე' : 'Subscribe or enroll in a design course'}
@@ -99,7 +99,7 @@ export default function WorkspaceAccessCards({ lang = 'ka' }: { lang?: string })
               : isKa ? 'აქტიური კურსის სივრცე' : 'ACTIVE COURSE WORKSPACE'}
           </span>
           <p className="text-sm font-black text-white mt-1">
-            {isKa ? '💻 კოდის / SQL სტუდია' : '💻 Code / SQL Studio'}
+            {isKa ? 'კოდის / SQL სტუდია' : 'Code / SQL Studio'}
           </p>
           <p className="text-slate-400 mt-1">
             {access.codeAccessExpiresAt
@@ -116,7 +116,7 @@ export default function WorkspaceAccessCards({ lang = 'ka' }: { lang?: string })
             {isKa ? 'გამოწერით (29 ₾/თვე) ან კურსით' : 'SUBSCRIPTION OR COURSE'}
           </span>
           <p className="text-sm font-bold text-slate-300 mt-1">
-            {isKa ? '🔒 კოდის / SQL სტუდია' : '🔒 Code / SQL Studio'}
+            {isKa ? 'კოდის / SQL სტუდია' : 'Code / SQL Studio'}
           </p>
           <p className="text-slate-500 mt-1">
             {isKa ? 'გაიაქტიურეთ გამოწერა ან ჩაეწერეთ კურსზე' : 'Subscribe or enroll in a dev course'}
@@ -134,7 +134,7 @@ export default function WorkspaceAccessCards({ lang = 'ka' }: { lang?: string })
             LIVE COHORT
           </span>
           <p className="text-sm font-black text-white mt-1">
-            {isKa ? '🎥 Live საკლასო ოთახი' : '🎥 Live Classroom'}
+            {isKa ? 'Live საკლასო ოთახი' : 'Live Classroom'}
           </p>
           <p className="text-slate-400 mt-1">
             {isKa ? 'შესვლა ცოცხალ პრაქტიკულ სესიაზე' : 'Join live interactive workspace'}

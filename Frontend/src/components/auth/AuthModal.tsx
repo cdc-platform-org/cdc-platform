@@ -233,7 +233,7 @@ export default function AuthModal() {
 
             {forgotSent ? (
               <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 text-center">
-                ✅ {t.forgotPassword.successMessage}
+                {t.forgotPassword.successMessage}
               </div>
             ) : (
               <form onSubmit={handleForgotSubmit} className="space-y-4">

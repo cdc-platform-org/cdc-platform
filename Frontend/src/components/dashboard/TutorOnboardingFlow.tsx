@@ -31,12 +31,12 @@ const NATIVE_LANG_OPTIONS = [
 ];
 
 const GOAL_OPTIONS: { value: TutorLearningGoal; ka: string; en: string }[] = [
-  { value: 'TRAVEL', ka: '✈️ მოგზაურობა', en: '✈️ Travel' },
-  { value: 'TECHNICAL_IT', ka: '💻 IT / ტექნიკური', en: '💻 IT / Technical' },
-  { value: 'BUSINESS', ka: '💼 ბიზნესი', en: '💼 Business' },
-  { value: 'ACADEMIC', ka: '🎓 აკადემიური', en: '🎓 Academic' },
-  { value: 'GENERAL_DAILY', ka: '🗣️ ყოველდღიური', en: '🗣️ General Daily' },
-  { value: 'INTERVIEW_PREP', ka: '🤝 გასაუბრებისთვის მომზადება', en: '🤝 Interview Prep' },
+  { value: 'TRAVEL', ka: 'მოგზაურობა', en: 'Travel' },
+  { value: 'TECHNICAL_IT', ka: 'IT / ტექნიკური', en: 'IT / Technical' },
+  { value: 'BUSINESS', ka: 'ბიზნესი', en: 'Business' },
+  { value: 'ACADEMIC', ka: 'აკადემიური', en: 'Academic' },
+  { value: 'GENERAL_DAILY', ka: 'ყოველდღიური', en: 'General Daily' },
+  { value: 'INTERVIEW_PREP', ka: 'გასაუბრებისთვის მომზადება', en: 'Interview Prep' },
 ];
 
 // Parenthetical level descriptions — same ka/en content-locale boundary as
@@ -56,7 +56,7 @@ const ALL_LEVELS: CefrLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 const dict = {
   ka: {
-    welcome: 'გამარჯობა! მე ვარ IMIAKO 👋',
+    welcome: 'გამარჯობა! მე ვარ IMIAKO',
     welcomeSubtitle: 'თქვენი პირადი AI ინგლისურის რეპეტიტორი. დავიწყოთ სამი მოკლე ნაბიჯით.',
     step1Title: 'რომელია თქვენი მშობლიური ენა?',
     step2Title: 'რა არის თქვენი მიზანი?',
@@ -75,7 +75,7 @@ const dict = {
     startLearning: 'სწავლის დაწყება →',
   },
   en: {
-    welcome: "Hi! I'm IMIAKO 👋",
+    welcome: "Hi! I'm IMIAKO",
     welcomeSubtitle: 'Your personal AI English Tutor. Let\'s get started in three quick steps.',
     step1Title: 'What is your native language?',
     step2Title: 'What is your goal?',

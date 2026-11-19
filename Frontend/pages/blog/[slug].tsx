@@ -707,7 +707,7 @@ export default function BlogPostPage({ initialPost }: { initialPost: BlogPost | 
               </span>
               {isSuccessStory(post) && (
                 <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md border text-amber-300 bg-amber-500/10 border-amber-500/20">
-                  {lang === 'ka' ? '🎓 კურსდამთავრებული' : '🎓 Graduate Success'}
+                  {lang === 'ka' ? 'კურსდამთავრებული' : 'Graduate Success'}
                 </span>
               )}
             </div>

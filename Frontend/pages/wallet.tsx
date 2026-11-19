@@ -71,7 +71,7 @@ function WalletContent() {
         <div className="mb-4">
           <BackButton fallbackHref="/dashboard" className="text-slate-400 hover:text-slate-100" />
         </div>
-        <h1 className="text-2xl font-black mb-6">💰 Wallet</h1>
+        <h1 className="text-2xl font-black mb-6">Wallet</h1>
 
         {loading || !summary ? (
           <p className="text-sm text-slate-400">Loading…</p>

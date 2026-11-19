@@ -53,7 +53,7 @@ export default function StarRating({ value, size = 'md', onChange, label = 'Rati
             aria-hidden="true"
             className={className}
           >
-            ★
+            
           </span>
         );
       })}

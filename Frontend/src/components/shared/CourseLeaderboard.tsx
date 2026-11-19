@@ -6,16 +6,16 @@ import { onImageErrorFallback } from '../../utils/imageFallback';
 
 const dict = {
   ka: {
-    students: (n: number) => `👥 ${n} სტუდენტი`,
-    title: '🏆 კურსის ლიდერბორდი',
+    students: (n: number) => `${n} სტუდენტი`,
+    title: 'კურსის ლიდერბორდი',
     subtitle: 'ტოპ სტუდენტები დასრულებული გაკვეთილებისა და დავალებების მიხედვით.',
     completed: 'დასრულებული',
     xp: 'XP',
     empty: 'ჯერ არავის დაუწყია პროგრესის მიღწევა — იყავი პირველი!',
   },
   en: {
-    students: (n: number) => `👥 ${n} student${n === 1 ? '' : 's'}`,
-    title: '🏆 Course Leaderboard',
+    students: (n: number) => `${n} student${n === 1 ? '' : 's'}`,
+    title: 'Course Leaderboard',
     subtitle: 'Top students by completed lessons and graded assignments.',
     completed: 'Completed',
     xp: 'XP',
@@ -23,7 +23,7 @@ const dict = {
   },
 };
 
-const RANK_MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+const RANK_MEDAL_CLASS: Record<number, string> = { 1: 'text-amber-400', 2: 'text-slate-400', 3: 'text-orange-600' };
 
 export default function CourseLeaderboard({ courseId, lang }: { courseId: string; lang: 'ka' | 'en' }) {
   const t = dict[lang];
@@ -68,7 +68,7 @@ export default function CourseLeaderboard({ courseId, lang }: { courseId: string
           {data.topStudents.map((s) => (
             <div key={s.userId} className="flex items-center gap-3 px-4 py-3">
               <span className="w-7 text-center text-sm font-black text-slate-400 dark:text-slate-500 shrink-0">
-                {RANK_MEDAL[s.rank] ?? s.rank}
+                {RANK_MEDAL_CLASS[s.rank] ? <Trophy className={`mx-auto h-4 w-4 ${RANK_MEDAL_CLASS[s.rank]}`} aria-label={String(s.rank)} /> : s.rank}
               </span>
               {s.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element

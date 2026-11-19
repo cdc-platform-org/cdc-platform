@@ -109,7 +109,7 @@ function SettingsContent() {
         {/* --- Danger zone --- */}
         <section className="bg-red-50/50 dark:bg-red-950/20 rounded-2xl border border-red-200 dark:border-red-900/50 p-6">
           <h2 className="text-lg font-medium text-red-700 dark:text-red-400 mb-1.5">
-            ⚠️ {t('dangerZone.title')}
+            {t('dangerZone.title')}
           </h2>
           <p className="text-sm text-red-600/80 dark:text-red-400/70 mb-4">{t('dangerZone.description')}</p>
           <button
