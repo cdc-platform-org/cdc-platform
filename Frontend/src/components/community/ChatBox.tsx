@@ -73,18 +73,18 @@ export default function ChatBox({ otherUserId, otherUserName }: ChatBoxProps) {
   return (
     <div className="border rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[420px] bg-white dark:bg-[#0e1422] text-slate-900 dark:text-white border-slate-200 dark:border-slate-800">
       <div className="bg-slate-900 text-white p-3 shrink-0">
-        <span className="text-xs font-bold">💬 {otherUserName}</span>
+        <span className="text-xs font-bold">{otherUserName}</span>
       </div>
 
       {/* Persistent safety banner — always visible, not dismissible */}
       <div className="bg-amber-50 border-b border-amber-200 px-3 py-2 text-[11px] leading-relaxed text-amber-800 shrink-0">
-        ⚠️ ყურადღება! პლატფორმის გვერდის ავლით გადახდა არღვევს წესებს. CDC პასუხს არ აგებს პლატფორმის გარეთ
+        ყურადღება! პლატფორმის გვერდის ავლით გადახდა არღვევს წესებს. CDC პასუხს არ აგებს პლატფორმის გარეთ
         განხორციელებულ გარიგებებზე.
       </div>
 
       <div className="flex-1 p-3 overflow-y-auto space-y-2 text-xs bg-slate-50 dark:bg-[#0b0f17]">
         {messages.length === 0 ? (
-          <p className="text-center text-gray-400 mt-6">No messages yet — say hello 👋</p>
+          <p className="text-center text-gray-400 mt-6">No messages yet — say hello</p>
         ) : (
           messages.map((msg) => {
             const isOwn = msg.sender.id === user?.id;
@@ -100,7 +100,7 @@ export default function ChatBox({ otherUserId, otherUserName }: ChatBoxProps) {
                   <p>{msg.content}</p>
                   {msg.wasFiltered && (
                     <p className={`text-[10px] mt-1 ${isOwn ? 'text-indigo-200' : 'text-amber-600'}`}>
-                      ⚠ Contact info was blocked in this message
+                      Contact info was blocked in this message
                     </p>
                   )}
                 </div>
@@ -113,14 +113,14 @@ export default function ChatBox({ otherUserId, otherUserName }: ChatBoxProps) {
 
       {securityAlert && (
         <div className="px-3 py-2 text-[11px] font-bold text-white bg-red-600 shrink-0 flex items-center gap-1.5">
-          🚨 {securityAlert}
+          {securityAlert}
         </div>
       )}
       {error && <div className="px-3 py-1.5 text-[11px] text-red-600 bg-red-50 shrink-0">{error}</div>}
 
       {draft.trim() && draftPreview.wasFiltered && (
         <div className="px-3 py-1.5 text-[11px] text-amber-700 bg-amber-50 shrink-0">
-          ⚠ This message contains contact info that will be blocked before sending.
+          This message contains contact info that will be blocked before sending.
         </div>
       )}
 

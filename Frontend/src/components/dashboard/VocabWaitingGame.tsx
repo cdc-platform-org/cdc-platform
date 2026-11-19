@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
-import { Flame, Trophy, Sparkles } from 'lucide-react';
+import { Flame, Trophy, Sparkles, Check, X } from 'lucide-react';
 
 // "Vocab Rush" — a Google-Dino-style waiting mini-game shown while IMIAKO
 // generates a lesson (a real Gemini call, a few seconds of genuine dead
@@ -52,22 +52,22 @@ const ROUND_MS = 5000;
 
 const dict = {
   ka: {
-    heading: '⚡ IMIAKO ამზადებს თქვენს პერსონალურ გაკვეთილებს…',
+    heading: 'IMIAKO ამზადებს თქვენს პერსონალურ გაკვეთილებს…',
     subheading: 'დროის მოსაკლავად, ითამაშეთ Vocab Rush!',
     prompt: 'რომელი სიტყვაა სინონიმი?',
-    streak: (n: number) => `🔥 ${n} სწორი პასუხი ზედიზედ!`,
+    streak: (n: number) => `${n} სწორი პასუხი ზედიზედ!`,
     score: 'ქულა',
-    ready: '🎉 თქვენი გაკვეთილი მზადაა!',
+    ready: 'თქვენი გაკვეთილი მზადაა!',
     readyBody: (score: number) => `თქვენი Vocab Rush ქულა: ${score}`,
     continueCta: 'გადადი გაკვეთილზე →',
   },
   en: {
-    heading: '⚡ IMIAKO is preparing your personal lesson…',
+    heading: 'IMIAKO is preparing your personal lesson…',
     subheading: 'While you wait, play Vocab Rush!',
     prompt: 'Which word means the same?',
-    streak: (n: number) => `🔥 ${n} correct in a row!`,
+    streak: (n: number) => `${n} correct in a row!`,
     score: 'Score',
-    ready: '🎉 Your lesson is ready!',
+    ready: 'Your lesson is ready!',
     readyBody: (score: number) => `Your Vocab Rush score: ${score}`,
     continueCta: 'Go to lesson →',
   },
@@ -224,7 +224,7 @@ export default function VocabWaitingGame({ lang, loading, onContinue }: VocabWai
           </div>
           {feedback && (
             <p className={`text-xs font-bold mt-3 ${feedback === 'correct' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-              {feedback === 'correct' ? '✅' : `❌ ${round.correctAnswer}`}
+              {feedback === 'correct' ? <Check className="h-4 w-4" aria-hidden="true" /> : <span className="inline-flex items-center gap-1"><X className="h-4 w-4" aria-hidden="true" />{round.correctAnswer}</span>}
             </p>
           )}
         </div>

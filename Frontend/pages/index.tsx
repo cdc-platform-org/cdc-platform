@@ -89,7 +89,7 @@ export default function Home() {
   // 🤖 ჩატბოტის ინტერაქტიული სთეითები
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [chatMessages, setChatMessages] = useState<Array<{ sender: 'bot' | 'user'; text: string }>>([
-    { sender: 'bot', text: 'გამარჯობა! მე იაკო ვარ, CDC-ის ციფრული ასისტენტი. 🌟 გსურთ გაიაროთ სწრაფი ტესტირება, რომ კურსის სწორად შერჩევაში დაგეხმაროთ?' }
+    { sender: 'bot', text: 'გამარჯობა! მე იაკო ვარ, CDC-ის ციფრული ასისტენტი. გსურთ გაიაროთ სწრაფი ტესტირება, რომ კურსის სწორად შერჩევაში დაგეხმაროთ?' }
   ]);
   const [userInput, setUserInput] = useState('');
   const [chatSending, setChatSending] = useState(false);

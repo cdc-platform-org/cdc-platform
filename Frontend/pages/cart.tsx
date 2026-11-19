@@ -1,3 +1,4 @@
+import { Sun, Moon } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
@@ -54,9 +55,9 @@ function CartContent() {
     setTimeout(() => {
       setIsPaying(false);
       if (paymentMethod === 'paypal') {
-        alert(`🚀 Redirecting to PayPal... Total: ${totalPrice} ${currencySymbols[currency]}`);
+        alert(`Redirecting to PayPal... Total: ${totalPrice} ${currencySymbols[currency]}`);
       } else {
-        alert(`✅ ${lang === 'ka' ? 'გადახდა წარმატებით დასრულდა ბარათით!' : 'Payment completed successfully by Card!'} - ${totalPrice} ${currencySymbols[currency]}`);
+        alert(`${lang === 'ka' ? 'გადახდა წარმატებით დასრულდა ბარათით!' : 'Payment completed successfully by Card!'} - ${totalPrice} ${currencySymbols[currency]}`);
       }
       setCartItems([]);
     }, 2000);
@@ -96,7 +97,7 @@ function CartContent() {
               <button type="button" onClick={() => switchLocale('ka')} className={`px-3 py-1 rounded-lg transition border-none cursor-pointer font-bold ${lang === 'ka' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 bg-transparent'}`}>KA</button>
               <button type="button" onClick={() => switchLocale('en')} className={`px-3 py-1 rounded-lg transition border-none cursor-pointer font-bold ${lang === 'en' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-400 bg-transparent'}`}>EN</button>
             </div>
-            <button type="button" onClick={() => { setDarkMode(!darkMode); localStorage.setItem('darkMode', String(!darkMode)); }} className={`p-2 rounded-xl transition text-base border-none bg-transparent cursor-pointer ${darkMode ? 'text-yellow-400' : 'text-slate-500'}`}>{darkMode ? '☀️' : '🌙'}</button>
+            <button type="button" onClick={() => { setDarkMode(!darkMode); localStorage.setItem('darkMode', String(!darkMode)); }} className={`p-2 rounded-xl transition text-base border-none bg-transparent cursor-pointer ${darkMode ? 'text-yellow-400' : 'text-slate-500'}`}>{darkMode ? <Sun className="h-4 w-4" aria-hidden="true" /> : <Moon className="h-4 w-4" aria-hidden="true" />}</button>
             <Link href="/" className={`text-xs font-bold uppercase tracking-wider transition no-underline px-3 sm:px-4 py-2 rounded-xl border ${darkMode ? 'text-slate-300 bg-slate-800 border-slate-700 hover:bg-slate-700' : 'text-slate-700 bg-slate-100 border-slate-200 hover:bg-slate-200'}`}>{t('btnMain')}</Link>
           </div>
         </div>

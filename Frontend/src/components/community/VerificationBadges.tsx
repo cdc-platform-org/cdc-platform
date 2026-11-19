@@ -1,3 +1,4 @@
+import { GraduationCap, Zap, Building2 } from 'lucide-react';
 import { useTranslation } from 'next-i18next';
 
 export interface VerificationBadgeUser {
@@ -59,7 +60,7 @@ export default function VerificationBadges({ user, size = 'md', className = '' }
           className={`inline-flex items-center rounded-full font-semibold border border-cyan-400/70 bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-300 ${sizeClass}`}
           title={t('verificationBadges.student')}
         >
-          <span aria-hidden="true">🎓</span> {t('verificationBadges.student')}
+          <GraduationCap className="h-3.5 w-3.5 inline-block align-[-2px]" aria-hidden="true" /> {t('verificationBadges.student')}
         </span>
       )}
       {isFreelancer && (
@@ -67,7 +68,7 @@ export default function VerificationBadges({ user, size = 'md', className = '' }
           className={`inline-flex items-center rounded-full font-semibold border border-amber-400/70 bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 ${sizeClass}`}
           title={t('verificationBadges.freelancer')}
         >
-          <span aria-hidden="true">⚡</span> {t('verificationBadges.freelancer')}
+          <Zap className="h-3.5 w-3.5 inline-block align-[-2px]" aria-hidden="true" /> {t('verificationBadges.freelancer')}
         </span>
       )}
       {isBusiness && (
@@ -75,7 +76,7 @@ export default function VerificationBadges({ user, size = 'md', className = '' }
           className={`inline-flex items-center rounded-full font-semibold border border-indigo-400/70 bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 ${sizeClass}`}
           title={t('verificationBadges.business')}
         >
-          <span aria-hidden="true">🏢</span> {t('verificationBadges.business')}
+          <Building2 className="h-3.5 w-3.5 inline-block align-[-2px]" aria-hidden="true" /> {t('verificationBadges.business')}
         </span>
       )}
     </span>

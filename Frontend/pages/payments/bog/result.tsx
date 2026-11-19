@@ -19,7 +19,7 @@ const dict = {
     pendingLong:
       'გადახდა ჯერ კიდევ მუშავდება. თუ ეს გვერდი დიდხანს არ განახლდება, დაუკავშირდით მხარდაჭერას.',
     redirectingToCourse: 'გადამისამართება კურსზე…',
-    refundGuarantee: '🔄 3-დღიანი თანხის დაბრუნების გარანტია',
+    refundGuarantee: '3-დღიანი თანხის დაბრუნების გარანტია',
     refundGuaranteeDetail: 'მომხმარებელს უფლება აქვს მოითხოვოს თანხის სრული დაბრუნება კურსის შეძენიდან 3 დღის ვადაში.',
     redirectingToProduct: 'გადამისამართება პროდუქტზე…',
     course: 'კურსზე წვდომა',
@@ -54,7 +54,7 @@ const dict = {
     pendingLong:
       'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
     redirectingToCourse: 'Redirecting to your course…',
-    refundGuarantee: '🔄 3-Day Money-Back Guarantee',
+    refundGuarantee: '3-Day Money-Back Guarantee',
     refundGuaranteeDetail: 'You may request a full refund within 3 days of purchasing the course.',
     redirectingToProduct: 'Redirecting to your product…',
     course: 'Course access',
@@ -89,7 +89,7 @@ const dict = {
     pendingLong:
       'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
     redirectingToCourse: 'Redirecting to your course…',
-    refundGuarantee: '🔄 3-Day Money-Back Guarantee',
+    refundGuarantee: '3-Day Money-Back Guarantee',
     refundGuaranteeDetail: 'You may request a full refund within 3 days of purchasing the course.',
     redirectingToProduct: 'Redirecting to your product…',
     course: 'Course access',
@@ -124,7 +124,7 @@ const dict = {
     pendingLong:
       'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
     redirectingToCourse: 'Redirecting to your course…',
-    refundGuarantee: '🔄 3-Day Money-Back Guarantee',
+    refundGuarantee: '3-Day Money-Back Guarantee',
     refundGuaranteeDetail: 'You may request a full refund within 3 days of purchasing the course.',
     redirectingToProduct: 'Redirecting to your product…',
     course: 'Course access',
@@ -159,7 +159,7 @@ const dict = {
     pendingLong:
       'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
     redirectingToCourse: 'Redirecting to your course…',
-    refundGuarantee: '🔄 3-Day Money-Back Guarantee',
+    refundGuarantee: '3-Day Money-Back Guarantee',
     refundGuaranteeDetail: 'You may request a full refund within 3 days of purchasing the course.',
     redirectingToProduct: 'Redirecting to your product…',
     course: 'Course access',
@@ -194,7 +194,7 @@ const dict = {
     pendingLong:
       'Your payment is still being processed. If this page doesn’t update soon, please contact support.',
     redirectingToCourse: 'Redirecting to your course…',
-    refundGuarantee: '🔄 3-Day Money-Back Guarantee',
+    refundGuarantee: '3-Day Money-Back Guarantee',
     refundGuaranteeDetail: 'You may request a full refund within 3 days of purchasing the course.',
     redirectingToProduct: 'Redirecting to your product…',
     course: 'Course access',

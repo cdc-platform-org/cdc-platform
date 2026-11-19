@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
-import { X, Volume2, Snail, Mic, Loader2, Lightbulb, Flame, BookOpen, PenLine, Headphones, MessageCircle, Check, RotateCcw } from 'lucide-react';
+import { X, Volume2, Snail, Mic, Loader2, Lightbulb, Flame, BookOpen, PenLine, Headphones, MessageCircle, Check, RotateCcw, Trophy } from 'lucide-react';
 import { CourseLesson, Exercise, EXERCISE_SKILLS, Skill } from './curriculum';
 import { checkAnswer, CheckResult, fillName } from './answerCheck';
 import { speakEnglish, canSpeak, canRecognize, listenOnce } from './speech';
@@ -51,7 +51,7 @@ const dict = {
     wrong: 'არა უშავს — ვისწავლოთ!',
     capitalI: '„I“ ყოველთვის დიდი ასოთი იწერება.',
     praise: ['ყოჩაღ!', 'შესანიშნავია!', 'ზუსტად ასეა!', 'ძალიან კარგი!', 'მშვენიერია!', 'ასე გააგრძელე!'],
-    streak: (n: number) => `🔥 ${n} ზედიზედ!`,
+    streak: (n: number) => `${n} ზედიზედ!`,
     retryLater: 'ამ დავალებას ბოლოს კიდევ ერთხელ გავიმეორებთ.',
     tapToSpeak: 'დააჭირე და თქვი',
     listening: 'გისმენ…',
@@ -98,7 +98,7 @@ const dict = {
     wrong: 'No problem — let’s learn it!',
     capitalI: '"I" is always written with a capital letter.',
     praise: ['Great job!', 'Excellent!', 'Exactly right!', 'Very good!', 'Nice!', 'Keep going!'],
-    streak: (n: number) => `🔥 ${n} in a row!`,
+    streak: (n: number) => `${n} in a row!`,
     retryLater: 'We’ll try this one again at the end.',
     tapToSpeak: 'Tap and speak',
     listening: 'Listening…',
@@ -301,7 +301,7 @@ export default function LessonPlayer({ lesson, lang, nameEn, nameKa, onExit, onC
   if (done) {
     return (
       <div className="flex flex-col items-center text-center gap-5 py-6" data-testid="a1-lesson-done">
-        <div className="text-6xl">🏆</div>
+        <Trophy className="mx-auto h-16 w-16 text-amber-400" aria-hidden="true" />
         <h3 className="text-2xl font-black">{t.doneTitle}</h3>
         <div className="flex gap-3">
           <div className="rounded-2xl border-2 border-amber-400 px-5 py-3">
@@ -399,19 +399,19 @@ function FeedbackBar({ feedback, t, praise, streak, onContinue, onRetry }: { fee
       <div className="flex-1 flex flex-col gap-1.5 text-sm">
         {feedback.status === 'correct' && (
           <p className="text-lg font-black">
-            ✅ {praise} {streak >= 3 && streak % 1 === 0 && <span className="text-orange-500 text-sm ml-1">{t.streak(streak)}</span>}
+            {praise} {streak >= 3 && streak % 1 === 0 && <span className="text-orange-500 text-sm ml-1">{t.streak(streak)}</span>}
           </p>
         )}
-        {feedback.status === 'skipped' && <p className="font-bold">👌</p>}
+        {feedback.status === 'skipped' && <Check className="h-5 w-5" aria-hidden="true" />}
         {feedback.status === 'typo' && (
           <>
-            <p className="text-lg font-black">✅ {t.almost}</p>
+            <p className="text-lg font-black">{t.almost}</p>
             <p className="font-bold text-base">{feedback.expected}</p>
           </>
         )}
         {feedback.status === 'wrong' && (
           <>
-            <p className="text-lg font-black">💡 {t.wrong}</p>
+            <p className="text-lg font-black">{t.wrong}</p>
             <p>
               {t.correctAnswer} <span className="font-black text-base">{feedback.expected}</span>
             </p>
@@ -430,11 +430,11 @@ function FeedbackBar({ feedback, t, praise, streak, onContinue, onRetry }: { fee
                 {t.extra} <strong className="line-through">{r.extra.map(displayWord).join(', ')}</strong>
               </p>
             )}
-            {feedback.tip && <p className="italic">💬 {feedback.tip}</p>}
+            {feedback.tip && <p className="italic">{feedback.tip}</p>}
             <p className="text-xs opacity-70">{t.retryLater}</p>
           </>
         )}
-        {ok && r?.lowercaseI && !feedback.heard && <p className="text-xs">✍️ {t.capitalI}</p>}
+        {ok && r?.lowercaseI && !feedback.heard && <p className="text-xs">✍{t.capitalI}</p>}
       </div>
       <div className="flex flex-col-reverse sm:flex-row gap-2">
       {feedback.status === 'wrong' && (
@@ -564,7 +564,7 @@ function ExerciseView(props: ExerciseViewProps) {
       const isPhrase = ex.en.trim().includes(' ');
       return (
         <div className="flex flex-col items-center text-center gap-4">
-          <span className="text-xs font-black uppercase tracking-wider text-purple-500">✨ {isPhrase ? t.newPhrase : t.newWord}</span>
+          <span className="text-xs font-black uppercase tracking-wider text-purple-500">{isPhrase ? t.newPhrase : t.newWord}</span>
           <Picture pic={ex.pic} size="text-8xl" />
           <div className="flex items-center gap-3">
             <p className="text-3xl sm:text-4xl font-black">{en(ex.en)}</p>
@@ -714,7 +714,7 @@ function TypeExercise({ ex, t, en, ka, answer, setAnswer, locked }: ExerciseView
       {!ex.dictate && !locked && (
         <div className="mt-2">
           {showHint ? (
-            <p className="text-sm text-amber-600 dark:text-amber-400">💡 {t.hintText(firstWords)}</p>
+            <p className="text-sm text-amber-600 dark:text-amber-400">{t.hintText(firstWords)}</p>
           ) : (
             <button type="button" onClick={() => setShowHint(true)} className="inline-flex items-center gap-1 text-sm font-bold text-amber-600 dark:text-amber-400">
               <Lightbulb className="w-4 h-4" /> {t.hint}
@@ -744,7 +744,7 @@ function BuildExercise({ ex, t, ka, nameEn, setAnswer, locked }: ExerciseViewPro
     <div>
       <Title>{t.build}</Title>
       <div className="flex items-center gap-3 mb-4">
-        <span className="text-4xl">💬</span>
+        <MessageCircle className="h-9 w-9" aria-hidden="true" />
         <p className="rounded-2xl border-2 border-slate-200 dark:border-slate-700 px-4 py-3 text-lg font-bold">{ka(ex.ka)}</p>
       </div>
       <div className="min-h-[64px] border-b-2 border-t-2 border-slate-200 dark:border-slate-700 py-3 flex flex-wrap items-center gap-2 mb-5" data-testid="a1-build-answer">

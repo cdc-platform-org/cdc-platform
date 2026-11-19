@@ -150,7 +150,7 @@ function BookingModal({ mentor, lang, onClose }: { mentor: PublicMentor; lang: S
                 </p>
               )}
               {mentor.mentorLanguages.length > 0 && (
-                <p className="text-[11px] text-slate-400">🗣️ {mentor.mentorLanguages.join(', ')}</p>
+                <p className="text-[11px] text-slate-400">{mentor.mentorLanguages.join(', ')}</p>
               )}
             </div>
           </div>
@@ -381,7 +381,7 @@ function MentorCard({ mentor, lang, onBook }: { mentor: PublicMentor; lang: Supp
       </div>
       {bio && <p className="text-xs text-slate-600 dark:text-slate-300 mb-3 line-clamp-3">{bio}</p>}
       {mentor.mentorLanguages.length > 0 && (
-        <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-3">🗣️ {mentor.mentorLanguages.join(', ')}</p>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-3">{mentor.mentorLanguages.join(', ')}</p>
       )}
       {mentor.mentorSkills.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-4">

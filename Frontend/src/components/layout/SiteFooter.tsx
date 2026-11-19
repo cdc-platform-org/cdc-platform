@@ -46,7 +46,7 @@ const SOCIAL_LINKS = [
 
 const STRINGS = {
   ka: {
-    tagline: 'ვასწავლით ციფრულ პროფესიებს გურიაში — HEKS/EPER Georgia-ს მხარდაჭერით.',
+    tagline: 'ვასწავლით ციფრულ პროფესიებს. დაარსდა გურიაში — HEKS/EPER Georgia-ს მხარდაჭერით.',
     coursesHeading: 'ციფრული კოლეჯი',
     courses: 'კურსები',
     giftCards: 'სასაჩუქრე ბარათი',
@@ -73,7 +73,7 @@ const STRINGS = {
     weAccept: 'მიიღება გადახდა',
   },
   en: {
-    tagline: 'Teaching digital professions in Guria — supported by HEKS/EPER Georgia.',
+    tagline: 'Teaching digital professions. Founded in Guria — supported by HEKS/EPER Georgia.',
     coursesHeading: 'Digital College',
     courses: 'All Courses',
     giftCards: 'Gift cards',
@@ -100,7 +100,7 @@ const STRINGS = {
     weAccept: 'We Accept',
   },
   de: {
-    tagline: 'Wir unterrichten digitale Berufe in Guria — unterstützt von HEKS/EPER Georgia.',
+    tagline: 'Wir unterrichten digitale Berufe. Gegründet in Guria — unterstützt von HEKS/EPER Georgia.',
     coursesHeading: 'Kurse',
     courses: 'Alle Kurse',
     giftCards: 'Geschenkkarten',
@@ -127,7 +127,7 @@ const STRINGS = {
     weAccept: 'Wir akzeptieren',
   },
   es: {
-    tagline: 'Enseñamos profesiones digitales en Guria — con el apoyo de HEKS/EPER Georgia.',
+    tagline: 'Enseñamos profesiones digitales. Fundado en Guria — con el apoyo de HEKS/EPER Georgia.',
     coursesHeading: 'Cursos',
     courses: 'Todos los Cursos',
     giftCards: 'Tarjetas regalo',
@@ -154,7 +154,7 @@ const STRINGS = {
     weAccept: 'Aceptamos',
   },
   fr: {
-    tagline: 'Nous enseignons les métiers numériques en Gourie — avec le soutien de HEKS/EPER Georgia.',
+    tagline: 'Nous enseignons les métiers numériques. Fondé en Gourie — avec le soutien de HEKS/EPER Georgia.',
     coursesHeading: 'Cours',
     courses: 'Tous les cours',
     giftCards: 'Cartes cadeaux',
@@ -181,7 +181,7 @@ const STRINGS = {
     weAccept: 'Nous acceptons',
   },
   uk: {
-    tagline: 'Ми навчаємо цифрових професій у Гурії — за підтримки HEKS/EPER Georgia.',
+    tagline: 'Ми навчаємо цифрових професій. Засновано в Гурії — за підтримки HEKS/EPER Georgia.',
     coursesHeading: 'Курси',
     courses: 'Усі курси',
     giftCards: 'Подарункові картки',

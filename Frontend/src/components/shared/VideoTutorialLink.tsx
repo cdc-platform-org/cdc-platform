@@ -21,7 +21,7 @@ export default function VideoTutorialLink({ href = '/tutorials', label, lang, cl
       target="_blank"
       className={className ?? 'text-xs font-semibold text-cyan-600 dark:text-cyan-400 hover:underline whitespace-nowrap shrink-0'}
     >
-      🎥 {label ?? (lang === 'ka' ? 'ვიდეო ინსტრუქცია' : 'Watch tutorial')}
+      {label ?? (lang === 'ka' ? 'ვიდეო ინსტრუქცია' : 'Watch tutorial')}
     </Link>
   );
 }

@@ -1,3 +1,4 @@
+import { GraduationCap } from 'lucide-react';
 import Link from 'next/link';
 import { useTranslation } from 'next-i18next';
 import { Gig, Vacancy } from '../../types/community';
@@ -96,7 +97,7 @@ export function PosterBadges({ poster }: { poster: Poster }) {
       <VerificationBadges user={poster} size="sm" />
       {!poster.isVerifiedGraduate && poster._count?.courseEnrollments > 0 && (
         <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border border-cyan-400/70 bg-cyan-50 text-cyan-700 dark:bg-cyan-950/60 dark:text-cyan-300">
-          <span aria-hidden="true">🎓</span> {t('profilePage.studentBadge')}
+          <GraduationCap className="h-3.5 w-3.5 inline-block align-[-2px]" aria-hidden="true" /> {t('profilePage.studentBadge')}
         </span>
       )}
     </>

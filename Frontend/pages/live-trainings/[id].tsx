@@ -50,7 +50,7 @@ const EN_STRINGS = {
   registerAndPay: (price: string) => `Register & Pay (${price})`,
   redirectingToPayment: 'Redirecting to secure payment…',
   alreadyEnrolled: 'You are already enrolled in this training.',
-  refundGuarantee: '🛡️ 100% refund guarantee if the group doesn\'t fill or the training is cancelled',
+  refundGuarantee: '100% refund guarantee if the group doesn\'t fill or the training is cancelled',
   refundGuaranteeDetail: 'If the minimum group size isn\'t reached or the training is cancelled for any reason, you\'ll receive a 100% refund.',
   trainerVideoHeading: 'Meet the trainer',
   promoCode: 'Promo code', promoApplied: 'Promo applied', apply: 'Apply', removePromo: 'Remove promo code', invalidPromo: 'Invalid promo code.',
@@ -63,19 +63,19 @@ const EN_STRINGS = {
 // per-language accuracy even though the surrounding page stays
 // English-fallback for now.
 const DE_REFUND_GUARANTEE = {
-  refundGuarantee: '🛡️ 100 % Geld-zurück-Garantie bei Nichterreichen der Mindestteilnehmerzahl oder Absage',
+  refundGuarantee: '100 % Geld-zurück-Garantie bei Nichterreichen der Mindestteilnehmerzahl oder Absage',
   refundGuaranteeDetail: 'Falls die Mindestteilnehmerzahl nicht erreicht wird oder die Schulung aus irgendeinem Grund abgesagt wird, erhalten Sie eine 100%ige Rückerstattung.',
 };
 const ES_REFUND_GUARANTEE = {
-  refundGuarantee: '🛡️ Garantía de reembolso del 100 % si no se completa el grupo o se cancela',
+  refundGuarantee: 'Garantía de reembolso del 100 % si no se completa el grupo o se cancela',
   refundGuaranteeDetail: 'Si no se alcanza el número mínimo de participantes o la capacitación se cancela por cualquier motivo, recibirá un reembolso del 100 %.',
 };
 const FR_REFUND_GUARANTEE = {
-  refundGuarantee: '🛡️ Garantie de remboursement à 100 % en cas de groupe incomplet ou d\'annulation',
+  refundGuarantee: 'Garantie de remboursement à 100 % en cas de groupe incomplet ou d\'annulation',
   refundGuaranteeDetail: 'Si le nombre minimum de participants n\'est pas atteint ou si la formation est annulée pour une raison quelconque, vous serez remboursé à 100 %.',
 };
 const UK_REFUND_GUARANTEE = {
-  refundGuarantee: '🛡️ 100% гарантія повернення коштів у разі недобору групи або скасування',
+  refundGuarantee: '100% гарантія повернення коштів у разі недобору групи або скасування',
   refundGuaranteeDetail: 'Якщо не набереться мінімальна група або тренінг буде скасовано з будь-якої причини, кошти повертаються в розмірі 100%.',
 };
 
@@ -113,7 +113,7 @@ const dict = {
     registerAndPay: (price: string) => `რეგისტრაცია და გადახდა (${price})`,
     redirectingToPayment: 'გადამისამართება უსაფრთხო გადახდაზე…',
     alreadyEnrolled: 'თქვენ უკვე ჩარიცხული ხართ ამ ტრენინგზე.',
-    refundGuarantee: '🛡️ 100% თანხის დაბრუნების გარანტია ჯგუფის შეუვსებლობის ან ჩაშლის შემთხვევაში',
+    refundGuarantee: '100% თანხის დაბრუნების გარანტია ჯგუფის შეუვსებლობის ან ჩაშლის შემთხვევაში',
     refundGuaranteeDetail: 'თუ ლაივ ტრენინგზე არ შეგროვდა მინიმალური ჯგუფი ან ტრენინგი ჩაიშალა რაიმე მიზეზით, გადახდილი თანხა მომხმარებელს დაუბრუნდება 100%-ით.',
     trainerVideoHeading: 'გაიცანი ტრენერი',
     promoCode: 'პრომო კოდი', promoApplied: 'პრომო კოდი გააქტიურდა', apply: 'გამოყენება', removePromo: 'პრომო კოდის გაუქმება', invalidPromo: 'პრომო კოდი არასწორია.',
@@ -350,7 +350,7 @@ export default function LiveTrainingDetailPage({ initialTraining }: { initialTra
           </span>
           {training.scheduleDays && (
             <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full border text-purple-300 border-purple-500/30 bg-purple-500/10">
-              📅 {training.scheduleDays}
+              {training.scheduleDays}
             </span>
           )}
         </div>

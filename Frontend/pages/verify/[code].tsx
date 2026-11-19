@@ -1,3 +1,4 @@
+import { Globe } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -155,7 +156,7 @@ export default function VerifyCertificatePage() {
                 title={lang === 'ka' ? 'Switch to English' : 'ქართულ ენაზე გადართვა'}
                 className="absolute top-3 right-3 flex items-center gap-1 rounded-lg border border-emerald-500/30 bg-slate-950/60 px-2.5 py-1.5 text-[11px] font-bold text-emerald-200 hover:bg-slate-900 transition-colors cursor-pointer"
               >
-                <span aria-hidden="true">🌐</span>
+                <Globe className="h-3.5 w-3.5 inline-block align-[-2px]" aria-hidden="true" />
                 <span className={lang === 'ka' ? 'text-white' : 'text-emerald-200/50'}>GE</span>
                 <span className="text-emerald-200/40">|</span>
                 <span className={lang === 'en' ? 'text-white' : 'text-emerald-200/50'}>EN</span>

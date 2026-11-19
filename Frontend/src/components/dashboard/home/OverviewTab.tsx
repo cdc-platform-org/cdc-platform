@@ -76,7 +76,7 @@ export default function OverviewTab({
       {/* Greeting + search (EDUPRO home) */}
       <div>
         <h1 style={{ lineHeight: 1.3 }} className="text-2xl sm:text-3xl font-extrabold text-cdc-ink">
-          {ka ? 'გამარჯობა' : 'Hi'}{firstName ? `, ${firstName}` : ''} 👋
+          {ka ? 'გამარჯობა' : 'Hi'}{firstName ? `, ${firstName}` : ''} 
         </h1>
         <p className="mt-1 text-sm text-cdc-muted">{ka ? 'რისი სწავლა გინდა დღეს?' : 'What would you like to learn today?'}</p>
         <form onSubmit={onSearch} className="mt-4 relative">

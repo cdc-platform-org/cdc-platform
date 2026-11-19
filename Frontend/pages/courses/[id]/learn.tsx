@@ -403,7 +403,7 @@ function LearnContent() {
                   activeTab === tab ? 'border-cdc-primary text-cdc-primary-ink' : 'border-transparent text-cdc-muted hover:text-cdc-ink'
                 }`}
               >
-                {tab === 'studio' ? (lang === 'ka' ? '🎨 დიზაინის სტუდია (Ps / Ai)' : '🎨 Design Studio (Ps / Ai)') : tab === 'code' ? (lang === 'ka' ? '💻 კოდის / SQL სტუდია' : '💻 Code / SQL Studio') : t(tab)}
+                {tab === 'studio' ? (lang === 'ka' ? 'დიზაინის სტუდია (Ps / Ai)' : 'Design Studio (Ps / Ai)') : tab === 'code' ? (lang === 'ka' ? 'კოდის / SQL სტუდია' : 'Code / SQL Studio') : t(tab)}
               </button>
             ))}
           </div>
@@ -497,7 +497,7 @@ function LearnContent() {
           {progress && progress.percent === 100 && !allAssignmentsDone && (
             <div className="mb-5 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-xs space-y-2">
               <p className="font-bold text-amber-300">
-                {lang === 'ka' ? '⚠️ გამოცდაზე გასასვლელად დაასრულე ყველა პრაქტიკული დავალება:' : '⚠️ Complete all required assignments to unlock the exam:'}
+                {lang === 'ka' ? 'გამოცდაზე გასასვლელად დაასრულე ყველა პრაქტიკული დავალება:' : 'Complete all required assignments to unlock the exam:'}
               </p>
               <ul className="space-y-1 text-slate-300">
                 {missingAssignmentLessons.map((ml) => (
@@ -568,8 +568,8 @@ function LearnContent() {
               {!readinessData.eligibleForExam && (
                 <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-rose-200 font-semibold">
                   {lang === 'ka'
-                    ? '⛔ ჯამური ქულა 90%-ზე ნაკლებია. გამოცდაზე გასასვლელად თავიდან უნდა გაიაროთ კურსი და სრულყოფილად შეასრულოთ დავალებები.'
-                    : '⛔ Reach 90% across lesson completion, approved assignments, AI mentor evaluation, and faculty grading to unlock the exam.'}
+                    ? 'ჯამური ქულა 90%-ზე ნაკლებია. გამოცდაზე გასასვლელად თავიდან უნდა გაიაროთ კურსი და სრულყოფილად შეასრულოთ დავალებები.'
+                    : 'Reach 90% across lesson completion, approved assignments, AI mentor evaluation, and faculty grading to unlock the exam.'}
                 </div>
               )}
             </div>

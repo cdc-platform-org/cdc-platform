@@ -825,8 +825,8 @@ function SettingsContent() {
       </div>
 
       <SiteFooter />
-      {sizeToast && <Toast message={sizeToast} icon="⚠️" />}
-      {resetLinkToast && <Toast message={resetLinkToast} icon="✅" />}
+      {sizeToast && <Toast message={sizeToast} icon="warning" />}
+      {resetLinkToast && <Toast message={resetLinkToast} />}
     </div>
   );
 }

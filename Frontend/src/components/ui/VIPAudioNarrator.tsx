@@ -564,7 +564,7 @@ export default function VIPAudioNarrator({
     speak(next);
   };
 
-  const defaultLabel = lang === 'ka' ? '🔊 ტექსტის მოსმენა' : '🔊 Listen to Text';
+  const defaultLabel = lang === 'ka' ? 'ტექსტის მოსმენა' : 'Listen to Text';
   const displayLabel = label ?? defaultLabel;
   const isActive = playing && !paused;
   const scrubbable = playing || paused;
