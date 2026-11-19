@@ -48,8 +48,9 @@ export async function deleteColoringPage(id: string): Promise<void> {
   await apiClient.delete(`/coloring-pages/${id}`);
 }
 
-export async function buyColoringPack(packId: string, lang?: string): Promise<{ paymentId: string; redirectUrl: string | null }> {
-  const res = await apiClient.post(`/payments/checkout/coloring-credits/${packId}`, { lang });
+// promoCode: promo or GIFT-XXXX-XXXX gift card, re-validated server-side.
+export async function buyColoringPack(packId: string, lang?: string, promoCode?: string): Promise<{ paymentId: string; redirectUrl: string | null }> {
+  const res = await apiClient.post(`/payments/checkout/coloring-credits/${packId}`, { lang, ...(promoCode ? { promoCode } : {}) });
   return res.data;
 }
 

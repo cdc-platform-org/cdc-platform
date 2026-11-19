@@ -81,6 +81,8 @@ export interface Course {
   // src/data/freelancerSkills.ts) — auto-verifies each on a student's
   // profile once they earn this course's certificate, no AI test needed.
   skillsTaught: string[];
+  // AI tools included free for enrolled, unfinished students (Course.aiToolKeys).
+  aiToolKeys?: string[];
   // Null = unlimited seats. enrolledCount/seatsRemaining/isFull are computed
   // server-side (Backend's routes/courses/ withCapacityInfo) from a live
   // CourseEnrollment count, never stored — always present on the API
@@ -119,6 +121,7 @@ export interface CoursePayload {
   mentorAvatarUrl?: string;
   language?: CourseLanguage;
   skillsTaught?: string[];
+  aiToolKeys?: string[];
   // Omit/null = unlimited seats.
   maxCapacity?: number | null;
 }

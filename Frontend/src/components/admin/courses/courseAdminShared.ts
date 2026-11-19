@@ -24,6 +24,8 @@ export const emptyForm = {
   mentorAvatarUrl: '',
   language: 'GEORGIAN' as CourseLanguage,
   skillsTaught: [] as string[],
+  // Course.aiToolKeys — AI tools included free for enrolled students.
+  aiToolKeys: [] as string[],
   isOnSale: false,
   discountPercent: 20,
   discountPercentCustom: '',

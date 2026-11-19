@@ -9,7 +9,7 @@ const dictBase = {
   ka: {
     title: 'Business AI Agents',
     subtitle: 'მზა AI ინსტრუმენტები თქვენი ბიზნესისთვის — კონტენტი, ბაზრის ანალიზი და ზოგადი დახმარება.',
-    trialActive: (days: number) => `თქვენი უფასო 7-დღიანი საცდელი პერიოდი აქტიურია (დარჩენილია ${days} დღე)`,
+    trialActive: (days: number) => `თქვენი უფასო 3-დღიანი საცდელი პერიოდი აქტიურია (დარჩენილია ${days} დღე)`,
     trialExpired: 'თქვენი საცდელი პერიოდი ამოიწურა — დაუკავშირდით CDC-ს გასაგრძელებლად.',
     verificationPending:
       'საჯარო რეესტრის ამონაწერი განხილვის პროცესშია. AI ინსტრუმენტები ხელმისაწვდომია თვიური გამოწერით ან კურსის სწავლის პერიოდში.',
@@ -33,7 +33,7 @@ const dictBase = {
   en: {
     title: 'Business AI Agents',
     subtitle: 'Ready-made AI tools for your business — content, market analysis, and general assistance.',
-    trialActive: (days: number) => `Your free 7-day trial is active (${days} day${days === 1 ? '' : 's'} remaining)`,
+    trialActive: (days: number) => `Your free 3-day trial is active (${days} day${days === 1 ? '' : 's'} remaining)`,
     trialExpired: 'Your trial has expired — contact CDC to continue.',
     verificationPending:
       'Your public registry extract is under review. AI tools are available with the monthly subscription or while you study a course.',
@@ -159,7 +159,7 @@ function AiToolCard({
 export default function BusinessAiAgentsSuite({ lang }: { lang: SupportedLocale }) {
   const t = dict[lang];
   const { user } = useAuth();
-  const [accessState, setAccessState] = useState<{ hasAccess: boolean; source: string } | null>(null);
+  const [accessState, setAccessState] = useState<{ hasAccess: boolean; source: string; accessSource?: string; trialEndsAt?: string | null } | null>(null);
   useEffect(() => {
     let active = true;
     const refresh = () => { if (user) void getAiAgentsSuiteState().then(state => { if (active) setAccessState(state); }).catch(() => { if (active) setAccessState({ hasAccess: false, source: 'NONE' }); }); };
@@ -167,8 +167,10 @@ export default function BusinessAiAgentsSuite({ lang }: { lang: SupportedLocale 
     return () => { active = false; window.removeEventListener('focus', refresh); };
   }, [user?.id]);
   const hasAccess = accessState?.hasAccess ?? false;
-  const collegeAccess = accessState?.source === 'COLLEGE_ENROLLMENT';
-  const daysRemaining = user ? aiTrialDaysRemaining(user.aiTrialEndsAt) : 0;
+  // accessSource is the shared AI tool decision (paid / course / admin / 3-day trial).
+  const collegeAccess = accessState?.accessSource === 'COURSE';
+  const paidAccess = accessState?.accessSource === 'PAID' || accessState?.accessSource === 'GRANT';
+  const daysRemaining = user ? aiTrialDaysRemaining(accessState?.trialEndsAt ?? user.aiTrialEndsAt) : 0;
   const unlimited = !!user?.aiSubscriptionActive || user?.role === 'SuperAdmin';
   // A Client who's never been verified (or is under review) hasn't "expired"
   // a trial — they've never had one yet. Distinct messaging + no false
@@ -192,7 +194,7 @@ export default function BusinessAiAgentsSuite({ lang }: { lang: SupportedLocale 
       >
         <p className={`flex items-center gap-2 text-sm font-bold ${hasAccess ? 'text-cyan-700 dark:text-cyan-400' : 'text-amber-700 dark:text-amber-400'}`}>
           <Clock className="w-4 h-4 shrink-0" />
-          {collegeAccess ? (lang === 'ka' ? 'AI წვდომა ჩართულია სწავლის დასრულებამდე' : 'AI access is included until your studies are complete') : accessState?.source === 'TOOL_SUBSCRIPTION' ? (lang === 'ka' ? 'თვიური გამოწერა აქტიურია' : 'Monthly subscription active') : unlimited ? t.unlimited : hasAccess ? t.trialActive(daysRemaining) : verificationPending ? t.verificationPending : t.trialExpired}
+          {collegeAccess ? (lang === 'ka' ? 'AI აგენტები შედის შენს კურსში მის დასრულებამდე' : 'AI agents are included in your course until it ends') : paidAccess ? (lang === 'ka' ? 'წვდომა აქტიურია' : 'Access active') : unlimited ? t.unlimited : hasAccess ? t.trialActive(daysRemaining) : verificationPending ? t.verificationPending : t.trialExpired}
         </p>
         {!hasAccess && !verificationPending && (
           <Link

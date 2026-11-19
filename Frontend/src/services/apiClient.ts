@@ -54,6 +54,12 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
+    // An AI tool's trial ran out (or access ended) mid-session: tell the open
+    // DigitalToolAccessGate so it shows the paywall (see aiToolSubscriptionService).
+    const body = error.response?.data as { paywall?: boolean; toolKey?: string; code?: string } | undefined;
+    if (error.response?.status === 403 && body?.paywall && body.toolKey && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('cdc:tool-paywall', { detail: { toolKey: body.toolKey, code: body.code } }));
+    }
     if (error.response?.status === 401) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('cdc_access_token');

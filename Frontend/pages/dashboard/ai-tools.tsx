@@ -8,6 +8,7 @@ import SiteHeader from '../../src/components/layout/SiteHeader';
 import SiteFooter from '../../src/components/layout/SiteFooter';
 import BackButton from '../../src/components/common/BackButton';
 import BusinessAiAgentsSuite from '../../src/components/dashboard/BusinessAiAgentsSuite';
+import DigitalToolAccessGate from '../../src/components/tools/DigitalToolAccessGate';
 import { resolveLocale } from '@/src/utils/locale';
 
 // Hub page — the 3 generic Business AI Assistants (content/analytics/
@@ -163,7 +164,7 @@ function AiToolsContent() {
             />
           </div>
 
-          <BusinessAiAgentsSuite lang={lang} />
+          <DigitalToolAccessGate toolKey="ai-agents" bare><BusinessAiAgentsSuite lang={lang} /></DigitalToolAccessGate>
         </RoleGate>
       </div>
 

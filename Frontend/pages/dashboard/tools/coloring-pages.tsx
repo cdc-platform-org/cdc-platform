@@ -25,6 +25,7 @@ function ColoringPagesTool() {
   const [topic, setTopic] = useState('');
   const [generating, setGenerating] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
+  const [promoCode, setPromoCode] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(() => {
@@ -65,11 +66,13 @@ function ColoringPagesTool() {
     setBuying(packId);
     setError(null);
     try {
-      const { redirectUrl } = await buyColoringPack(packId, resolveLocale(router.locale));
+      const { redirectUrl } = await buyColoringPack(packId, resolveLocale(router.locale), promoCode.trim() || undefined);
       if (redirectUrl) window.location.href = redirectUrl;
-      else load();
-    } catch {
-      setError(t.errors.PAYMENT);
+      else { setBuying(null); load(); }
+    } catch (err) {
+      // A rejected promo / gift card code comes back as a readable 400 message.
+      const message = (err as { response?: { status?: number; data?: { message?: string } } })?.response;
+      setError(message?.status === 400 && message.data?.message ? message.data.message : t.errors.PAYMENT);
       setBuying(null);
     }
   };
@@ -133,6 +136,14 @@ function ColoringPagesTool() {
         <section className="mt-6 rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-5 md:p-6 shadow-sm">
           <h2 className="text-lg font-black text-slate-900 dark:text-white">{t.buyTitle}</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t.buySubtitle}</p>
+          <input
+            value={promoCode}
+            onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+            placeholder={t.promoPlaceholder}
+            aria-label={t.promoPlaceholder}
+            disabled={!!buying}
+            className="mb-4 w-full max-w-sm rounded-lg border border-slate-300 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
+          />
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {state.packs.map((p) => (
               <div key={p.id} className="rounded-2xl border border-slate-200 dark:border-slate-700 p-4 flex flex-col">

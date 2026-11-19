@@ -1,86 +1,136 @@
-import { ReactNode, useEffect, useState } from 'react';
+// Client-side companion to each AI tool's backend gate
+// (requireDigitalToolAccess in Backend services/marketplace/digitalToolAccessService.ts).
+// The backend is what enforces access; this decides what to render:
+//   - access  -> the tool (plus a slim trial banner with a Buy button while on trial),
+//   - no access -> AiToolPaywall (trial + direct purchase with promo code),
+//   - a tool API call answering 403 { paywall } mid-session -> re-check and
+//     switch to the paywall, so a used-up trial is never a dead end.
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { Lock, Mail, LayoutGrid, Loader2 } from 'lucide-react';
+import { Gift, Loader2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { hasDigitalToolAccess } from '../../services/iakoAssistantService';
-import ToolShell, { ToolPageHeader, ToolStateCard, ToolLinkButton, ToolAccent } from './ToolShell';
+import ToolShell, { ToolPageHeader, ToolAccent, toolPrimaryButton } from './ToolShell';
+import AiToolPaywall from './paywall/AiToolPaywall';
+import { isAiToolKey } from './paywall/toolMeta';
+import { useAiToolsCopy, formatDate } from '../../content/aiTools';
+import {
+  getAiToolSubscriptionState, TOOL_PAYWALL_EVENT,
+  type AiToolSubscriptionState, type ToolPaywallEventDetail,
+} from '../../services/aiToolSubscriptionService';
 
-const copy = {
-  ka: {
-    checking: 'შემოწმდება წვდომა…',
-    title: 'ეს ხელსაწყო წვდომას საჭიროებს',
-    body: 'ამ ინსტრუმენტის გამოწერა შეგიძლია ციფრულ მარკეტში. სწავლის პერიოდში კოლეჯის წვდომა უფასოა.',
-    contact: 'წვდომის მოთხოვნა',
-    browse: 'AI ინსტრუმენტების მარკეტი',
-    mailSubject: 'ხელსაწყოზე წვდომის მოთხოვნა',
-  },
-  en: {
-    checking: 'Checking access…',
-    title: 'This tool requires access',
-    body: 'Subscribe to this tool in the Digital Market. College access is included while you study.',
-    contact: 'Request access',
-    browse: 'AI tools in the Digital Market',
-    mailSubject: 'Tool access request',
-  },
-};
-
-// Client-side companion to the tool's own backend gate (e.g.
-// mediaStudio.ts's requireMediaStudioAccess) — the backend route is what
-// actually enforces this; this just avoids rendering a full tool UI that
-// would immediately fail its first real action for a visitor who isn't
-// entitled yet.
 interface GateProps {
   toolKey: string;
   children: ReactNode;
-  /** Tool name/icon so the checking + locked states keep the tool's own
-   *  header instead of a bare white page with no site navigation. */
+  /** Tool name/icon so the checking state keeps the tool's own header. */
   toolTitle?: ReactNode;
   toolSubtitle?: ReactNode;
   toolIcon?: LucideIcon;
   accent?: ToolAccent;
+  /** The page draws its own site header/footer (studios): skip ToolShell. */
+  bare?: boolean;
 }
 
-export default function DigitalToolAccessGate({ toolKey, children, toolTitle, toolSubtitle, toolIcon, accent }: GateProps) {
-  const router = useRouter();
-  const lang = router.locale === 'ka' ? 'ka' : 'en';
-  const t = copy[lang];
-  const [state, setState] = useState<'checking' | 'allowed' | 'denied'>('checking');
+// PER_BOOK tools are paid per item at their own checkout, so "Buy" means
+// "enter the tool". Remembered for the browser session only.
+const continueKey = (toolKey: string) => `cdc-tool-continue:${toolKey}`;
+function readContinue(toolKey: string): boolean {
+  try { return typeof window !== 'undefined' && sessionStorage.getItem(continueKey(toolKey)) === '1'; } catch { return false; }
+}
 
-  useEffect(() => {
+export default function DigitalToolAccessGate({ toolKey, children, toolTitle, toolSubtitle, toolIcon, accent, bare }: GateProps) {
+  const Shell = bare ? BareShell : ToolShell;
+  const router = useRouter();
+  const copy = useAiToolsCopy(router.locale);
+  const [access, setAccess] = useState<AiToolSubscriptionState | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [continued, setContinued] = useState(false);
+
+  const load = useCallback(() => {
     let cancelled = false;
-    setState('checking');
-    hasDigitalToolAccess(toolKey)
-      .then((allowed) => { if (!cancelled) setState(allowed ? 'allowed' : 'denied'); })
-      .catch(() => { if (!cancelled) setState('denied'); });
+    setFailed(false);
+    getAiToolSubscriptionState(toolKey)
+      .then(state => { if (!cancelled) { setAccess(state); if (state.allowed) setShowPaywall(false); } })
+      .catch(() => { if (!cancelled) setFailed(true); });
     return () => { cancelled = true; };
   }, [toolKey]);
 
-  if (state === 'allowed') return <>{children}</>;
+  useEffect(() => { setContinued(readContinue(toolKey)); return load(); }, [toolKey, load]);
 
-  const header = toolTitle && toolIcon
-    ? <ToolPageHeader icon={toolIcon} accent={accent} title={toolTitle} subtitle={toolSubtitle} />
-    : null;
+  useEffect(() => {
+    const onPaywall = (event: Event) => {
+      const detail = (event as CustomEvent<ToolPaywallEventDetail>).detail;
+      if (detail?.toolKey === toolKey) { setShowPaywall(true); load(); }
+    };
+    window.addEventListener(TOOL_PAYWALL_EVENT, onPaywall);
+    return () => window.removeEventListener(TOOL_PAYWALL_EVENT, onPaywall);
+  }, [toolKey, load]);
 
-  if (state === 'checking') return (
-    <ToolShell>
+  const header = toolTitle && toolIcon ? <ToolPageHeader icon={toolIcon} accent={accent} title={toolTitle} subtitle={toolSubtitle} /> : null;
+
+  if (failed) return (
+    <Shell>
       {header}
-      <p role="status" className="flex items-center justify-center gap-2 py-16 text-sm text-slate-500 dark:text-slate-400">
-        <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
-        {t.checking}
-      </p>
-    </ToolShell>
-  );
-
-  const subject = encodeURIComponent(`${t.mailSubject}: ${toolKey}`);
-  return (
-    <ToolShell>
-      {header}
-      <div role="alert">
-        <ToolStateCard icon={Lock} accent={accent} title={t.title} body={t.body}>
-          <ToolLinkButton variant="secondary" href={`mailto:contact@cdc.org.ge?subject=${subject}`}><Mail className="w-4 h-4" aria-hidden />{t.contact}</ToolLinkButton>
-          <ToolLinkButton href="/marketplace?category=ai-tools"><LayoutGrid className="w-4 h-4" aria-hidden />{t.browse}</ToolLinkButton>
-        </ToolStateCard>
+      <div role="alert" className="rounded-card border border-cdc-border bg-cdc-surface px-6 py-12 text-center shadow-card">
+        <p className="text-sm text-cdc-muted">{copy?.ui.error ?? '…'}</p>
+        <button type="button" onClick={load} className={`${toolPrimaryButton} mt-4`}>{copy?.ui.retry ?? 'Retry'}</button>
       </div>
-    </ToolShell>
+    </Shell>
   );
+
+  if (!access || !copy) return (
+    <Shell>
+      {header}
+      <p role="status" className="flex items-center justify-center gap-2 py-16 text-sm text-cdc-muted">
+        <Loader2 className="w-4 h-4 animate-spin" aria-hidden />{copy?.ui.checking ?? ''}
+      </p>
+    </Shell>
+  );
+
+  const perItem = access.pricing.model === 'PER_BOOK';
+  const enterAnyway = perItem && continued && access.lockedReason !== 'TRIAL_LIMIT_REACHED';
+  if ((access.allowed || enterAnyway) && !showPaywall) {
+    const onTrial = access.source === 'TRIAL' || access.source === 'LEGACY_TRIAL';
+    const t = copy.ui;
+    const remaining = access.trial.unit && access.source === 'TRIAL' ? copy.units[access.trial.unit](access.trial.remaining) : '';
+    return (
+      <>
+        {onTrial && (
+          <div className="no-print border-b border-cdc-primary/20 bg-cdc-primary-soft" data-testid="trial-banner">
+            <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
+              <p className="flex items-center gap-2 text-sm font-semibold text-cdc-ink">
+                <Gift className="w-4 h-4 text-cdc-primary-ink" aria-hidden />
+                {remaining ? t.trialActive(remaining, formatDate(copy, access.accessEndsAt)) : `${t.trialActiveShort} · ${formatDate(copy, access.accessEndsAt)}`}
+              </p>
+              <button type="button" onClick={() => setShowPaywall(true)} className="rounded-lg bg-cdc-primary px-3 py-1.5 text-xs font-bold text-white hover:bg-cdc-primary-hover">{t.buyNow}</button>
+            </div>
+          </div>
+        )}
+        {children}
+      </>
+    );
+  }
+
+  if (!isAiToolKey(toolKey)) return <Shell>{header}</Shell>;
+  return (
+    <AiToolPaywall
+      toolKey={toolKey}
+      copy={copy}
+      // While on trial the Buy banner opens the paywall over a still-valid
+      // access; show it as a plain purchase screen.
+      access={access.allowed ? { ...access, lockedReason: 'TOOL_LOCKED', trial: { ...access.trial, state: 'NOT_OFFERED' } } : access}
+      onRefresh={load}
+      bare={bare}
+      onClose={access.allowed ? () => setShowPaywall(false) : undefined}
+      closeLabel={copy.ui.openTool}
+      onContinue={perItem ? () => {
+        try { sessionStorage.setItem(continueKey(toolKey), '1'); } catch { /* private mode: state only */ }
+        setContinued(true); setShowPaywall(false);
+      } : undefined}
+    />
+  );
+}
+
+function BareShell({ children }: { children: ReactNode }) {
+  return <div>{children}</div>;
 }

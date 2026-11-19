@@ -112,14 +112,18 @@ function GenerationProgress({ accepted, total }: { accepted: number; total: numb
 }
 
 function ChildrensBookContent() {
-  const [includedAccess, setIncludedAccess] = useState(false);
-  useEffect(() => { let active = true; getAiToolSubscriptionState('childrens-book').then(state => { if (active) setIncludedAccess(state.collegeAccess || !!state.subscriptionEndsAt); }).catch(() => {}); return () => { active = false; }; }, []);
+  // Books are free with included access (course / admin / grant) or, while a
+  // 3-day trial has books left, for any book without the animation add-on —
+  // the same rule the checkout route applies server-side.
+  const [accessState, setAccessState] = useState<{ included: boolean; trial: boolean }>({ included: false, trial: false });
+  useEffect(() => { let active = true; getAiToolSubscriptionState('childrens-book').then(state => { if (active) setAccessState({ included: ['ADMIN', 'COURSE', 'GRANT', 'PAID'].includes(state.source), trial: state.trial.state === 'ACTIVE' }); }).catch(() => {}); return () => { active = false; }; }, []);
   const { t } = useTranslation('childrensBook');
   const router = useRouter();
   const bookId = typeof router.query.bookId === 'string' ? router.query.bookId : null;
 
   const [myBooks, setMyBooks] = useState<BookListItem[] | null>(null);
   const [book, setBook] = useState<BookProject | null>(null);
+  const includedAccess = accessState.included || (accessState.trial && !book?.animationAddOnPurchased);
   const [mocked, setMocked] = useState(false);
   const [devPaymentSimulationEnabled, setDevPaymentSimulationEnabled] = useState(false);
   const [audioStatus, setAudioStatus] = useState<AudioNarrationStatus | null>(null);

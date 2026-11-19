@@ -248,7 +248,7 @@ function ToolEntryEditor({
       </div>
       <div className="grid md:grid-cols-2 gap-2">
         <div>
-          <label className={labelClass}>Pricing label (KA) — e.g. &quot;29 ₾ / თვეში (5 დღე უფასოდ)&quot;</label>
+          <label className={labelClass}>Pricing label (KA) — e.g. &quot;29 ₾ / თვეში (3 დღე უფასოდ)&quot;</label>
           <input value={entry.pricingLabelKa ?? ''} onChange={(e) => onChange({ pricingLabelKa: e.target.value })} className={inputClass} />
         </div>
         <div>
