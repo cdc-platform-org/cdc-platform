@@ -2144,6 +2144,7 @@ model DigitalProduct {
   submittedById      String?
   submittedBy        User?              @relation("SubmittedProducts", fields: [submittedById], references: [id], onDelete: SetNull)
   launchKits         LaunchKit[]
+  marketingPosts     MarketingPost[]
   // True when the product agent (services/productAgent/) generated this
   // listing. Such rows are created PENDING so an admin reviews them first;
   // the admin products page shows an "AI agent" badge from this flag.
@@ -6128,4 +6129,59 @@ model CourseReadinessRecord {
   @@index([userId])
   @@index([courseId])
   @@map("course_readiness_records")
+}
+
+// ============================================================
+// MARKETING PLANNER — weekly Facebook/Instagram content calendar written by
+// the AI marketing agent (services/marketingPlanner/). Every post is a DRAFT
+// until an admin approves it; nothing here talks to Meta yet (stage 1), the
+// admin copies an approved post into Meta Business Suite and marks it
+// PUBLISHED. Settings are a singleton row, defaults in marketingPlanner/settings.ts.
+// ============================================================
+model MarketingPlannerSettings {
+  id                 String   @id @default(uuid())
+  // Weekly auto-plan switch. "Plan next week" on the admin page works even
+  // when this is off.
+  enabled            Boolean  @default(false)
+  facebookPerWeek    Int      @default(3)
+  instagramPerWeek   Int      @default(3)
+  // Default posting hour, Tbilisi time (UTC+4, no DST).
+  postHourTbilisi    Int      @default(19)
+  // Free-text brand/voice notes the admin wants every post to follow.
+  brandNotes         String   @default("")
+  updatedAt          DateTime @updatedAt
+}
+
+model MarketingPost {
+  id              String          @id @default(uuid())
+  // FACEBOOK | INSTAGRAM
+  platform        String
+  // DRAFT | APPROVED | REJECTED | PUBLISHED
+  status          String          @default("DRAFT")
+  productId       String?
+  product         DigitalProduct? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  // Monday 00:00 Tbilisi (stored as UTC) of the plan week this post belongs to.
+  weekStart       DateTime
+  scheduledAt     DateTime
+  // Why the agent picked this product/day — shown to the admin.
+  angle           String          @default("")
+  caption         String
+  // The agent's first version, kept when the admin edits `caption` so the
+  // agent can learn from the difference.
+  originalCaption String?
+  hashtags        String[]        @default([])
+  // Built by code from the product id, never by the model.
+  productUrl      String
+  imageUrl        String?
+  rejectionReason String?
+  approvedAt      DateTime?
+  approvedById    String?
+  publishedAt     DateTime?
+  costUsd         Float           @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([weekStart])
+  @@index([status, scheduledAt])
+  @@index([productId])
 }
