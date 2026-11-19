@@ -5,7 +5,7 @@
 import apiClient from './apiClient';
 
 export type AiToolPricingModel = 'MONTHLY' | 'PER_BOOK' | 'CREDIT_PACKS';
-export type AiToolAccessSource = 'ADMIN' | 'PAID' | 'COURSE' | 'GRANT' | 'LEGACY_TRIAL' | 'TRIAL' | 'NONE';
+export type AiToolAccessSource = 'ADMIN' | 'PAID' | 'COURSE' | 'GRANT' | 'LEGACY_TRIAL' | 'TRIAL' | 'FREE' | 'NONE';
 export type AiToolLockedReason = 'TRIAL_LIMIT_REACHED' | 'TRIAL_EXPIRED' | 'TOOL_LOCKED';
 export type AiToolUnit = 'book' | 'request' | 'generation' | 'message' | 'exam' | 'page';
 

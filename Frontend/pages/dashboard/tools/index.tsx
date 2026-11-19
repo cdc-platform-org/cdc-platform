@@ -181,7 +181,7 @@ function MyToolsContent() {
       let badge: ToolBadge = 'AVAILABLE';
       let dateLine: string | null = null;
       let usageLine: string | undefined;
-      if (state?.allowed) {
+      if (state?.allowed && state.source !== 'FREE') {
         badge = state.source === 'TRIAL' || state.source === 'LEGACY_TRIAL' ? 'TRIAL' : state.source === 'COURSE' ? 'INCLUDED' : 'ACTIVE';
         const ends = state.source === 'COURSE' ? state.collegeAccessEndsAt : state.accessEndsAt;
         if (ends) dateLine = `${t.expires}: ${formatDate(copy, ends)}`;

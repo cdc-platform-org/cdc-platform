@@ -45,10 +45,12 @@ export function formatGel(copy: AiToolsLocale, minor: number): string {
   return copy.currency === '₾' ? `${value} ₾` : `${value} ${copy.currency}`;
 }
 
+// Numeric (dd.mm.yyyy-style) on purpose: some browsers lack Georgian /
+// Armenian month names in ICU and print "M11".
 export function formatDate(copy: AiToolsLocale, iso: string | Date | null | undefined): string {
   if (!iso) return '';
   try {
-    return new Date(iso).toLocaleDateString(copy.intl, { day: 'numeric', month: 'long', year: 'numeric' });
+    return new Date(iso).toLocaleDateString(copy.intl, { day: '2-digit', month: '2-digit', year: 'numeric' });
   } catch {
     return new Date(iso).toISOString().slice(0, 10);
   }

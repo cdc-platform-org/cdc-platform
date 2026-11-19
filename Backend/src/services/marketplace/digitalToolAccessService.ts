@@ -25,7 +25,8 @@ import { hasCourseToolAccess } from '../learning/collegeAiAccessService';
 import { hasAccessGrant } from '../account/accessGrantService';
 import { consumeAiToolTrialUnits, getAiToolTrialStatus, refundAiToolTrialUnits, type AiToolTrialStatus } from './aiToolTrialService';
 
-export type DigitalToolAccessSource = 'ADMIN' | 'PAID' | 'COURSE' | 'GRANT' | 'LEGACY_TRIAL' | 'TRIAL' | 'NONE';
+// FREE = coloring pages' one free first page (usable, but nothing bought yet).
+export type DigitalToolAccessSource = 'ADMIN' | 'PAID' | 'COURSE' | 'GRANT' | 'LEGACY_TRIAL' | 'TRIAL' | 'FREE' | 'NONE';
 
 export interface DigitalToolAccess {
   allowed: boolean;
@@ -47,7 +48,7 @@ async function activeSubscriptionGrant(userId: string, toolKey: string) {
 }
 
 // The tool's own pre-existing paid product (not the generic 30-day grant).
-async function toolSpecificPaidAccess(userId: string, toolKey: string): Promise<{ paid: boolean; legacyTrialEndsAt: Date | null; endsAt: Date | null }> {
+async function toolSpecificPaidAccess(userId: string, toolKey: string): Promise<{ paid: boolean; legacyTrialEndsAt: Date | null; endsAt: Date | null; free?: boolean }> {
   const none = { paid: false, legacyTrialEndsAt: null, endsAt: null };
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -77,7 +78,8 @@ async function toolSpecificPaidAccess(userId: string, toolKey: string): Promise<
   if (toolKey === 'coloring-pages') {
     // Bought credits, or the one free first page every account gets.
     const account = await prisma.coloringAccount.findUnique({ where: { userId }, select: { balance: true, freeUsed: true } });
-    if (!account || account.balance > 0 || !account.freeUsed) return { paid: true, legacyTrialEndsAt: null, endsAt: null };
+    if (account && account.balance > 0) return { paid: true, legacyTrialEndsAt: null, endsAt: null };
+    if (!account || !account.freeUsed) return { paid: false, free: true, legacyTrialEndsAt: null, endsAt: null };
   }
   if (toolKey === 'design-studio' || toolKey === 'code-studio') {
     // Workspace studios keep their own subscription lookup (same AccessGrant rows).
@@ -112,6 +114,7 @@ export async function resolveDigitalToolAccess(userId: string, email: string | n
   if (await hasAccessGrant('DIGITAL_TOOL', toolKey, { userId, email })) return { allowed: true, source: 'GRANT', endsAt: null, trial };
   if (specific.legacyTrialEndsAt) return { allowed: true, source: 'LEGACY_TRIAL', endsAt: specific.legacyTrialEndsAt, trial };
   if (trial.state === 'ACTIVE') return { allowed: true, source: 'TRIAL', endsAt: trial.endsAt, trial };
+  if (specific.free) return { allowed: true, source: 'FREE', endsAt: null, trial };
   return deny;
 }
 

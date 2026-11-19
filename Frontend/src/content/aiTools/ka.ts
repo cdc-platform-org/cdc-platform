@@ -120,7 +120,7 @@ const ka: AiToolsLocale = {
     error: 'ვერ მოხერხდა. სცადე თავიდან.',
     retry: 'თავიდან ცდა',
     alreadyHasAccess: 'ამ ხელსაწყოზე წვდომა უკვე გაქვს.',
-    promo: { placeholder: 'პრომო ან სასაჩუქრე ბარათის კოდი', apply: 'გამოყენება', applied: 'კოდი გააქტიურდა', remove: 'მოხსნა', invalid: 'კოდი არასწორია.' },
+    promo: { placeholder: 'პრომო / სასაჩუქრე კოდი', apply: 'გამოყენება', applied: 'კოდი გააქტიურდა', remove: 'მოხსნა', invalid: 'კოდი არასწორია.' },
     status: { trial: 'საცდელი', active: 'აქტიური', included: 'კურსში შედის', expired: 'ვადაგასული', available: 'ხელმისაწვდომი', trialEnded: 'საცდელი დასრულდა', comingSoon: 'მალე' },
     openTool: 'გახსნა',
     learnMore: 'დეტალები',
