@@ -33,7 +33,6 @@ import {
 } from '../services/ai/aiTranslateService';
 import { generateTutorReply, isCourseTutorConfigured, CourseTutorError } from '../services/learning/courseTutorService';
 import { askDesignMentor, DESIGN_MENTOR_LOCALES } from '../services/learning/designMentorService';
-import { resolveStudentWorkspaceAccess } from '../services/workspaceAccessService';
 import { isAiAgentConfigured } from '../services/ai/aiAgentService';
 import { generateProductMarketingCopy, ProductMarketingError } from '../services/ai/productMarketingAssistantService';
 import {
@@ -292,7 +291,9 @@ const courseTutorRateLimit = rateLimit({
   message: 'Too many tutor messages. Please wait a moment before sending more.',
 });
 
-router.post('/course-tutor', authenticate, requireDigitalToolAccess('ai-agents'), courseTutorRateLimit, async (req: Request, res: Response) => {
+// The in-lesson tutor is part of the course itself: enrollment (checked
+// below) is the gate, not a separate AI tool purchase.
+router.post('/course-tutor', authenticate, courseTutorRateLimit, async (req: Request, res: Response) => {
   if (!isCourseTutorConfigured()) {
     return res.status(501).json({ message: 'AI Course Tutor is not configured yet (GEMINI_API_KEY).' });
   }
@@ -345,17 +346,17 @@ const designMentorSchema = z.object({
   history: z.array(z.object({ role: z.enum(['USER', 'ASSISTANT']), content: z.string().max(4000) })).max(24).default([]),
 });
 
-router.post('/design-mentor', authenticate, courseTutorRateLimit, async (req: Request, res: Response) => {
+router.post('/design-mentor', authenticate, courseTutorRateLimit, async (req: Request, res: Response, next) => {
   if (!isCourseTutorConfigured()) {
     return res.status(501).json({ message: 'AI mentor is not configured yet.' });
   }
   const parsed = designMentorSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
-
-  const access = await resolveStudentWorkspaceAccess(req.user!.id);
-  if (!access.hasDesignStudioAccess) {
-    return res.status(403).json({ message: 'Design Studio access is required.' });
-  }
+  // Validated first so a malformed request never spends a trial unit.
+  next();
+}, requireDigitalToolAccess('design-studio', { meter: 1 }), async (req: Request, res: Response) => {
+  const parsed = designMentorSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ errors: parsed.error.errors });
 
   try {
     const reply = await askDesignMentor(parsed.data);

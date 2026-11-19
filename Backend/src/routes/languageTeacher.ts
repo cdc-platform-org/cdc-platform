@@ -22,7 +22,8 @@ import { callTextModel, callTextModelPlain, AiAgentError } from '../services/ai/
 // ============================================================
 
 const router = Router();
-router.use(authenticate, requireApproved, requireDigitalToolAccess('smart-reader'));
+// Every route here is one paid AI call, so each spends one trial request.
+router.use(authenticate, requireApproved, requireDigitalToolAccess('smart-reader', { meter: 1 }));
 
 function respondAiError(res: Response, err: unknown) {
   if (err instanceof AiAgentError) return res.status(err.status).json({ message: err.message });

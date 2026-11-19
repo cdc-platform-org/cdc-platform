@@ -2,16 +2,15 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import Link from 'next/link';
-import { Bot, GraduationCap, Mic, Bug, Sparkles, Calendar, BookOpen, ShieldCheck, LayoutGrid, Loader2, Palette } from 'lucide-react';
+import { Bot, Bug, Sparkles, Calendar, LayoutGrid, Loader2 } from 'lucide-react';
 import ProtectedRoute from '../../../src/components/auth/ProtectedRoute';
 import { useAuth } from '../../../src/context/AuthContext';
-import { getMyAgents } from '../../../src/services/agentService';
-import { Agent } from '../../../src/types/agent';
-import { getTutorState, TutorState } from '../../../src/services/englishTutorService';
-import { getEducatorHubState, EducatorHubState } from '../../../src/services/educatorHubService';
+import { getAiToolSubscriptionState, AI_TOOL_DESTINATIONS, type AiToolSubscriptionState } from '../../../src/services/aiToolSubscriptionService';
+import { useAiToolsCopy, formatDate, type AiToolKey } from '../../../src/content/aiTools';
+import { AI_TOOL_META, TIME_ONLY_TRIAL_TOOLS } from '../../../src/components/tools/paywall/toolMeta';
 import { resolveLocale } from '@/src/utils/locale';
 import ToolShell, { ToolPageHeader, ToolIconTile, ToolChip, ToolLinkButton, toolPrimaryButton, toolSecondaryButton, type ToolAccent, type ToolChipTone } from '@/src/components/tools/ToolShell';
-import { listMyIakoAssistants, hasDigitalToolAccess, iakoAssistantHref, MyIakoAssistant } from '../../../src/services/iakoAssistantService';
+import { listMyIakoAssistants, iakoAssistantHref, MyIakoAssistant } from '../../../src/services/iakoAssistantService';
 
 const EN_STRINGS = {
   title: 'My Tools',
@@ -20,34 +19,10 @@ const EN_STRINGS = {
   empty: 'No active tools yet. Pick one below to get started.',
   browseCatalog: 'Browse AI Tools',
   manage: 'Manage Tool',
-  statusTrial: 'Trial',
-  statusActive: 'Active',
-  statusExpired: 'Expired',
   statusPaused: 'Paused',
-  statusAvailable: 'Available',
-  statusComingSoon: 'Coming Soon',
   expires: 'Expires',
-  renews: 'Renews',
-  businessAi: 'CDC Business AI',
-  businessAiDesc: (n: number) => `${n} chatbot agent${n === 1 ? '' : 's'}`,
-  englishTutor: 'IMIAKO — AI English Tutor',
-  educatorVip: 'AI Educator VIP Hub',
-  mediaStudio: 'AI Voice & Video Studio',
-  mediaStudioDescActive: 'Access granted',
-  mediaStudioDescLocked: 'Requires access — contact us to request it',
   cyberSentinel: 'Cyber Sentinel (AG-SAIA)',
   cyberSentinelDesc: 'Sovereign AI security node — launching soon',
-  businessAiAvailableDesc: 'Build an AI chatbot for your website — free trial',
-  englishTutorAvailableDesc: 'Learn English step by step — free trial',
-  educatorAvailableDesc: 'Tests, rubrics and lesson plans for teachers — 5-day free trial',
-  childrensBook: "AI Children's Book",
-  childrensBookDesc: 'A personalized illustrated book starring your child',
-  coloringPages: 'AI Coloring Pages',
-  coloringPagesDesc: 'Printable coloring pages on any topic — first page free',
-  proctoredExam: 'AI-Proctored Exam',
-  proctoredExamDesc: 'Create exams and send students a supervised exam link',
-  open: 'Open',
-  start: 'Get started',
   sectionMine: 'My active tools',
   sectionAvailable: 'Available to start',
   sectionSoon: 'Coming soon',
@@ -64,34 +39,10 @@ const dict = {
     empty: 'ჯერ არცერთი აქტიური ხელსაწყო არ გაქვთ. ქვემოთ აირჩიეთ და დაიწყეთ.',
     browseCatalog: 'AI ხელსაწყოების ნახვა',
     manage: 'მართვა',
-    statusTrial: 'საცდელი',
-    statusActive: 'აქტიური',
-    statusExpired: 'ვადაგასული',
     statusPaused: 'შეჩერებული',
-    statusAvailable: 'ხელმისაწვდომი',
-    statusComingSoon: 'მალე',
     expires: 'სრულდება',
-    renews: 'განახლდება',
-    businessAi: 'CDC ბიზნეს AI',
-    businessAiDesc: (n: number) => `${n} ჩატბოტ აგენტი`,
-    englishTutor: 'IMIAKO — AI ინგლისურის მასწავლებელი',
-    educatorVip: 'AI მასწავლებლის VIP ჰაბი',
-    mediaStudio: 'AI ხმისა და ვიდეოს სტუდია',
-    mediaStudioDescActive: 'წვდომა მინიჭებულია',
-    mediaStudioDescLocked: 'საჭიროებს წვდომას — დაგვიკავშირდით მოთხოვნისთვის',
     cyberSentinel: 'Cyber Sentinel (AG-SAIA)',
     cyberSentinelDesc: 'სუვერენული AI უსაფრთხოების კვანძი — მალე გაეშვება',
-    businessAiAvailableDesc: 'შექმენით AI ჩატბოტი თქვენი საიტისთვის — უფასო საცდელი',
-    englishTutorAvailableDesc: 'ისწავლეთ ინგლისური ნაბიჯ-ნაბიჯ — უფასო საცდელი',
-    educatorAvailableDesc: 'ტესტები, რუბრიკები და გაკვეთილის გეგმები მასწავლებლებისთვის — 5 დღე უფასოდ',
-    childrensBook: 'AI საბავშვო წიგნი',
-    childrensBookDesc: 'პერსონალური ილუსტრირებული წიგნი, სადაც მთავარი გმირი თქვენი შვილია',
-    coloringPages: 'AI გასაფერადებელი გვერდები',
-    coloringPagesDesc: 'დასაბეჭდი გასაფერადებელი გვერდები ნებისმიერ თემაზე — პირველი უფასოა',
-    proctoredExam: 'AI ზედამხედველობით გამოცდა',
-    proctoredExamDesc: 'შექმენით გამოცდა და გაუგზავნეთ სტუდენტებს ბმული',
-    open: 'გახსნა',
-    start: 'დაწყება',
     sectionMine: 'ჩემი აქტიური ხელსაწყოები',
     sectionAvailable: 'შეგიძლიათ დაიწყოთ',
     sectionSoon: 'მალე',
@@ -106,11 +57,12 @@ const dict = {
   uk: EN_STRINGS,
 };
 
-type ToolBadge = 'TRIAL' | 'ACTIVE' | 'EXPIRED' | 'PAUSED' | 'AVAILABLE' | 'COMING_SOON';
+type ToolBadge = 'TRIAL' | 'ACTIVE' | 'INCLUDED' | 'EXPIRED' | 'PAUSED' | 'AVAILABLE' | 'COMING_SOON';
 
 const BADGE_TONE: Record<ToolBadge, ToolChipTone> = {
   TRIAL: 'brand',
   ACTIVE: 'success',
+  INCLUDED: 'success',
   EXPIRED: 'danger',
   PAUSED: 'neutral',
   AVAILABLE: 'neutral',
@@ -185,198 +137,74 @@ function ToolSection({ title, cards, manageLabel, learnMoreLabel, empty }: { tit
   );
 }
 
+// Every AI tool, in catalog order. Status comes from one endpoint
+// (/digital-tools/:key/access) so the chips here always match what the
+// tool page and its backend decide.
+const AI_TOOL_ORDER: AiToolKey[] = [
+  'childrens-book', 'english-tutor', 'smart-reader', 'educator-hub', 'chatbot-builder', 'ai-agents',
+  'media-studio', 'design-studio', 'code-studio', 'proctoring', 'coloring-pages',
+];
+
 function MyToolsContent() {
   const router = useRouter();
   const lang = resolveLocale(router.locale);
   const t = dict[lang];
+  const copy = useAiToolsCopy(router.locale);
   const { isAuthenticated } = useAuth();
 
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [tutorState, setTutorState] = useState<TutorState | null>(null);
-  const [educatorState, setEducatorState] = useState<EducatorHubState | null>(null);
+  const [accessByTool, setAccessByTool] = useState<Partial<Record<AiToolKey, AiToolSubscriptionState | null>>>({});
   const [myAssistants, setMyAssistants] = useState<MyIakoAssistant[]>([]);
-  const [mediaStudioAccess, setMediaStudioAccess] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!isAuthenticated) return;
     Promise.all([
-      getMyAgents().catch(() => []),
-      getTutorState().catch(() => null),
-      getEducatorHubState().catch(() => null),
+      Promise.all(AI_TOOL_ORDER.map(key => getAiToolSubscriptionState(key).then(state => [key, state] as const).catch(() => [key, null] as const))),
       listMyIakoAssistants().catch(() => []),
-      hasDigitalToolAccess('media-studio').catch(() => false),
-    ]).then(([a, ts, es, assistants, mediaAccess]) => {
-      setAgents(a);
-      setTutorState(ts);
-      setEducatorState(es);
+    ]).then(([states, assistants]) => {
+      setAccessByTool(Object.fromEntries(states));
       setMyAssistants(assistants);
-      setMediaStudioAccess(mediaAccess);
       setLoading(false);
     });
   }, [isAuthenticated]);
 
   const cards: ToolCardData[] = [];
+  const label = (badge: ToolBadge) => copy
+    ? { TRIAL: copy.ui.status.trial, ACTIVE: copy.ui.status.active, INCLUDED: copy.ui.status.included, EXPIRED: copy.ui.status.expired, PAUSED: t.statusPaused, AVAILABLE: copy.ui.status.available, COMING_SOON: copy.ui.status.comingSoon }[badge]
+    : '';
 
-  // CDC Business AI — one card per agent (a business may run more than
-  // one), only shown at all if the account has actually created one.
-  for (const agent of agents) {
-    const trialEnded = new Date(agent.trialEndsAt).getTime() <= Date.now();
-    const badge: ToolBadge = agent.status === 'TRIAL' ? (trialEnded ? 'EXPIRED' : 'TRIAL') : agent.status === 'ACTIVE' ? 'ACTIVE' : trialEnded ? 'EXPIRED' : 'PAUSED';
-    const badgeLabel = { TRIAL: t.statusTrial, ACTIVE: t.statusActive, EXPIRED: t.statusExpired, PAUSED: t.statusPaused, AVAILABLE: t.statusAvailable, COMING_SOON: t.statusComingSoon }[badge];
-    cards.push({
-      key: `agent-${agent.id}`,
-      icon: Bot,
-      accent: 'indigo',
-      title: `${t.businessAi} — ${agent.name}`,
-      description: t.businessAiDesc(1),
-      badge,
-      badgeLabel,
-      dateLine: agent.status === 'TRIAL' ? `${t.expires}: ${new Date(agent.trialEndsAt).toLocaleDateString()}` : null,
-      manageHref: '/dashboard/tools/chatbot-builder',
-    });
+  if (copy) {
+    for (const key of AI_TOOL_ORDER) {
+      const state = accessByTool[key];
+      const meta = AI_TOOL_META[key];
+      const tool = copy.tools[key];
+      let badge: ToolBadge = 'AVAILABLE';
+      let dateLine: string | null = null;
+      let usageLine: string | undefined;
+      if (state?.allowed && state.source !== 'FREE') {
+        badge = state.source === 'TRIAL' || state.source === 'LEGACY_TRIAL' ? 'TRIAL' : state.source === 'COURSE' ? 'INCLUDED' : 'ACTIVE';
+        const ends = state.source === 'COURSE' ? state.collegeAccessEndsAt : state.accessEndsAt;
+        if (ends) dateLine = `${t.expires}: ${formatDate(copy, ends)}`;
+        if (state.source === 'TRIAL' && state.trial.unit && !TIME_ONLY_TRIAL_TOOLS.has(key)) usageLine = copy.units[state.trial.unit](state.trial.remaining);
+      } else if (state && (state.trial.state === 'EXHAUSTED' || state.trial.state === 'EXPIRED')) {
+        badge = 'EXPIRED';
+      }
+      cards.push({
+        key,
+        icon: meta.icon,
+        accent: meta.accent,
+        title: tool.name,
+        description: tool.tagline,
+        badge,
+        // A locked tool whose trial is over says 'Trial ended', not just 'Expired'.
+        badgeLabel: badge === 'EXPIRED' ? copy.ui.status.trialEnded : label(badge),
+        dateLine,
+        usageLine,
+        manageHref: AI_TOOL_DESTINATIONS[key] ?? '/dashboard/tools',
+        actionLabel: state?.allowed ? copy.ui.openTool : badge === 'EXPIRED' ? copy.ui.buyNow : state?.trial.state === 'AVAILABLE' ? copy.ui.startTrial : copy.ui.learnMore,
+      });
+    }
   }
-
-  if (agents.length === 0) {
-    cards.push({
-      key: 'business-ai',
-      icon: Bot,
-      accent: 'indigo',
-      title: t.businessAi,
-      description: t.businessAiAvailableDesc,
-      badge: 'AVAILABLE',
-      badgeLabel: t.statusAvailable,
-      dateLine: null,
-      manageHref: '/dashboard/tools/chatbot-builder',
-      actionLabel: t.start,
-    });
-  }
-
-  // English Tutor — only shown once the user has actually engaged with it
-  // (started a trial or subscribed), not for every account site-wide.
-  if (tutorState && (tutorState.trialActive || tutorState.subscriptionTier === 'PRO' || (!tutorState.trialAvailable && !tutorState.trialActive))) {
-    const badge: ToolBadge = tutorState.trialActive ? 'TRIAL' : tutorState.subscriptionTier === 'PRO' ? 'ACTIVE' : 'EXPIRED';
-    const badgeLabel = { TRIAL: t.statusTrial, ACTIVE: t.statusActive, EXPIRED: t.statusExpired, PAUSED: t.statusPaused, AVAILABLE: t.statusAvailable, COMING_SOON: t.statusComingSoon }[badge];
-    const dateLine = tutorState.trialActive
-      ? `${t.expires}: ${new Date(tutorState.tutorTrialEndDate!).toLocaleDateString()}`
-      : tutorState.subscriptionTier === 'PRO' && tutorState.subscriptionPeriodEnd
-      ? `${t.renews}: ${new Date(tutorState.subscriptionPeriodEnd).toLocaleDateString()}`
-      : null;
-    cards.push({
-      key: 'english-tutor',
-      icon: GraduationCap,
-      accent: 'purple',
-      title: t.englishTutor,
-      description: badgeLabel,
-      badge,
-      badgeLabel,
-      dateLine,
-      manageHref: '/dashboard/english-tutor',
-    });
-  } else {
-    // Not engaged yet — still list it so the tool is discoverable from here.
-    cards.push({
-      key: 'english-tutor',
-      icon: GraduationCap,
-      accent: 'purple',
-      title: t.englishTutor,
-      description: t.englishTutorAvailableDesc,
-      badge: 'AVAILABLE',
-      badgeLabel: t.statusAvailable,
-      dateLine: null,
-      manageHref: '/dashboard/english-tutor',
-      actionLabel: t.start,
-    });
-  }
-
-  // Educator VIP Hub — same "only if engaged" gating as English Tutor above.
-  if (educatorState && (educatorState.trialActive || educatorState.isVipActive || (!educatorState.trialAvailable && !educatorState.trialActive))) {
-    const badge: ToolBadge = educatorState.trialActive ? 'TRIAL' : educatorState.isVipActive ? 'ACTIVE' : 'EXPIRED';
-    const badgeLabel = { TRIAL: t.statusTrial, ACTIVE: t.statusActive, EXPIRED: t.statusExpired, PAUSED: t.statusPaused, AVAILABLE: t.statusAvailable, COMING_SOON: t.statusComingSoon }[badge];
-    const dateLine = educatorState.educatorVipTrialEndDate
-      ? `${t.expires}: ${new Date(educatorState.educatorVipTrialEndDate).toLocaleDateString()}`
-      : null;
-    cards.push({
-      key: 'educator-vip',
-      icon: Sparkles,
-      accent: 'amber',
-      title: t.educatorVip,
-      description: badgeLabel,
-      badge,
-      badgeLabel,
-      dateLine,
-      manageHref: '/dashboard/tools/educator-hub',
-    });
-  } else {
-    cards.push({
-      key: 'educator-vip',
-      icon: Sparkles,
-      accent: 'amber',
-      title: t.educatorVip,
-      description: t.educatorAvailableDesc,
-      badge: 'AVAILABLE',
-      badgeLabel: t.statusAvailable,
-      dateLine: null,
-      manageHref: '/dashboard/tools/educator-hub',
-      actionLabel: t.start,
-    });
-  }
-
-  // Children's Book and the AI-proctored exam are open to every signed-in
-  // user (pay-per-book / free to create), so they're always listed.
-  cards.push({
-    key: 'childrens-book',
-    icon: BookOpen,
-    accent: 'pink',
-    title: t.childrensBook,
-    description: t.childrensBookDesc,
-    badge: 'AVAILABLE',
-    badgeLabel: t.statusAvailable,
-    dateLine: null,
-    manageHref: '/dashboard/tools/childrens-book',
-    actionLabel: t.start,
-  });
-  cards.push({
-    key: 'coloring-pages',
-    icon: Palette,
-    accent: 'emerald',
-    title: t.coloringPages,
-    description: t.coloringPagesDesc,
-    badge: 'AVAILABLE',
-    badgeLabel: t.statusAvailable,
-    dateLine: null,
-    manageHref: '/dashboard/tools/coloring-pages',
-    actionLabel: t.start,
-  });
-  cards.push({
-    key: 'proctored-exam',
-    icon: ShieldCheck,
-    accent: 'cyan',
-    title: t.proctoredExam,
-    description: t.proctoredExamDesc,
-    badge: 'AVAILABLE',
-    badgeLabel: t.statusAvailable,
-    dateLine: null,
-    manageHref: '/dashboard/tools/proctored-exam',
-    actionLabel: t.start,
-  });
-
-  // AI Voice & Video Studio — gated by digitalToolAccessService's
-  // requireDigitalToolAccess('media-studio') on the backend (an
-  // AccessGrant or a linked purchase); reflect the real state here rather
-  // than always claiming it's open, which it no longer is.
-  cards.push({
-    key: 'media-studio',
-    icon: Mic,
-    accent: 'pink',
-    title: t.mediaStudio,
-    description: mediaStudioAccess ? t.mediaStudioDescActive : t.mediaStudioDescLocked,
-    badge: mediaStudioAccess ? 'ACTIVE' : 'AVAILABLE',
-    badgeLabel: mediaStudioAccess ? t.statusActive : t.statusAvailable,
-    dateLine: null,
-    manageHref: '/dashboard/tools/media-studio',
-    actionLabel: mediaStudioAccess ? undefined : t.open,
-  });
 
   // IAKO — one card per Live Training or Digital Tool this learner
   // currently has a real, active assistant assignment for (see
@@ -390,7 +218,7 @@ function MyToolsContent() {
       title: `IAKO — ${assistant.mentorTagline || assistant.resourceTitle}`,
       description: t.iakoDesc,
       badge: expired ? 'EXPIRED' : 'ACTIVE',
-      badgeLabel: expired ? t.statusExpired : t.statusActive,
+      badgeLabel: label(expired ? 'EXPIRED' : 'ACTIVE'),
       dateLine: assistant.usage.expiresAt ? `${t.expires}: ${new Date(assistant.usage.expiresAt).toLocaleDateString()}` : null,
       manageHref: iakoAssistantHref(assistant),
       actionLabel: t.openIako,
@@ -410,12 +238,14 @@ function MyToolsContent() {
     title: t.cyberSentinel,
     description: t.cyberSentinelDesc,
     badge: 'COMING_SOON',
-    badgeLabel: t.statusComingSoon,
+    badgeLabel: label('COMING_SOON'),
     dateLine: null,
     manageHref: '/dashboard/cyber-security',
   });
 
   const mine = cards.filter((c) => c.badge !== 'AVAILABLE' && c.badge !== 'COMING_SOON');
+  // Loading also waits for the catalog copy (lazy per-locale chunk).
+  const ready = !loading && !!copy;
   const available = cards.filter((c) => c.badge === 'AVAILABLE');
   const soon = cards.filter((c) => c.badge === 'COMING_SOON');
 
@@ -432,7 +262,7 @@ function MyToolsContent() {
         actions={<ToolLinkButton href="/tools" variant="secondary">{t.allTools}</ToolLinkButton>}
       />
 
-      {loading ? (
+      {!ready ? (
         <p role="status" className="flex items-center gap-2 py-10 text-sm text-slate-500 dark:text-slate-400">
           <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
           {t.loading}

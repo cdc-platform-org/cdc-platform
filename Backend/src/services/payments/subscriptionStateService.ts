@@ -5,7 +5,7 @@
 import { prisma } from '../../lib/prisma';
 import { BillingProductType } from '@prisma/client';
 import { hasAccessGrant } from '../account/accessGrantService';
-import { hasActiveCollegeAiAccess } from '../learning/collegeAiAccessService';
+import { hasCourseToolAccess } from '../learning/collegeAiAccessService';
 import { hasAiAgentsSuiteAccess } from '../../utils/aiAgentsSuiteAccess';
 
 // ============================================================
@@ -67,7 +67,7 @@ export async function getSubscriptionState(
   // Both systems only ever grant a Business (Client) account access — see
   // aiAgentsSuiteAccess.ts's own comment for why this stays a hard gate
   // rather than per-system.
-  if (productType === BillingProductType.AI_AGENT_SUITE && await hasActiveCollegeAiAccess(userId)) return { hasAccess: true, source: 'COLLEGE_ENROLLMENT', trialEndsAt: null };
+  if (productType === BillingProductType.AI_AGENT_SUITE && await hasCourseToolAccess(userId, 'ai-agents')) return { hasAccess: true, source: 'COLLEGE_ENROLLMENT', trialEndsAt: null };
   if (productType === BillingProductType.AI_AGENT_SUITE && await hasAccessGrant('DIGITAL_TOOL', 'ai-agents', { userId })) return { hasAccess: true, source: 'TOOL_SUBSCRIPTION', trialEndsAt: null };
   if (user.role !== 'Client') return NO_ACCESS;
 

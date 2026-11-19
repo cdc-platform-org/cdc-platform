@@ -40,7 +40,9 @@ function buildImagePrompt(subject: string): string {
   );
 }
 
-export async function generateColoringPage(userId: string, rawTopic: string) {
+// `opts.trial`: the route already spent a 3-day trial unit for this page,
+// so no credit is reserved (same path as included course/subscription access).
+export async function generateColoringPage(userId: string, rawTopic: string, opts: { trial?: boolean } = {}) {
   if (!isAzureImageConfigured() || !isContentSafetyConfigured()) {
     throw new ColoringGenerationError('NOT_CONFIGURED', 'Coloring pages are temporarily unavailable.');
   }
@@ -67,7 +69,7 @@ export async function generateColoringPage(userId: string, rawTopic: string) {
     throw new ColoringGenerationError('BLOCKED', 'This topic is not allowed.', decision.reason);
   }
 
-  const includedAccess = await hasIncludedAiToolAccess(userId, 'coloring-pages');
+  const includedAccess = !!opts.trial || await hasIncludedAiToolAccess(userId, 'coloring-pages');
   let source: CreditSource;
   let page: { id: string };
   try {

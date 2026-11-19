@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import { isDigitalToolKey } from '../config/digitalTools';
+
+// AI tools this course includes for its enrolled, unfinished students
+// (Course.aiToolKeys — see services/learning/collegeAiAccessService.ts).
+const aiToolKeysField = z.array(z.string().refine(isDigitalToolKey, 'Unknown AI tool.')).max(20)
+  .transform(keys => Array.from(new Set(keys))).optional();
 
 export const lessonSchema = z.object({
   title: z.string().min(3).max(200),
@@ -50,6 +56,7 @@ export const courseCreateSchema = z
     // moment they earn this course's certificate, see routes/courses's
     // autoVerifySkillsForCourse().
     skillsTaught: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+    aiToolKeys: aiToolKeysField,
     // Omit/null = unlimited seats — see Course.maxCapacity's schema comment.
     maxCapacity: z.number().int().min(1).optional().nullable(),
     ...coursePricingFields,
@@ -76,6 +83,7 @@ export const courseUpdateSchema = z
     mentorAvatarUrl: z.string().trim().max(2000).optional(),
     language: z.enum(['GEORGIAN', 'ENGLISH', 'BOTH']).optional(),
     skillsTaught: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+    aiToolKeys: aiToolKeysField,
     maxCapacity: z.number().int().min(1).optional().nullable(),
     ...coursePricingFields,
     originalPrice: coursePricingFields.originalPrice.optional(),

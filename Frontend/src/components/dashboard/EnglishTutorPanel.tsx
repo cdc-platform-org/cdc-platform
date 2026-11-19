@@ -116,7 +116,7 @@ const dict = {
     audioLockedReason: 'გახსენით PRO წვდომა AI ხმოვანი გამოთქმისა და აუდიო ხელსაწყოების გამოსაყენებლად.',
     imiakoGreeting: 'IMIAKO-სთან ერთად ისწავლეთ ინგლისური თქვენს ტემპში.',
     trialActive: (days: number) => `PRO ტესტ-ვერსია — დარჩენილია ${days} დღე`,
-    trialCta: 'დაიწყეთ 5 დღიანი უფასო ტესტი',
+    trialCta: 'დაიწყეთ 3-დღიანი უფასო პერიოდი',
     upgradeCta: 'PRO-ზე გადასვლა',
     proActive: 'PRO აქტიურია',
     proUntil: (date: string) => `${date}-მდე`,
@@ -173,7 +173,7 @@ const dict = {
     audioLockedReason: 'Upgrade to Premium to unlock AI Voice Pronunciation & Audio Tools.',
     imiakoGreeting: 'Learn English with IMIAKO, at your own pace.',
     trialActive: (days: number) => `PRO trial active — ${days} day${days === 1 ? '' : 's'} left`,
-    trialCta: 'Start 5-day free trial',
+    trialCta: 'Start 3-day free trial',
     upgradeCta: 'Upgrade to PRO',
     proActive: 'PRO active',
     proUntil: (date: string) => `until ${date}`,
@@ -636,7 +636,7 @@ interface LessonViewProps {
   grading: TutorGradingResult | null;
   onGraded: (g: TutorGradingResult) => void;
   // Gates the audio narration controls (VIPAudioNarrator) below — active
-  // 5-day trial OR paid subscription, per EnglishTutorPanel's own `isPro`
+  // 3-day trial OR paid subscription, per EnglishTutorPanel's own `isPro`
   // (already SuperAdmin/PRO-tier/trial-active combined server-side, see
   // Backend's hasEnglishTutorProAccess). Text-to-speech synthesis is a
   // real per-call cost (native browser TTS is free, but the Georgian

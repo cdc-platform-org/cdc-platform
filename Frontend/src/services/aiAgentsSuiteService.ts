@@ -25,7 +25,7 @@ export async function generateWithAiAgent(tool: AiAgentSuiteTool, prompt: string
 }
 
 
-export async function getAiAgentsSuiteState(): Promise<{ hasAccess: boolean; source: string }> {
-  const response = await apiClient.get<{ data: { hasAccess: boolean; source: string } }>('/ai-agents/state');
+export async function getAiAgentsSuiteState(): Promise<{ hasAccess: boolean; source: string; accessSource?: string; trialEndsAt?: string | null }> {
+  const response = await apiClient.get<{ data: { hasAccess: boolean; source: string; accessSource?: string; trialEndsAt?: string | null } }>('/ai-agents/state');
   return response.data.data;
 }

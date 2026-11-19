@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Check } from 'lucide-react';
 import { validatePromoCode, PromoTargetType, PromoValidationResult } from '../../services/paymentService';
 
 // Shared promo-code input for checkout surfaces that don't already carry
@@ -13,6 +14,8 @@ interface PromoCodeFieldProps {
   applied: PromoValidationResult | null;
   onChange: (promo: PromoValidationResult | null) => void;
   disabled?: boolean;
+  /** Overrides the built-in ka/en texts (the AI tool paywall passes all 9 locales). */
+  labels?: { placeholder: string; apply: string; applied: string; remove: string; invalid: string };
 }
 
 const copy = {
@@ -35,8 +38,8 @@ export function localizePromoError(message: string | undefined, lang: 'ka' | 'en
   return KA_PROMO_ERRORS[message] ?? message;
 }
 
-export default function PromoCodeField({ targetType, targetId, lang, applied, onChange, disabled }: PromoCodeFieldProps) {
-  const t = copy[lang];
+export default function PromoCodeField({ targetType, targetId, lang, applied, onChange, disabled, labels }: PromoCodeFieldProps) {
+  const t = labels ?? copy[lang];
   const [input, setInput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
@@ -59,7 +62,7 @@ export default function PromoCodeField({ targetType, targetId, lang, applied, on
     <div data-testid="promo-code-field">
       {applied ? (
         <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-          <span>✓ {t.applied}: {applied.code}</span>
+          <span className="inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" aria-hidden />{t.applied}: {applied.code}</span>
           <button
             type="button"
             onClick={() => { onChange(null); setInput(''); }}

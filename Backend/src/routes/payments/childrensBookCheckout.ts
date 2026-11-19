@@ -1,8 +1,10 @@
-import { hasIncludedAiToolAccess } from '../../services/payments/aiToolSubscriptionService';
 /**
  * BOG checkout for a personalised children's book (plus optional audio /
- * animation add-ons).
+ * animation add-ons). An active 3-day trial (aiToolTrialService, max 3
+ * books) makes a book without the animation add-on free.
  */
+import { hasIncludedAiToolAccess } from '../../services/payments/aiToolSubscriptionService';
+import { consumeAiToolTrialUnits, getAiToolTrialStatus } from '../../services/marketplace/aiToolTrialService';
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { prisma } from '../../lib/prisma';
@@ -36,6 +38,8 @@ import {
 } from './shared';
 
 const router = Router();
+
+class TrialBookLimitError extends Error {}
 
 // ============================================================
 // CHECKOUT — CHILDREN'S BOOK — same DIRECT/single-purchase shape as
@@ -94,9 +98,12 @@ router.post(
     // never spends a use.
     const rawPromoCode = typeof req.body?.promoCode === 'string' && req.body.promoCode.trim() ? req.body.promoCode : null;
     const includedAccess = await hasIncludedAiToolAccess(req.user!.id, 'childrens-book');
-    let chargeAmount = includedAccess ? 0 : payableAmountGel;
+    // Trial books never include the animated video (a separate, costly render).
+    const trialBook = !includedAccess && !book.animationAddOnPurchased
+      && (await getAiToolTrialStatus(req.user!.id, 'childrens-book')).state === 'ACTIVE';
+    let chargeAmount = includedAccess || trialBook ? 0 : payableAmountGel;
     let appliedPromo: PromoCode | null = null;
-    if (rawPromoCode && !includedAccess) {
+    if (rawPromoCode && !includedAccess && !trialBook) {
       try {
         const applied = await quotePromoToCheckout(rawPromoCode, 'CHILDRENS_BOOK', book.id, payableAmountGel);
         chargeAmount = applied.chargeAmount;
@@ -128,10 +135,13 @@ router.post(
           data: { status: 'PAYMENT_PENDING', audioPriceGel, totalPriceGel },
         });
         if (claimed.count !== 1) throw new BookCheckoutInProgressError();
+        // Spent in the same transaction as the status claim, so a book never
+        // becomes free without a trial unit actually being used.
+        if (trialBook && !await consumeAiToolTrialUnits(req.user!.id, 'childrens-book', 1, tx)) throw new TrialBookLimitError();
         if (appliedPromo) await claimPromoRedemption(appliedPromo, tx);
         return tx.bogPayment.create({
           data: {
-            bogOrderId: isFree ? `promo-${crypto.randomUUID()}` : `pending-${crypto.randomUUID()}`,
+            bogOrderId: isFree ? `${trialBook ? 'trial' : 'promo'}-${crypto.randomUUID()}` : `pending-${crypto.randomUUID()}`,
             userId: req.user!.id,
             purpose: 'CHILDRENS_BOOK',
             paymentModel: paymentModelForPurpose('CHILDRENS_BOOK'),
@@ -147,6 +157,7 @@ router.post(
       });
     } catch (err) {
       if (err instanceof BookCheckoutInProgressError) return res.status(409).json({ message: 'This book already has a checkout in progress.' });
+      if (err instanceof TrialBookLimitError) return res.status(409).json({ code: 'TRIAL_LIMIT_REACHED', message: 'Your free trial books are used up. Please try again to pay for this book.' });
       if (err instanceof PromoCodeError) return res.status(400).json({ message: err.message });
       throw err;
     }

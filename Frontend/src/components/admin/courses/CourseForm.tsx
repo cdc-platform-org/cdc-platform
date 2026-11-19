@@ -8,6 +8,7 @@ import Toast from '../../shared/Toast';
 import CourseHeroBanner from '../../shared/CourseHeroBanner';
 import { Course, CoursePayload, CourseLanguage } from '../../../types/lms';
 import SkillPicker from '../../shared/SkillPicker';
+import CourseAiToolsPicker from './CourseAiToolsPicker';
 import AITranslateButton from '../AITranslateButton';
 import { createCourse, updateCourse, uploadCourseThumbnail, uploadCourseCoverImage, uploadCourseMentorAvatar, translateCourse } from '../../../services/courseService';
 import { DISCOUNT_PRESETS, emptyForm, formatGel, inputClass } from './courseAdminShared';
@@ -62,6 +63,7 @@ export function CourseForm({
         mentorAvatarUrl: editingCourse.mentorAvatarUrl ?? '',
         language: editingCourse.language ?? 'GEORGIAN',
         skillsTaught: editingCourse.skillsTaught ?? [],
+        aiToolKeys: editingCourse.aiToolKeys ?? [],
         isOnSale: editingCourse.isOnSale ?? false,
         discountPercent: presetMatch ? editingCourse.discountPercent! : DISCOUNT_PRESETS[1],
         discountPercentCustom: !presetMatch && editingCourse.discountPercent != null ? String(editingCourse.discountPercent) : '',
@@ -137,6 +139,8 @@ export function CourseForm({
         mentorAvatarUrl: form.mentorAvatarUrl.trim() || undefined,
         language: form.language,
         skillsTaught: form.skillsTaught,
+        // Only a SUPER_ADMIN may change included AI tools (backend enforces it too).
+        ...(canSeeMoney ? { aiToolKeys: form.aiToolKeys } : {}),
         isOnSale: form.isOnSale,
         discountPercent: form.isOnSale ? effectiveDiscountPercent : null,
         discountEndDate: form.isOnSale && form.discountEndDate ? new Date(form.discountEndDate).toISOString() : null,
@@ -262,6 +266,9 @@ export function CourseForm({
         </label>
         <SkillPicker value={form.skillsTaught} onChange={(skills) => setForm({ ...form, skillsTaught: skills })} lang="en" />
       </div>
+      {canSeeMoney && (
+        <CourseAiToolsPicker value={form.aiToolKeys} onChange={(keys) => setForm({ ...form, aiToolKeys: keys })} category={form.category} title={form.title} />
+      )}
       <div className="grid md:grid-cols-3 gap-5">
         {canSeeMoney ? (
         <div>

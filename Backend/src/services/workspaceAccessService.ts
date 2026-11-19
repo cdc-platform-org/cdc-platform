@@ -3,8 +3,9 @@
  * Determines whether a student has active access to the 2-in-1 Design Studio (Ps/Ai)
  * or the SQL & Frontend Code Studio based on:
  *   1. An active standalone monthly tool subscription (29 GEL/month), OR
- *   2. A paid, unfinished CourseEnrollment within its access window
- *      (see services/learning/collegeAiAccessService.ts).
+ *   2. A paid, unfinished CourseEnrollment whose course lists the studio in
+ *      Course.aiToolKeys (see services/learning/collegeAiAccessService.ts).
+ * The unified 3-day trial is layered on top in digitalToolAccessService.ts.
  */
 
 import { prisma } from '../lib/prisma';
@@ -27,8 +28,9 @@ export async function resolveStudentWorkspaceAccess(userId: string): Promise<Stu
   const user = await prisma.user.findUnique({
     where: { id: userId }, select: { role: true, adminRole: true, email: true },
   });
-  const [college, liveEnrollments, subscriptions] = await Promise.all([
-    getCollegeAiAccessStatus(userId, now),
+  const [designCourse, codeCourse, liveEnrollments, subscriptions] = await Promise.all([
+    getCollegeAiAccessStatus(userId, 'design-studio', now),
+    getCollegeAiAccessStatus(userId, 'code-studio', now),
     prisma.liveTrainingEnrollment.findMany({
       where: { userId, status: 'ACTIVE' }, select: { liveTrainingId: true }, take: 1,
     }),
@@ -69,13 +71,14 @@ export async function resolveStudentWorkspaceAccess(userId: string): Promise<Stu
     }
   }
 
-  // 2. A paid, unfinished course within its access window unlocks both
-  // studios — same rule as every other AI tool (collegeAiAccessService), so
-  // access ends automatically when the course is finished or the window lapses.
-  if (college.active && college.endsAt) {
-    const exp = college.endsAt.toISOString();
-    if (!hasDesignStudioAccess) { hasDesignStudioAccess = true; designAccessSource = 'ACTIVE_COURSE'; designAccessExpiresAt = exp; }
-    if (!hasCodeStudioAccess) { hasCodeStudioAccess = true; codeAccessSource = 'ACTIVE_COURSE'; codeAccessExpiresAt = exp; }
+  // 2. A paid, unfinished course that lists the studio unlocks it — same
+  // rule as every other AI tool (collegeAiAccessService), so access ends
+  // automatically when the course is finished or the window lapses.
+  if (designCourse.active && designCourse.endsAt && !hasDesignStudioAccess) {
+    hasDesignStudioAccess = true; designAccessSource = 'ACTIVE_COURSE'; designAccessExpiresAt = designCourse.endsAt.toISOString();
+  }
+  if (codeCourse.active && codeCourse.endsAt && !hasCodeStudioAccess) {
+    hasCodeStudioAccess = true; codeAccessSource = 'ACTIVE_COURSE'; codeAccessExpiresAt = codeCourse.endsAt.toISOString();
   }
 
   if (user?.adminRole || user?.role === 'SuperAdmin') {

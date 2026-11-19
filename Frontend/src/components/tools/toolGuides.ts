@@ -96,7 +96,7 @@ const ka: GuideSet = {
     title: 'როგორ გამოვიყენოთ მასწავლებლის ჰაბი',
     intro: 'AI ასისტენტი მასწავლებლის ყოველდღიური საქმისთვის: ტესტები, რუბრიკები, გასწორება, გეგმები და დოკუმენტები.',
     steps: [
-      { t: 'საცდელი პერიოდი', d: 'დააჭირეთ „საცდელის დაწყებას“. 5 დღე ყველა ფუნქცია უფასოა.' },
+      { t: 'საცდელი პერიოდი', d: 'დააჭირეთ „საცდელის დაწყებას“. 3 დღე უფასოდ, გენერაციების ლიმიტით.' },
       { t: 'ჩანართის არჩევა', d: 'ზემოთ აირჩიეთ, რა გჭირდებათ: ტესტები, რუბრიკები, გასწორება, დიფერენცირება, გეგმები, დოკუმენტაცია, მშობლის რეპორტი ან სერტიფიკატი.' },
       { t: 'მონაცემები', d: 'მიუთითეთ კლასი, საგანი და თემა. რაც უფრო ზუსტია, მით უკეთესია შედეგი.' },
       { t: 'შედეგი', d: 'დააჭირეთ გენერაციას, გადახედეთ შედეგს, საჭიროებისამებრ შეასწორეთ და ჩამოტვირთეთ ან დაბეჭდეთ.' },
@@ -118,7 +118,7 @@ const ka: GuideSet = {
       { t: 'შედეგი', d: 'მიიღებთ სიტყვა-სიტყვით ტრანსკრიპტს და მოკლე კონსპექტს. დააკოპირეთ ან ჩამოტვირთეთ.' },
     ],
     tips: ['გრძელ ვიდეოს რამდენიმე წუთი სჭირდება. გვერდი ღია დატოვეთ, სანამ დამუშავება მიმდინარეობს.'],
-    faq: [{ q: 'როგორ მივიღო წვდომა?', a: 'თუ გვერდი დახურულია, დააჭირეთ „წვდომის მოთხოვნას“ და გუნდი დაგიკავშირდებათ.' }],
+    faq: [{ q: 'როგორ მივიღო წვდომა?', a: 'თუ გვერდი დახურულია, დაიწყეთ 3-დღიანი უფასო პერიოდი ან შეიძინეთ წვდომა იქვე — დამტკიცება არ სჭირდება.' }],
   },
 };
 
@@ -202,7 +202,7 @@ const en: GuideSet = {
     title: 'How to use the Educator hub',
     intro: 'An AI assistant for a teacher’s everyday work: tests, rubrics, grading, lesson plans and documents.',
     steps: [
-      { t: 'Trial', d: 'Click “Start trial”. All features are free for 5 days.' },
+      { t: 'Trial', d: 'Click “Start trial”. Free for 3 days, with a generation limit.' },
       { t: 'Pick a tab', d: 'At the top, choose what you need: tests, rubrics, grading, differentiation, lesson plans, documents, parent reports or certificates.' },
       { t: 'Details', d: 'Enter the grade, subject and topic. The more precise, the better the result.' },
       { t: 'Result', d: 'Click generate, review the result, edit it if needed, then download or print it.' },
@@ -222,7 +222,7 @@ const en: GuideSet = {
       { t: 'Result', d: 'You get a word-for-word transcript and a short summary. Copy or download them.' },
     ],
     tips: ['Long videos take a few minutes. Keep the page open while it processes.'],
-    faq: [{ q: 'How do I get access?', a: 'If the page is locked, click “Request access” and the team will contact you.' }],
+    faq: [{ q: 'How do I get access?', a: 'If the page is locked, start the free 3-day trial or buy access right there — no approval needed.' }],
   },
 };
 

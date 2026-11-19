@@ -1,5 +1,3 @@
-import { requireDigitalToolAccess } from '../services/marketplace/digitalToolAccessService';
-import { hasIncludedAiToolAccess } from '../services/payments/aiToolSubscriptionService';
 /**
  * Express router mounted at `/api/coloring-pages` (see server.ts): the AI
  * coloring-page tool. Logic lives in services/coloringPages/; buying credit
@@ -7,6 +5,8 @@ import { hasIncludedAiToolAccess } from '../services/payments/aiToolSubscription
  */
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
+import { requireDigitalToolAccess } from '../services/marketplace/digitalToolAccessService';
+import { hasIncludedAiToolAccess } from '../services/payments/aiToolSubscriptionService';
 import { authenticate, requireApproved } from '../middleware/auth';
 import { rateLimit } from '../middleware/rateLimit';
 import { COLORING_PACKS, COLORING_LIMITS } from '../services/coloringPages/coloringPacks';
@@ -48,11 +48,16 @@ router.get('/me', authenticate, async (req: Request, res: Response) => {
 
 const generateSchema = z.object({ topic: z.string().min(2).max(COLORING_LIMITS.topicMaxLength) });
 
-router.post('/generate', generateRateLimit, authenticate, requireApproved, requireDigitalToolAccess('coloring-pages'), async (req: Request, res: Response) => {
+router.post('/generate', generateRateLimit, authenticate, requireApproved, (req: Request, res: Response, next) => {
+  // Validated before the access check so a bad topic never spends a trial page.
+  if (!generateSchema.safeParse(req.body).success) return res.status(400).json({ code: 'INVALID_TOPIC', message: 'Invalid topic.' });
+  next();
+}, requireDigitalToolAccess('coloring-pages', { meter: 1 }), async (req: Request, res: Response) => {
   const parsed = generateSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ code: 'INVALID_TOPIC', message: 'Invalid topic.' });
+  const trial = res.locals.toolAccess?.source === 'TRIAL';
   try {
-    const page = await generateColoringPage(req.user!.id, parsed.data.topic);
+    const page = await generateColoringPage(req.user!.id, parsed.data.topic, { trial });
     const account = await getColoringAccount(req.user!.id);
     res.status(201).json({ page, balance: account.balance, freeAvailable: !account.freeUsed });
   } catch (err) {
