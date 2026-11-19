@@ -109,6 +109,7 @@ import designRoutes from './routes/designs';
 import adminProductAgentRoutes from './routes/admin/adminProductAgent';
 import adminOpportunitiesRoutes from './routes/admin/adminOpportunities';
 import adminMarketingRoutes from './routes/admin/adminMarketing';
+import adminMarketingPlannerRoutes from './routes/admin/adminMarketingPlanner';
 import creatorMarketingRoutes from './routes/creatorMarketing';
 import productReviewRoutes from './routes/productReviews';
 import adminProductReviewRoutes from './routes/admin/adminProductReviews';
@@ -379,6 +380,7 @@ app.use('/api/designs', designRoutes);
 app.use('/api/admin/product-agent', adminProductAgentRoutes);
 app.use('/api/admin/opportunities', adminOpportunitiesRoutes);
 app.use('/api/admin/marketing', adminMarketingRoutes);
+app.use('/api/admin/marketing-planner', adminMarketingPlannerRoutes);
 app.use('/api/product-reviews', productReviewRoutes);
 app.use('/api/admin/product-reviews', adminProductReviewRoutes);
 // Deliberately last among the /api/admin/* mounts — this is the ONLY
@@ -481,6 +483,7 @@ app.listen(PORT, () => {
 // from a single external scheduler, not this timer.
 import { scheduleJob } from './utils/scheduler';
 import { recoverInterruptedRuns, runDailyBatch } from './services/productAgent';
+import { runWeeklyAutoPlan } from './services/marketingPlanner';
 import { sweepScheduledGiftCards } from './services/payments/giftCardService';
 
 // Gift cards scheduled for a later date (e.g. a birthday) are emailed by
@@ -502,6 +505,13 @@ recoverInterruptedRuns().catch((err) => console.error('[product-agent] recovery 
 scheduleJob('productAgentDailyBatch', '7 * * * *', async () => {
   const result = await runDailyBatch();
   if (result.queued > 0 || result.reason === 'monthly budget reached') console.log('[product-agent] batch:', result);
+});
+
+// Marketing planner (services/marketingPlanner/): on Fridays plans next
+// week's FB/IG drafts when switched on in /admin/marketing-planner. Drafts
+// only — nothing is posted to Meta.
+scheduleJob('marketingPlannerWeekly', '23 * * * *', async () => {
+  await runWeeklyAutoPlan();
 });
 
 scheduleJob('autoApproveOverdueGigs', '0 * * * *', async () => {

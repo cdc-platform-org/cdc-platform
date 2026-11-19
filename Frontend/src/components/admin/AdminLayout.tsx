@@ -45,6 +45,7 @@ import {
   Gauge,
   Languages,
   Search,
+  CalendarDays,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AdminLangProvider, useAdminLang } from '../../context/AdminLangContext';
@@ -139,6 +140,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/admin/blog', labelKey: 'blog', icon: FileText, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/bot-knowledge', labelKey: 'botKnowledge', icon: BrainCircuit, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
   { href: '/admin/marketing', labelKey: 'marketing', icon: Megaphone, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
+  { href: '/admin/marketing-planner', labelKey: 'marketingPlanner', icon: CalendarDays, tiers: ['SUPER_ADMIN', 'MANAGER'], section: 'content' },
 
   // Users & access
   { href: '/admin/users', labelKey: 'users', icon: Users, section: 'people' },
