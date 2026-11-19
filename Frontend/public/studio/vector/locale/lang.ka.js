@@ -153,7 +153,7 @@ export default {
     "mode_ellipse": "ელიფსი",
     "mode_circle": "წრე",
     "mode_fhellipse": "თავისუფალი ელიფსი",
-    "mode_path": "გზის ინსტრუმენტი",
+    "mode_path": "კალამი (Pen) — ბეზიეს მრუდები",
     "mode_text": "ტექსტის ინსტრუმენტი",
     "mode_image": "სურათის ინსტრუმენტი",
     "mode_zoom": "ზუმის ინსტრუმენტი",

@@ -24,13 +24,15 @@
   function splitAffixes(text) {
     // Menu labels carry decorations ("Export...", "Width:") that are not part
     // of the dictionary key; translate the core and keep the decoration.
-    var m = /^(\s*)(.*?)(\s*(?:\.\.\.|…|:)?\s*)$/.exec(text);
+    var m = /^(\s*)(.*?)(\s*(?:\([A-Za-z+ ]{1,9}\))?\s*(?:\.\.\.|…|:)?\s*)$/.exec(text);
     return m ? { pre: m[1], core: m[2], post: m[3] } : { pre: '', core: text, post: '' };
   }
 
   function translateString(text) {
     if (!dict || !text) return null;
     var parts = splitAffixes(text);
+    var whole = text.trim();
+    if (dict[whole]) return text.replace(whole, dict[whole]);
     var hit = dict[parts.core] || dict[parts.core + ':'];
     if (!hit) return null;
     // Some dictionary values already end in ":" — never double it.
