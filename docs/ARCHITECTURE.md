@@ -47,6 +47,7 @@ Money is always stored as `Int` minor units (tetri / cents), never `Float`.
 │  │  │  ├─ childrensBook/  Children's book generation, narration, animation, PDF
 │  │  │  ├─ content/        Blog helpers
 │  │  │  ├─ educator/       Educator Hub, teacher quiz, English tutor
+│  │  │  ├─ courseMentorAgent/  AI Course Mentor: teacher docs -> dated course plan (see its README.md)
 │  │  │  ├─ exams/          AI exams, proctoring, exam sessions/reports
 │  │  │  ├─ iako/           Iako assistant
 │  │  │  ├─ integrations/   E-mail, WhatsApp, Bunny, Azure Blob, Google Calendar/Classroom
@@ -125,6 +126,7 @@ Money is always stored as `Int` minor units (tetri / cents), never `Float`.
 | Exams & proctoring | `examProctoring.ts`, `proctoredPractice.ts`, `freelancerExam.ts`, `skillTests.ts` | `examProctoringService`, `examSessionService`, `aiExamService`, `sessionAnomalyService` | `pages/exam/**`, `src/components/dashboard/ExamProctoringTab.tsx` |
 | Children's book | `childrensBook.ts`, `bookAnimation.ts` | `book*Service` files | `dashboard/tools/childrens-book*`, `pages/book/[token].tsx` |
 | Educator Hub / AI tools | `educatorHub.ts`, `mediaStudio.ts`, `aiAgentsSuite.ts`, `ai.ts`, `tts.ts` | `aiAgentService` (central AI fallback chain), `educatorHubAiService`, `azureSpeechService` | `dashboard/tools/**` |
+| AI Course Mentor | `courseMentor.ts` | `courseMentorAgent/` (ingestion, retrieval, curriculumPlanner) | `dashboard/tools/course-mentor/**` |
 | Iako assistant | `iako.ts`, `adminIako.ts` | `iakoAssistantService`, `iakoKnowledgeService` | `src/components/iako/` |
 | English tutor | `englishTutor.ts`, `adminEnglishTutor.ts` | `englishTutorService`, `englishTutor*Service` | `dashboard/english-tutor/` |
 | Messages & chat moderation | `messages.ts`, `chatRequests.ts`, `adminChatModeration.ts` | `chatConsentService`, `contentModerationService` | `pages/messages/` |

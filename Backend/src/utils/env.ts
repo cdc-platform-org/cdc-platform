@@ -211,6 +211,12 @@ export const AZURE_OPENAI_API_VERSION = (process.env.AZURE_OPENAI_API_VERSION ||
 export const AZURE_OPENAI_DALLE_DEPLOYMENT_NAME = (process.env.AZURE_OPENAI_DALLE_DEPLOYMENT_NAME || '').trim();
 export const AZURE_OPENAI_DALLE_API_VERSION = (process.env.AZURE_OPENAI_DALLE_API_VERSION || '2024-04-01-preview').trim();
 
+// Embedding deployment for the AI Course Mentor's document search
+// (services/courseMentorAgent/embeddings.ts), e.g. text-embedding-3-small on
+// the same resource as AZURE_OPENAI_DEPLOYMENT_NAME. Optional: when unset the
+// mentor falls back to keyword retrieval, so nothing breaks before it exists.
+export const AZURE_OPENAI_EMBEDDING_DEPLOYMENT = (process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT || '').trim();
+
 // gpt-image-2 (Children's Book generator, Phase 1 smoke test) — a THIRD,
 // fully separate Azure OpenAI resource ("cdc-book-images", own key/
 // endpoint/deployment) addressed via the newer "v1" data-plane surface

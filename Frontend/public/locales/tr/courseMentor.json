@@ -1,0 +1,152 @@
+{
+  "pageTitle": "Yapay Zekâ Kurs Mentoru",
+  "pageSubtitle": "Ders materyallerini yükleyin, takvimi ve hedefi belirleyin; ajan kursu planlar ve öğretir.",
+  "loading": "Yükleniyor...",
+  "actions": {
+    "newCourse": "Yeni kurs",
+    "createCourse": "Kurs oluştur",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "edit": "Düzenle",
+    "settings": "Ayarlar",
+    "archive": "Arşivle",
+    "confirmArchive": "Bu kurs arşivlensin mi?",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı"
+  },
+  "newCourse": {
+    "title": "Yeni kurs",
+    "subtitle": "Ajana kursun kimin için olduğunu ve hangi sonucu istediğinizi anlatın. Materyalleri bir sonraki adımda yükleyeceksiniz."
+  },
+  "list": {
+    "documents_one": "{{count}} belge",
+    "documents_other": "{{count}} belge"
+  },
+  "form": {
+    "title": "Kurs adı",
+    "titlePlaceholder": "örn. Full-stack web geliştirme",
+    "audience": "Kurs kimin için",
+    "audiencePlaceholder": "örn. meslek yüksekokulu öğrencileri, başlangıç düzeyi",
+    "goals": "Kurs sonunda neyi yapabilmeliler",
+    "goalsPlaceholder": "örn. junior full-stack geliştirici olarak çalışmak",
+    "instructions": "Ajan için ek talimatlar (isteğe bağlı)",
+    "instructionsPlaceholder": "örn. profesyonel bir geliştirici gibi, gerçek projelerle öğret",
+    "calendar": "Takvim",
+    "startDate": "Başlangıç",
+    "endDate": "Bitiş",
+    "minutesPerLesson": "Ders süresi (dk)",
+    "weekdays": "Ders günleri",
+    "excludedDates": "Ders olmayan günler",
+    "excludedHint": "Her satıra bir tarih, YYYY-AA-GG (tatiller).",
+    "teachingLocale": "Ana öğretim dili",
+    "teachingLocaleHint": "Mentor her öğrenciyle sitenin kendi dilinde konuşur."
+  },
+  "weekday": {
+    "1": "Pzt",
+    "2": "Sal",
+    "3": "Çar",
+    "4": "Per",
+    "5": "Cum",
+    "6": "Cmt",
+    "7": "Paz"
+  },
+  "documents": {
+    "title": "Ders materyalleri",
+    "subtitle": "PDF, DOCX, Markdown veya TXT. Ajanın kurs için ana kaynağı budur.",
+    "upload": "Dosya yükle",
+    "uploading": "{{name}} yükleniyor: %{{pct}}",
+    "empty": "Henüz belge yüklenmedi.",
+    "sections_one": "{{count}} bölüm",
+    "sections_other": "{{count}} bölüm",
+    "processing": "İşleniyor",
+    "ready": "Hazır",
+    "failed": "Başarısız",
+    "delete": "Sil",
+    "confirmDelete": "\"{{name}}\" silinsin mi?"
+  },
+  "errors": {
+    "upload": "Yükleme başarısız.",
+    "generic": "Bir hata oluştu. Lütfen tekrar deneyin.",
+    "load": "Veriler yüklenemedi."
+  },
+  "status": {
+    "DRAFT": "Taslak",
+    "PLANNING": "Planlanıyor",
+    "PLAN_READY": "Plan hazır",
+    "ACTIVE": "Aktif",
+    "PLAN_FAILED": "Planlama başarısız",
+    "ARCHIVED": "Arşivlendi"
+  },
+  "kind": {
+    "LEARN": "Yeni konu",
+    "PRACTICE": "Uygulama",
+    "REVIEW": "Tekrar",
+    "PROJECT": "Proje",
+    "ASSESSMENT": "Değerlendirme"
+  },
+  "lesson": {
+    "edited": "Öğretmen tarafından düzenlendi",
+    "title": "Başlık",
+    "summary": "Kısa açıklama",
+    "objectivesOnePerLine": "Hedefler (her satıra bir)",
+    "homework": "Ödev",
+    "deliverable": "Teslim edilecek",
+    "objectives": "Hedefler",
+    "flow": "Ders akışı",
+    "minutes_one": "{{count}} dk",
+    "minutes_other": "{{count}} dk",
+    "practice": "Alıştırmalar",
+    "realWorld": "Gerçek işte",
+    "sources": "Kaynak"
+  },
+  "practiceType": {
+    "quiz": "Test",
+    "coding": "Kodlama",
+    "debugging": "Hata ayıklama",
+    "short-answer": "Kısa cevap",
+    "design": "Tasarım",
+    "project": "Proje",
+    "matching": "Eşleştirme"
+  },
+  "difficulty": {
+    "easy": "kolay",
+    "medium": "orta",
+    "hard": "zor"
+  },
+  "plan": {
+    "summaryTitle": "Ajanın özeti",
+    "notesTitle": "Öğretmen için notlar",
+    "module": "Modül {{n}}",
+    "lessonsCount_one": "{{count}} ders",
+    "lessonsCount_other": "{{count}} ders",
+    "title": "Kurs planı",
+    "subtitle": "Ajan materyalleri okur, konuları sıralar ve her ders gününe bir ders atar.",
+    "build": "Planı oluştur",
+    "rebuild": "Planı yeniden oluştur",
+    "approve": "Planı onayla",
+    "confirmRebuild": "Mevcut plan ve düzenlemeleriniz değiştirilecek. Devam edilsin mi?",
+    "needDocuments": "Planı oluşturmak için en az bir belge yükleyin.",
+    "waitDocuments": "Belgeler hâlâ işleniyor; birazdan planı oluşturabilirsiniz.",
+    "progressStructure": "Ajan materyalleri okuyor ve modülleri tasarlıyor...",
+    "progressLessons": "Dersler planlanıyor: {{done}} / {{total}}",
+    "progressHint": "Bu birkaç dakika sürebilir. Sayfayı kapatabilirsiniz; planlama devam eder.",
+    "failed": "Planlama başarısız oldu."
+  },
+  "detail": {
+    "subtitle": "{{start}} – {{end}} · {{days}} ders günü · {{minutes}} dk",
+    "settingsHint": "Tarihleri veya günleri değiştirdikten sonra planı yeniden oluşturun.",
+    "joinCode": "Sınıf kodu:",
+    "joinCodeHint": "Öğrenciler kursa bu kodla katılır (öğrenci bölümü bir sonraki aşamada gelecek)."
+  },
+  "locale": {
+    "ka": "ქართული",
+    "en": "English",
+    "de": "Deutsch",
+    "es": "Español",
+    "fr": "Français",
+    "tr": "Türkçe",
+    "uk": "Українська",
+    "az": "Azərbaycan",
+    "hy": "Հայերեն"
+  }
+}

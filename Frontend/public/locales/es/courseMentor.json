@@ -1,0 +1,152 @@
+{
+  "pageTitle": "Mentor de cursos con IA",
+  "pageSubtitle": "Sube tus materiales, define el calendario y el objetivo: el agente planifica e imparte el curso.",
+  "loading": "Cargando...",
+  "actions": {
+    "newCourse": "Nuevo curso",
+    "createCourse": "Crear curso",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "edit": "Editar",
+    "settings": "Ajustes",
+    "archive": "Archivar",
+    "confirmArchive": "¿Archivar este curso?",
+    "copy": "Copiar",
+    "copied": "Copiado"
+  },
+  "newCourse": {
+    "title": "Nuevo curso",
+    "subtitle": "Indica al agente para quién es el curso y qué resultado necesitas. Subirás los materiales en el siguiente paso."
+  },
+  "list": {
+    "documents_one": "{{count}} documento",
+    "documents_other": "{{count}} documentos"
+  },
+  "form": {
+    "title": "Nombre del curso",
+    "titlePlaceholder": "p. ej. Desarrollo web full-stack",
+    "audience": "Para quién es el curso",
+    "audiencePlaceholder": "p. ej. estudiantes de formación profesional, nivel inicial",
+    "goals": "Qué deben saber hacer al final",
+    "goalsPlaceholder": "p. ej. trabajar como desarrolladores full-stack junior",
+    "instructions": "Instrucciones adicionales para el agente (opcional)",
+    "instructionsPlaceholder": "p. ej. enseña como un desarrollador profesional, con proyectos reales",
+    "calendar": "Calendario",
+    "startDate": "Inicio",
+    "endDate": "Fin",
+    "minutesPerLesson": "Duración de la clase (min)",
+    "weekdays": "Días de clase",
+    "excludedDates": "Días sin clase",
+    "excludedHint": "Una fecha por línea, AAAA-MM-DD (festivos, vacaciones).",
+    "teachingLocale": "Idioma principal de enseñanza",
+    "teachingLocaleHint": "El mentor habla con cada estudiante en el idioma de su sitio."
+  },
+  "weekday": {
+    "1": "Lun",
+    "2": "Mar",
+    "3": "Mié",
+    "4": "Jue",
+    "5": "Vie",
+    "6": "Sáb",
+    "7": "Dom"
+  },
+  "documents": {
+    "title": "Materiales didácticos",
+    "subtitle": "PDF, DOCX, Markdown o TXT. Es la fuente principal del agente para el curso.",
+    "upload": "Subir archivo",
+    "uploading": "Subiendo {{name}}: {{pct}} %",
+    "empty": "Aún no hay documentos.",
+    "sections_one": "{{count}} sección",
+    "sections_other": "{{count}} secciones",
+    "processing": "Procesando",
+    "ready": "Listo",
+    "failed": "Error",
+    "delete": "Eliminar",
+    "confirmDelete": "¿Eliminar «{{name}}»?"
+  },
+  "errors": {
+    "upload": "No se pudo subir.",
+    "generic": "Algo salió mal. Inténtalo de nuevo.",
+    "load": "No se pudieron cargar los datos."
+  },
+  "status": {
+    "DRAFT": "Borrador",
+    "PLANNING": "Planificando",
+    "PLAN_READY": "Plan listo",
+    "ACTIVE": "Activo",
+    "PLAN_FAILED": "Error de planificación",
+    "ARCHIVED": "Archivado"
+  },
+  "kind": {
+    "LEARN": "Tema nuevo",
+    "PRACTICE": "Práctica",
+    "REVIEW": "Repaso",
+    "PROJECT": "Proyecto",
+    "ASSESSMENT": "Evaluación"
+  },
+  "lesson": {
+    "edited": "Editado por el docente",
+    "title": "Título",
+    "summary": "Descripción breve",
+    "objectivesOnePerLine": "Objetivos (uno por línea)",
+    "homework": "Tarea",
+    "deliverable": "Qué entregar",
+    "objectives": "Objetivos",
+    "flow": "Desarrollo de la clase",
+    "minutes_one": "{{count}} min",
+    "minutes_other": "{{count}} min",
+    "practice": "Ejercicios",
+    "realWorld": "En el trabajo real",
+    "sources": "Fuente"
+  },
+  "practiceType": {
+    "quiz": "Test",
+    "coding": "Programación",
+    "debugging": "Depuración",
+    "short-answer": "Respuesta corta",
+    "design": "Diseño",
+    "project": "Proyecto",
+    "matching": "Relacionar"
+  },
+  "difficulty": {
+    "easy": "fácil",
+    "medium": "media",
+    "hard": "difícil"
+  },
+  "plan": {
+    "summaryTitle": "Resumen del agente",
+    "notesTitle": "Notas para el docente",
+    "module": "Módulo {{n}}",
+    "lessonsCount_one": "{{count}} clase",
+    "lessonsCount_other": "{{count}} clases",
+    "title": "Plan del curso",
+    "subtitle": "El agente lee los materiales, ordena los temas y asigna una clase a cada día lectivo.",
+    "build": "Crear el plan",
+    "rebuild": "Rehacer el plan",
+    "approve": "Aprobar el plan",
+    "confirmRebuild": "Se reemplazarán el plan actual y tus cambios. ¿Continuar?",
+    "needDocuments": "Sube al menos un documento para crear el plan.",
+    "waitDocuments": "Los documentos aún se procesan; en breve podrás crear el plan.",
+    "progressStructure": "El agente está leyendo los materiales y diseñando módulos...",
+    "progressLessons": "Planificando clases: {{done}} / {{total}}",
+    "progressHint": "Puede tardar unos minutos. Puedes cerrar la página; la planificación continúa.",
+    "failed": "La planificación falló."
+  },
+  "detail": {
+    "subtitle": "{{start}} – {{end}} · {{days}} días lectivos · {{minutes}} min",
+    "settingsHint": "Tras cambiar fechas o días, vuelve a crear el plan.",
+    "joinCode": "Código de clase:",
+    "joinCodeHint": "Los estudiantes se unen al curso con este código (la parte del estudiante llega en la siguiente etapa)."
+  },
+  "locale": {
+    "ka": "ქართული",
+    "en": "English",
+    "de": "Deutsch",
+    "es": "Español",
+    "fr": "Français",
+    "tr": "Türkçe",
+    "uk": "Українська",
+    "az": "Azərbaycan",
+    "hy": "Հայերեն"
+  }
+}

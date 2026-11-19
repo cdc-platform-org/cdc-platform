@@ -1,0 +1,152 @@
+{
+  "pageTitle": "Süni intellekt kurs mentoru",
+  "pageSubtitle": "Tədris materiallarını yükləyin, təqvimi və məqsədi göstərin — agent kursu planlaşdırıb tədris edəcək.",
+  "loading": "Yüklənir...",
+  "actions": {
+    "newCourse": "Yeni kurs",
+    "createCourse": "Kurs yarat",
+    "save": "Yadda saxla",
+    "cancel": "Ləğv et",
+    "edit": "Redaktə et",
+    "settings": "Parametrlər",
+    "archive": "Arxivləşdir",
+    "confirmArchive": "Bu kurs arxivləşdirilsin?",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı"
+  },
+  "newCourse": {
+    "title": "Yeni kurs",
+    "subtitle": "Agentə kursun kimin üçün olduğunu və hansı nəticə lazım olduğunu izah edin. Materialları növbəti addımda yükləyəcəksiniz."
+  },
+  "list": {
+    "documents_one": "{{count}} sənəd",
+    "documents_other": "{{count}} sənəd"
+  },
+  "form": {
+    "title": "Kursun adı",
+    "titlePlaceholder": "məs. Full-stack veb proqramlaşdırma",
+    "audience": "Kurs kimin üçündür",
+    "audiencePlaceholder": "məs. peşə kolleci tələbələri, başlanğıc səviyyə",
+    "goals": "Kursun sonunda nə bacarmalıdırlar",
+    "goalsPlaceholder": "məs. junior full-stack developer kimi işləmək",
+    "instructions": "Agent üçün əlavə göstərişlər (istəyə bağlı)",
+    "instructionsPlaceholder": "məs. peşəkar developer kimi, real layihələrlə öyrət",
+    "calendar": "Təqvim",
+    "startDate": "Başlanğıc",
+    "endDate": "Bitmə",
+    "minutesPerLesson": "Dərsin müddəti (dəq)",
+    "weekdays": "Dərs günləri",
+    "excludedDates": "Dərs olmayan günlər",
+    "excludedHint": "Hər sətirdə bir tarix, İİİİ-AA-GG (bayramlar, tətillər).",
+    "teachingLocale": "Əsas tədris dili",
+    "teachingLocaleHint": "Mentor hər tələbə ilə onun sayt dilində danışır."
+  },
+  "weekday": {
+    "1": "B.e",
+    "2": "Ç.a",
+    "3": "Ç",
+    "4": "C.a",
+    "5": "C",
+    "6": "Ş",
+    "7": "B"
+  },
+  "documents": {
+    "title": "Tədris materialları",
+    "subtitle": "PDF, DOCX, Markdown və ya TXT. Bu, agentin kurs üçün əsas mənbəyidir.",
+    "upload": "Fayl yüklə",
+    "uploading": "{{name}} yüklənir: {{pct}}%",
+    "empty": "Hələ sənəd yüklənməyib.",
+    "sections_one": "{{count}} bölmə",
+    "sections_other": "{{count}} bölmə",
+    "processing": "Emal olunur",
+    "ready": "Hazırdır",
+    "failed": "Alınmadı",
+    "delete": "Sil",
+    "confirmDelete": "\"{{name}}\" silinsin?"
+  },
+  "errors": {
+    "upload": "Yükləmə alınmadı.",
+    "generic": "Xəta baş verdi. Yenidən cəhd edin.",
+    "load": "Məlumat yüklənmədi."
+  },
+  "status": {
+    "DRAFT": "Qaralama",
+    "PLANNING": "Planlaşdırılır",
+    "PLAN_READY": "Plan hazırdır",
+    "ACTIVE": "Aktiv",
+    "PLAN_FAILED": "Planlaşdırma alınmadı",
+    "ARCHIVED": "Arxivdə"
+  },
+  "kind": {
+    "LEARN": "Yeni mövzu",
+    "PRACTICE": "Təcrübə",
+    "REVIEW": "Təkrar",
+    "PROJECT": "Layihə",
+    "ASSESSMENT": "Qiymətləndirmə"
+  },
+  "lesson": {
+    "edited": "Müəllim tərəfindən düzəldilib",
+    "title": "Başlıq",
+    "summary": "Qısa təsvir",
+    "objectivesOnePerLine": "Məqsədlər (hər sətirdə bir)",
+    "homework": "Ev tapşırığı",
+    "deliverable": "Nə təhvil verilməlidir",
+    "objectives": "Məqsədlər",
+    "flow": "Dərsin gedişi",
+    "minutes_one": "{{count}} dəq",
+    "minutes_other": "{{count}} dəq",
+    "practice": "Tapşırıqlar",
+    "realWorld": "Real işdə",
+    "sources": "Mənbə"
+  },
+  "practiceType": {
+    "quiz": "Test",
+    "coding": "Kod yazmaq",
+    "debugging": "Xəta axtarışı",
+    "short-answer": "Qısa cavab",
+    "design": "Dizayn",
+    "project": "Layihə",
+    "matching": "Uyğunlaşdırma"
+  },
+  "difficulty": {
+    "easy": "asan",
+    "medium": "orta",
+    "hard": "çətin"
+  },
+  "plan": {
+    "summaryTitle": "Agentin icmalı",
+    "notesTitle": "Müəllim üçün qeydlər",
+    "module": "Modul {{n}}",
+    "lessonsCount_one": "{{count}} dərs",
+    "lessonsCount_other": "{{count}} dərs",
+    "title": "Kurs planı",
+    "subtitle": "Agent materialları oxuyur, mövzuları sıralayır və hər dərs gününə bir dərs təyin edir.",
+    "build": "Planı tərtib et",
+    "rebuild": "Planı yenidən tərtib et",
+    "approve": "Planı təsdiqlə",
+    "confirmRebuild": "Mövcud plan və düzəlişləriniz əvəz olunacaq. Davam edilsin?",
+    "needDocuments": "Plan üçün ən azı bir sənəd yükləyin.",
+    "waitDocuments": "Sənədlər hələ emal olunur; bir azdan planı tərtib edə bilərsiniz.",
+    "progressStructure": "Agent materialları oxuyur və modulları qurur...",
+    "progressLessons": "Dərslər planlaşdırılır: {{done}} / {{total}}",
+    "progressHint": "Bu bir neçə dəqiqə çəkə bilər. Səhifəni bağlaya bilərsiniz; planlaşdırma davam edəcək.",
+    "failed": "Planlaşdırma alınmadı."
+  },
+  "detail": {
+    "subtitle": "{{start}} – {{end}} · {{days}} dərs günü · {{minutes}} dəq",
+    "settingsHint": "Tarixləri və ya günləri dəyişdikdən sonra planı yenidən tərtib edin.",
+    "joinCode": "Sinif kodu:",
+    "joinCodeHint": "Tələbələr kursa bu kodla qoşulur (tələbə hissəsi növbəti mərhələdə əlavə olunacaq)."
+  },
+  "locale": {
+    "ka": "ქართული",
+    "en": "English",
+    "de": "Deutsch",
+    "es": "Español",
+    "fr": "Français",
+    "tr": "Türkçe",
+    "uk": "Українська",
+    "az": "Azərbaycan",
+    "hy": "Հայերեն"
+  }
+}

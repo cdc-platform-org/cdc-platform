@@ -1,0 +1,152 @@
+{
+  "pageTitle": "KI-Kursmentor",
+  "pageSubtitle": "Laden Sie Ihre Lehrmaterialien hoch, legen Sie Kalender und Ziel fest – der Agent plant und unterrichtet den Kurs.",
+  "loading": "Wird geladen...",
+  "actions": {
+    "newCourse": "Neuer Kurs",
+    "createCourse": "Kurs erstellen",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "edit": "Bearbeiten",
+    "settings": "Einstellungen",
+    "archive": "Archivieren",
+    "confirmArchive": "Diesen Kurs archivieren?",
+    "copy": "Kopieren",
+    "copied": "Kopiert"
+  },
+  "newCourse": {
+    "title": "Neuer Kurs",
+    "subtitle": "Sagen Sie dem Agenten, für wen der Kurs ist und welches Ergebnis Sie brauchen. Die Materialien laden Sie im nächsten Schritt hoch."
+  },
+  "list": {
+    "documents_one": "{{count}} Dokument",
+    "documents_other": "{{count}} Dokumente"
+  },
+  "form": {
+    "title": "Kursname",
+    "titlePlaceholder": "z. B. Full-Stack-Webentwicklung",
+    "audience": "Für wen ist der Kurs",
+    "audiencePlaceholder": "z. B. Berufsschüler, Anfängerniveau",
+    "goals": "Was die Lernenden am Ende können müssen",
+    "goalsPlaceholder": "z. B. als Junior-Full-Stack-Entwickler arbeiten",
+    "instructions": "Zusätzliche Hinweise für den Agenten (optional)",
+    "instructionsPlaceholder": "z. B. wie ein professioneller Entwickler unterrichten, mit echten Projekten",
+    "calendar": "Kalender",
+    "startDate": "Beginn",
+    "endDate": "Ende",
+    "minutesPerLesson": "Unterrichtsdauer (Min.)",
+    "weekdays": "Unterrichtstage",
+    "excludedDates": "Tage ohne Unterricht",
+    "excludedHint": "Ein Datum pro Zeile, JJJJ-MM-TT (Feiertage, Ferien).",
+    "teachingLocale": "Hauptunterrichtssprache",
+    "teachingLocaleHint": "Der Mentor spricht mit jedem Lernenden in dessen Website-Sprache."
+  },
+  "weekday": {
+    "1": "Mo",
+    "2": "Di",
+    "3": "Mi",
+    "4": "Do",
+    "5": "Fr",
+    "6": "Sa",
+    "7": "So"
+  },
+  "documents": {
+    "title": "Lehrmaterialien",
+    "subtitle": "PDF, DOCX, Markdown oder TXT. Das ist die Hauptquelle des Agenten für den Kurs.",
+    "upload": "Datei hochladen",
+    "uploading": "{{name}} wird hochgeladen: {{pct}} %",
+    "empty": "Noch keine Dokumente hochgeladen.",
+    "sections_one": "{{count}} Abschnitt",
+    "sections_other": "{{count}} Abschnitte",
+    "processing": "Wird verarbeitet",
+    "ready": "Bereit",
+    "failed": "Fehlgeschlagen",
+    "delete": "Löschen",
+    "confirmDelete": "„{{name}}“ löschen?"
+  },
+  "errors": {
+    "upload": "Hochladen fehlgeschlagen.",
+    "generic": "Etwas ist schiefgelaufen. Bitte erneut versuchen.",
+    "load": "Daten konnten nicht geladen werden."
+  },
+  "status": {
+    "DRAFT": "Entwurf",
+    "PLANNING": "Wird geplant",
+    "PLAN_READY": "Plan bereit",
+    "ACTIVE": "Aktiv",
+    "PLAN_FAILED": "Planung fehlgeschlagen",
+    "ARCHIVED": "Archiviert"
+  },
+  "kind": {
+    "LEARN": "Neues Thema",
+    "PRACTICE": "Übung",
+    "REVIEW": "Wiederholung",
+    "PROJECT": "Projekt",
+    "ASSESSMENT": "Prüfung"
+  },
+  "lesson": {
+    "edited": "Von der Lehrkraft bearbeitet",
+    "title": "Titel",
+    "summary": "Kurzbeschreibung",
+    "objectivesOnePerLine": "Lernziele (eins pro Zeile)",
+    "homework": "Hausaufgabe",
+    "deliverable": "Was abzugeben ist",
+    "objectives": "Lernziele",
+    "flow": "Ablauf der Stunde",
+    "minutes_one": "{{count}} Min.",
+    "minutes_other": "{{count}} Min.",
+    "practice": "Übungen",
+    "realWorld": "In der Praxis",
+    "sources": "Quelle"
+  },
+  "practiceType": {
+    "quiz": "Quiz",
+    "coding": "Programmieren",
+    "debugging": "Fehlersuche",
+    "short-answer": "Kurzantwort",
+    "design": "Design",
+    "project": "Projekt",
+    "matching": "Zuordnung"
+  },
+  "difficulty": {
+    "easy": "leicht",
+    "medium": "mittel",
+    "hard": "schwer"
+  },
+  "plan": {
+    "summaryTitle": "Überblick des Agenten",
+    "notesTitle": "Hinweise für die Lehrkraft",
+    "module": "Modul {{n}}",
+    "lessonsCount_one": "{{count}} Stunde",
+    "lessonsCount_other": "{{count}} Stunden",
+    "title": "Kursplan",
+    "subtitle": "Der Agent liest die Materialien, ordnet die Themen und weist jedem Unterrichtstag eine Stunde zu.",
+    "build": "Plan erstellen",
+    "rebuild": "Plan neu erstellen",
+    "approve": "Plan freigeben",
+    "confirmRebuild": "Der aktuelle Plan und Ihre Änderungen werden ersetzt. Fortfahren?",
+    "needDocuments": "Laden Sie mindestens ein Dokument hoch, um den Plan zu erstellen.",
+    "waitDocuments": "Die Dokumente werden noch verarbeitet; gleich können Sie den Plan erstellen.",
+    "progressStructure": "Der Agent liest die Materialien und entwirft Module...",
+    "progressLessons": "Stunden werden geplant: {{done}} / {{total}}",
+    "progressHint": "Das kann einige Minuten dauern. Sie können die Seite schließen; die Planung läuft weiter.",
+    "failed": "Planung fehlgeschlagen."
+  },
+  "detail": {
+    "subtitle": "{{start}} – {{end}} · {{days}} Unterrichtstage · {{minutes}} Min.",
+    "settingsHint": "Nach Änderung von Daten oder Tagen den Plan neu erstellen.",
+    "joinCode": "Klassencode:",
+    "joinCodeHint": "Mit diesem Code treten Lernende dem Kurs bei (der Schülerbereich kommt in der nächsten Stufe)."
+  },
+  "locale": {
+    "ka": "ქართული",
+    "en": "English",
+    "de": "Deutsch",
+    "es": "Español",
+    "fr": "Français",
+    "tr": "Türkçe",
+    "uk": "Українська",
+    "az": "Azərbaycan",
+    "hy": "Հայերեն"
+  }
+}

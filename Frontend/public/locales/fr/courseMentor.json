@@ -1,0 +1,152 @@
+{
+  "pageTitle": "Mentor de cours IA",
+  "pageSubtitle": "Téléversez vos supports, fixez le calendrier et l'objectif : l'agent planifie et enseigne le cours.",
+  "loading": "Chargement...",
+  "actions": {
+    "newCourse": "Nouveau cours",
+    "createCourse": "Créer le cours",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "edit": "Modifier",
+    "settings": "Paramètres",
+    "archive": "Archiver",
+    "confirmArchive": "Archiver ce cours ?",
+    "copy": "Copier",
+    "copied": "Copié"
+  },
+  "newCourse": {
+    "title": "Nouveau cours",
+    "subtitle": "Dites à l'agent à qui s'adresse le cours et quel résultat vous attendez. Vous téléverserez les supports à l'étape suivante."
+  },
+  "list": {
+    "documents_one": "{{count}} document",
+    "documents_other": "{{count}} documents"
+  },
+  "form": {
+    "title": "Nom du cours",
+    "titlePlaceholder": "ex. Développement web full-stack",
+    "audience": "Public du cours",
+    "audiencePlaceholder": "ex. étudiants en formation professionnelle, niveau débutant",
+    "goals": "Ce que les apprenants doivent savoir faire à la fin",
+    "goalsPlaceholder": "ex. travailler comme développeurs full-stack juniors",
+    "instructions": "Consignes supplémentaires pour l'agent (facultatif)",
+    "instructionsPlaceholder": "ex. enseigne comme un développeur professionnel, avec de vrais projets",
+    "calendar": "Calendrier",
+    "startDate": "Début",
+    "endDate": "Fin",
+    "minutesPerLesson": "Durée du cours (min)",
+    "weekdays": "Jours de cours",
+    "excludedDates": "Jours sans cours",
+    "excludedHint": "Une date par ligne, AAAA-MM-JJ (jours fériés, vacances).",
+    "teachingLocale": "Langue principale d'enseignement",
+    "teachingLocaleHint": "Le mentor parle à chaque élève dans la langue de son site."
+  },
+  "weekday": {
+    "1": "Lun",
+    "2": "Mar",
+    "3": "Mer",
+    "4": "Jeu",
+    "5": "Ven",
+    "6": "Sam",
+    "7": "Dim"
+  },
+  "documents": {
+    "title": "Supports de cours",
+    "subtitle": "PDF, DOCX, Markdown ou TXT. C'est la source principale de l'agent pour le cours.",
+    "upload": "Téléverser un fichier",
+    "uploading": "Téléversement de {{name}} : {{pct}} %",
+    "empty": "Aucun document pour l'instant.",
+    "sections_one": "{{count}} section",
+    "sections_other": "{{count}} sections",
+    "processing": "Traitement",
+    "ready": "Prêt",
+    "failed": "Échec",
+    "delete": "Supprimer",
+    "confirmDelete": "Supprimer « {{name}} » ?"
+  },
+  "errors": {
+    "upload": "Échec du téléversement.",
+    "generic": "Une erreur s'est produite. Réessayez.",
+    "load": "Impossible de charger les données."
+  },
+  "status": {
+    "DRAFT": "Brouillon",
+    "PLANNING": "Planification",
+    "PLAN_READY": "Plan prêt",
+    "ACTIVE": "Actif",
+    "PLAN_FAILED": "Échec de la planification",
+    "ARCHIVED": "Archivé"
+  },
+  "kind": {
+    "LEARN": "Nouveau thème",
+    "PRACTICE": "Pratique",
+    "REVIEW": "Révision",
+    "PROJECT": "Projet",
+    "ASSESSMENT": "Évaluation"
+  },
+  "lesson": {
+    "edited": "Modifié par l'enseignant",
+    "title": "Titre",
+    "summary": "Brève description",
+    "objectivesOnePerLine": "Objectifs (un par ligne)",
+    "homework": "Devoir",
+    "deliverable": "À rendre",
+    "objectives": "Objectifs",
+    "flow": "Déroulé de la séance",
+    "minutes_one": "{{count}} min",
+    "minutes_other": "{{count}} min",
+    "practice": "Exercices",
+    "realWorld": "Dans le travail réel",
+    "sources": "Source"
+  },
+  "practiceType": {
+    "quiz": "Quiz",
+    "coding": "Code",
+    "debugging": "Débogage",
+    "short-answer": "Réponse courte",
+    "design": "Design",
+    "project": "Projet",
+    "matching": "Association"
+  },
+  "difficulty": {
+    "easy": "facile",
+    "medium": "moyen",
+    "hard": "difficile"
+  },
+  "plan": {
+    "summaryTitle": "Vue d'ensemble de l'agent",
+    "notesTitle": "Notes pour l'enseignant",
+    "module": "Module {{n}}",
+    "lessonsCount_one": "{{count}} séance",
+    "lessonsCount_other": "{{count}} séances",
+    "title": "Plan du cours",
+    "subtitle": "L'agent lit les supports, ordonne les thèmes et attribue une séance à chaque jour de cours.",
+    "build": "Créer le plan",
+    "rebuild": "Refaire le plan",
+    "approve": "Approuver le plan",
+    "confirmRebuild": "Le plan actuel et vos modifications seront remplacés. Continuer ?",
+    "needDocuments": "Téléversez au moins un document pour créer le plan.",
+    "waitDocuments": "Les documents sont en cours de traitement ; vous pourrez créer le plan dans un instant.",
+    "progressStructure": "L'agent lit les supports et conçoit les modules...",
+    "progressLessons": "Planification des séances : {{done}} / {{total}}",
+    "progressHint": "Cela peut prendre quelques minutes. Vous pouvez fermer la page ; la planification continue.",
+    "failed": "La planification a échoué."
+  },
+  "detail": {
+    "subtitle": "{{start}} – {{end}} · {{days}} jours de cours · {{minutes}} min",
+    "settingsHint": "Après avoir changé les dates ou les jours, refaites le plan.",
+    "joinCode": "Code de la classe :",
+    "joinCodeHint": "Les élèves rejoignent le cours avec ce code (la partie élève arrive à l'étape suivante)."
+  },
+  "locale": {
+    "ka": "ქართული",
+    "en": "English",
+    "de": "Deutsch",
+    "es": "Español",
+    "fr": "Français",
+    "tr": "Türkçe",
+    "uk": "Українська",
+    "az": "Azərbaycan",
+    "hy": "Հայերեն"
+  }
+}

@@ -120,6 +120,7 @@ import aiAgentsSuiteRoutes from './routes/aiAgentsSuite';
 import englishTutorRoutes from './routes/englishTutor';
 import adminEnglishTutorRoutes from './routes/admin/adminEnglishTutor';
 import educatorHubRoutes from './routes/educatorHub';
+import courseMentorRoutes from './routes/courseMentor';
 import teacherQuizRoutes from './routes/teacherQuiz';
 import childrensBookRoutes from './routes/childrensBook';
 import coloringPageRoutes from './routes/coloringPages';
@@ -401,6 +402,7 @@ app.use('/api/ai-agents', aiAgentsSuiteRoutes);
 app.use('/api/english-tutor', requireToolVisible('english-tutor'), englishTutorRoutes);
 app.use('/api/admin/english-tutor', adminEnglishTutorRoutes);
 app.use('/api/educator-hub', requireToolVisible('educator-hub'), educatorHubRoutes);
+app.use('/api/course-mentor', requireToolVisible('course-mentor'), courseMentorRoutes);
 app.use('/api/quiz', teacherQuizRoutes);
 // requireToolVisible: blocks writes when an admin set the tool to "Admin only" (middleware/toolVisibility.ts).
 app.use('/api/childrens-books', requireToolVisible('childrens-book'), bookAnimationRoutes);

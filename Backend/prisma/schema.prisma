@@ -796,6 +796,7 @@ model User {
   projectsCreated               Project[]
   billingSubscriptions          BillingSubscription[]
   educatorGenerations           EducatorGeneration[]
+  mentorCourses                 MentorCourse[]
   teacherQuizzes                TeacherQuiz[]
   blogComments                  BlogComment[]
   mentorshipRequestsMade        MentorshipRequest[]            @relation("MentorshipRequestsMade")
@@ -6210,4 +6211,160 @@ model MarketingPost {
   @@index([weekStart])
   @@index([status, scheduledAt])
   @@index([productId])
+}
+
+// ============================================================
+// AI COURSE MENTOR AGENT (services/courseMentorAgent/).
+// A teacher uploads source documents (ministry textbooks etc.), states who
+// the course is for, the wanted outcome and the calendar; the agent orders
+// the material into modules and dated lessons. Students (stage 2) join a
+// course with joinCode and are taught lesson by lesson from these rows.
+// ============================================================
+
+enum MentorCourseStatus {
+  DRAFT // created, documents may still be uploading
+  PLANNING // background planner is running
+  PLAN_READY // plan generated, waiting for the teacher's review
+  ACTIVE // teacher approved the plan, students can learn
+  PLAN_FAILED // planner failed; planError says why, teacher can retry
+  ARCHIVED
+}
+
+enum MentorDocumentStatus {
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum MentorLessonKind {
+  LEARN // new theory + guided practice
+  PRACTICE // mostly exercises on recent topics
+  REVIEW // spaced repetition of earlier modules
+  PROJECT // real-world mini project day
+  ASSESSMENT // module test
+}
+
+model MentorCourse {
+  id               String             @id @default(uuid())
+  teacherId        String
+  teacher          User               @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  title            String
+  // Free-text brief from the teacher: who the learners are, what result
+  // they must reach, extra instructions. Fed to every agent prompt.
+  audience         String             @db.Text
+  goals            String             @db.Text
+  instructions     String?            @db.Text
+  // Default teaching language; a student's own site language wins at
+  // lesson time (stage 2).
+  teachingLocale   String             @default("ka")
+  startDate        DateTime           @db.Date
+  endDate          DateTime           @db.Date
+  // ISO weekdays the class meets on: 1 = Monday ... 7 = Sunday.
+  weekdays         Int[]
+  minutesPerLesson Int
+  // YYYY-MM-DD dates with no class (holidays, exam weeks).
+  excludedDates    String[]
+  status           MentorCourseStatus @default(DRAFT)
+  planError        String?            @db.Text
+  // Planner output shown to the teacher: { courseSummary, notesForTeacher }.
+  planSummary      Json?
+  // Live progress while PLANNING: { step, done, total } for the UI.
+  planProgress     Json?
+  planGeneratedAt  DateTime?
+  joinCode         String             @unique
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  documents MentorSourceDocument[]
+  chunks    MentorSourceChunk[]
+  modules   MentorModule[]
+  lessons   MentorLesson[]
+
+  @@index([teacherId, createdAt])
+  @@map("mentor_courses")
+}
+
+model MentorSourceDocument {
+  id         String               @id @default(uuid())
+  courseId   String
+  course     MentorCourse         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  filename   String
+  mimeType   String
+  sizeBytes  Int
+  // Private blob marker of the original file (null when storage is not
+  // configured, e.g. local dev) — the parsed text lives in the chunks.
+  storageUrl String?
+  status     MentorDocumentStatus @default(PROCESSING)
+  error      String?              @db.Text
+  charCount  Int                  @default(0)
+  chunkCount Int                  @default(0)
+  // Headings detected in the document ([{ title, level, chunkPosition }]),
+  // the compact "table of contents" the planner reads instead of the book.
+  outline    Json?
+  createdAt  DateTime             @default(now())
+
+  chunks MentorSourceChunk[]
+
+  @@index([courseId])
+  @@map("mentor_source_documents")
+}
+
+model MentorSourceChunk {
+  id         String               @id @default(uuid())
+  courseId   String
+  course     MentorCourse         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  documentId String
+  document   MentorSourceDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  position   Int
+  // Nearest heading above this chunk — shown as the citation to students.
+  heading    String?
+  content    String               @db.Text
+  // Azure OpenAI embedding; empty when no embedding deployment is set
+  // (retrieval then falls back to keyword scoring, see retrieval.ts).
+  embedding  Float[]
+
+  @@unique([documentId, position])
+  @@index([courseId])
+  @@map("mentor_source_chunks")
+}
+
+model MentorModule {
+  id       String         @id @default(uuid())
+  courseId String
+  course   MentorCourse   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  position Int
+  title    String
+  summary  String         @db.Text
+  // Relative share of course time the planner gave this module.
+  weight   Float
+  lessons  MentorLesson[]
+
+  @@unique([courseId, position])
+  @@map("mentor_modules")
+}
+
+model MentorLesson {
+  id             String           @id @default(uuid())
+  courseId       String
+  course         MentorCourse     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  moduleId       String
+  module         MentorModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  // 1-based order across the whole course.
+  position       Int
+  date           DateTime         @db.Date
+  kind           MentorLessonKind @default(LEARN)
+  title          String
+  objectives     String[]
+  topics         String[]
+  // Lesson blueprint (theory outline, examples, practice tasks, check
+  // questions, homework) — shape in courseMentorAgent/types.ts.
+  plan           Json
+  sourceChunkIds String[]
+  teacherEdited  Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([courseId, position])
+  @@index([courseId, date])
+  @@map("mentor_lessons")
 }

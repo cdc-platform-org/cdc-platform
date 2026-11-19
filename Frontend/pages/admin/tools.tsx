@@ -21,6 +21,7 @@ const KNOWN_TOOLS: { slug: string; route: string; name: string; statusWired: boo
   { slug: 'childrens-book', route: '/dashboard/tools/childrens-book', name: 'პერსონალური საბავშვო წიგნი', statusWired: true },
   { slug: 'media-studio', route: '/dashboard/tools/media-studio', name: 'AI ხმის და ვიდეოს სტუდია', statusWired: true },
   { slug: 'educator-hub', route: '/dashboard/tools/educator-hub', name: 'AI Educator VIP Hub', statusWired: true },
+  { slug: 'course-mentor', route: '/dashboard/tools/course-mentor', name: 'AI კურსის მენტორი', statusWired: true },
   { slug: 'proctoring', route: '/dashboard/tools/proctored-exam', name: 'AI საპრაქტიკო გამოცდა', statusWired: true },
   { slug: 'english-tutor', route: '/dashboard/english-tutor', name: 'AI ინგლისურის რეპეტიტორი', statusWired: true },
   { slug: 'smart-reader', route: '/#ai-tools', name: 'AI ჭკვიანი წამკითხველი (მაღაზიის ბარათი)', statusWired: true },

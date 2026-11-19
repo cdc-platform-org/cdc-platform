@@ -1,0 +1,152 @@
+{
+  "pageTitle": "AI Course Mentor",
+  "pageSubtitle": "Upload your teaching materials, set the calendar and the goal — the agent plans and teaches the course.",
+  "loading": "Loading...",
+  "actions": {
+    "newCourse": "New course",
+    "createCourse": "Create course",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "settings": "Settings",
+    "archive": "Archive",
+    "confirmArchive": "Archive this course?",
+    "copy": "Copy",
+    "copied": "Copied"
+  },
+  "newCourse": {
+    "title": "New course",
+    "subtitle": "Tell the agent who the course is for and what result you need. You will upload materials in the next step."
+  },
+  "list": {
+    "documents_one": "{{count}} document",
+    "documents_other": "{{count}} documents"
+  },
+  "form": {
+    "title": "Course name",
+    "titlePlaceholder": "e.g. Full-stack web development",
+    "audience": "Who is the course for",
+    "audiencePlaceholder": "e.g. vocational college students, beginner level",
+    "goals": "What learners must be able to do at the end",
+    "goalsPlaceholder": "e.g. work as junior full-stack developers",
+    "instructions": "Extra instructions for the agent (optional)",
+    "instructionsPlaceholder": "e.g. teach like a professional developer, with real projects",
+    "calendar": "Calendar",
+    "startDate": "Start",
+    "endDate": "End",
+    "minutesPerLesson": "Lesson length (min)",
+    "weekdays": "Class days",
+    "excludedDates": "Days without class",
+    "excludedHint": "One date per line, YYYY-MM-DD (holidays, breaks).",
+    "teachingLocale": "Main teaching language",
+    "teachingLocaleHint": "The mentor talks to each student in their site language."
+  },
+  "weekday": {
+    "1": "Mon",
+    "2": "Tue",
+    "3": "Wed",
+    "4": "Thu",
+    "5": "Fri",
+    "6": "Sat",
+    "7": "Sun"
+  },
+  "documents": {
+    "title": "Teaching materials",
+    "subtitle": "PDF, DOCX, Markdown or TXT. This is the agent's main source for the course.",
+    "upload": "Upload file",
+    "uploading": "Uploading {{name}}: {{pct}}%",
+    "empty": "No documents uploaded yet.",
+    "sections_one": "{{count}} section",
+    "sections_other": "{{count}} sections",
+    "processing": "Processing",
+    "ready": "Ready",
+    "failed": "Failed",
+    "delete": "Delete",
+    "confirmDelete": "Delete \"{{name}}\"?"
+  },
+  "errors": {
+    "upload": "Upload failed.",
+    "generic": "Something went wrong. Please try again.",
+    "load": "Could not load data."
+  },
+  "status": {
+    "DRAFT": "Draft",
+    "PLANNING": "Planning",
+    "PLAN_READY": "Plan ready",
+    "ACTIVE": "Active",
+    "PLAN_FAILED": "Planning failed",
+    "ARCHIVED": "Archived"
+  },
+  "kind": {
+    "LEARN": "New topic",
+    "PRACTICE": "Practice",
+    "REVIEW": "Review",
+    "PROJECT": "Project",
+    "ASSESSMENT": "Assessment"
+  },
+  "lesson": {
+    "edited": "Edited by the teacher",
+    "title": "Title",
+    "summary": "Short description",
+    "objectivesOnePerLine": "Objectives (one per line)",
+    "homework": "Homework",
+    "deliverable": "What to hand in",
+    "objectives": "Objectives",
+    "flow": "Lesson flow",
+    "minutes_one": "{{count}} min",
+    "minutes_other": "{{count}} min",
+    "practice": "Practice",
+    "realWorld": "In real work",
+    "sources": "Source"
+  },
+  "practiceType": {
+    "quiz": "Quiz",
+    "coding": "Coding",
+    "debugging": "Debugging",
+    "short-answer": "Short answer",
+    "design": "Design",
+    "project": "Project",
+    "matching": "Matching"
+  },
+  "difficulty": {
+    "easy": "easy",
+    "medium": "medium",
+    "hard": "hard"
+  },
+  "plan": {
+    "summaryTitle": "Agent's overview",
+    "notesTitle": "Notes for the teacher",
+    "module": "Module {{n}}",
+    "lessonsCount_one": "{{count}} lesson",
+    "lessonsCount_other": "{{count}} lessons",
+    "title": "Course plan",
+    "subtitle": "The agent reads the materials, orders the topics and assigns a lesson to every class day.",
+    "build": "Build the plan",
+    "rebuild": "Rebuild the plan",
+    "approve": "Approve plan",
+    "confirmRebuild": "The current plan and your edits will be replaced. Continue?",
+    "needDocuments": "Upload at least one document to build the plan.",
+    "waitDocuments": "Documents are still being processed; you can build the plan in a moment.",
+    "progressStructure": "The agent is reading the materials and designing modules...",
+    "progressLessons": "Planning lessons: {{done}} / {{total}}",
+    "progressHint": "This can take a few minutes. You can close the page; planning continues.",
+    "failed": "Planning failed."
+  },
+  "detail": {
+    "subtitle": "{{start}} – {{end}} · {{days}} class days · {{minutes}} min",
+    "settingsHint": "After changing dates or days, build the plan again.",
+    "joinCode": "Class code:",
+    "joinCodeHint": "Students join the course with this code (the student side arrives in the next stage)."
+  },
+  "locale": {
+    "ka": "ქართული",
+    "en": "English",
+    "de": "Deutsch",
+    "es": "Español",
+    "fr": "Français",
+    "tr": "Türkçe",
+    "uk": "Українська",
+    "az": "Azərbaycan",
+    "hy": "Հայերեն"
+  }
+}
