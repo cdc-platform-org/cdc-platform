@@ -305,12 +305,17 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
 
 
       <SiteFooter />
-      <nav aria-label={t('detailPage.navigation')} className="fixed inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[min(760px,calc(100%-24px))] z-40 rounded-xl border border-white/10 bg-neutral-900/95 text-white backdrop-blur-xl shadow-xl" style={{ bottom: 'calc(var(--tabbar-h, 0px) + 12px)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3 sm:gap-6">
-          <div className="flex-1 min-w-0 flex items-center gap-5 overflow-x-auto whitespace-nowrap text-xs sm:text-sm font-bold">{['course', 'trailer', 'details', 'lessons', 'instructor'].map(id => <a key={id} href={`#${id}`} onClick={() => setDetailTab(id === 'lessons' ? 'curriculum' : 'overview')} className="py-2 text-white/70 hover:text-white no-underline">{t(`detailPage.nav.${id}`)}</a>)}</div>
-          <CourseCtaButton {...ctaProps} showPrice className="shrink-0 text-xs sm:text-sm" />
-        </div>
-      </nav>
+      {!hideBottomNav && (
+        <nav aria-label={t('detailPage.navigation')} className="fixed inset-x-3 sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2 sm:w-[min(760px,calc(100%-24px))] z-40 rounded-xl border border-white/10 bg-neutral-900/95 text-white backdrop-blur-xl shadow-xl" style={{ bottom: 'calc(var(--tabbar-h, 0px) + 12px)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3 sm:gap-5">
+            <div className="flex-1 min-w-0 flex items-center gap-5 overflow-x-auto whitespace-nowrap text-xs sm:text-sm font-bold">{['course', 'trailer', 'details', 'lessons', 'instructor'].map(id => <a key={id} href={`#${id}`} onClick={() => setDetailTab(id === 'lessons' ? 'curriculum' : 'overview')} className="py-2 text-white/70 hover:text-white no-underline">{t(`detailPage.nav.${id}`)}</a>)}</div>
+            <CourseCtaButton {...ctaProps} showPrice className="shrink-0 text-xs sm:text-sm" />
+            <button type="button" onClick={() => setHideBottomNav(true)} aria-label="Close navigation" className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/75 hover:bg-white/20 hover:text-white transition-colors border-none cursor-pointer">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </nav>
+      )}
     </div>
   );
 }
