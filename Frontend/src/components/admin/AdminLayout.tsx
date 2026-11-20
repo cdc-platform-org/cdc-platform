@@ -163,12 +163,12 @@ const NAV_ITEMS: NavItem[] = [
 
 const SECTION_ORDER: (keyof typeof adminDict.en.navSections)[] = [
   'overview',
+  'people',
   'learning',
   'tools',
   'career',
   'moderation',
   'content',
-  'people',
   'financial',
   'admin',
 ];
