@@ -63,6 +63,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
   const [error, setError] = useState<string | null>(null);
   const [previewLesson, setPreviewLesson] = useState<SyllabusLesson | null>(null);
   const [showPaywall, setShowPaywall] = useState(false);
+  const [hideBottomNav, setHideBottomNav] = useState(false);
   const [promoInput, setPromoInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<PromoValidationResult | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
