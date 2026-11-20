@@ -96,7 +96,7 @@ const en: AiToolsLocale = {
     payDiscounted: amount => `Pay ${amount}`,
     redirecting: 'Redirecting to payment…',
     noAutoRenew: 'One-time payment via Bank of Georgia. Nothing renews automatically.',
-    perBookFrom: 'per book',
+    perBookFrom: 'per page',
     bookRange: (min, max) => `${min} – ${max} depending on page count`,
     createBook: 'Create a book',
     bookNote: 'You pay for each book at checkout, after you approve the preview. Promo codes and gift cards are accepted there.',

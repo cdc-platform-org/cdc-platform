@@ -310,9 +310,7 @@ export default function CourseDetailPage({ initialCourse }: { initialCourse: Cou
           <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3 sm:gap-5">
             <div className="flex-1 min-w-0 flex items-center gap-5 overflow-x-auto whitespace-nowrap text-xs sm:text-sm font-bold">{['course', 'trailer', 'details', 'lessons', 'instructor'].map(id => <a key={id} href={`#${id}`} onClick={() => setDetailTab(id === 'lessons' ? 'curriculum' : 'overview')} className="py-2 text-white/70 hover:text-white no-underline">{t(`detailPage.nav.${id}`)}</a>)}</div>
             <CourseCtaButton {...ctaProps} showPrice className="shrink-0 text-xs sm:text-sm" />
-            <button type="button" onClick={() => setHideBottomNav(true)} aria-label="Close navigation" className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white/75 hover:bg-white/20 hover:text-white transition-colors border-none cursor-pointer">
-              <X className="w-4 h-4" />
-            </button>
+            <button type="button" onClick={() => setHideBottomNav(true)} aria-label="Close navigation" title="დახურვა" style={{ width: 32, height: 32, minWidth: 32, padding: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '9999px', background: 'rgba(255,255,255,0.16)', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>✕</button>
           </div>
         </nav>
       )}
